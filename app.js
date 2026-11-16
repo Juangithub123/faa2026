@@ -67,7 +67,7 @@ function prep() {
   X.evAreas = {};
   D.shifts.forEach(function (x) {
     x._ppl = x.pids ? x.pids : (X.members[x.area] || []);
-    (x.ev || []).forEach(function (id) { (X.evAreas[id] = X.evAreas[id] || {})[x.area] = 1; });
+    if (!x.sug) { (x.ev || []).forEach(function (id) { (X.evAreas[id] = X.evAreas[id] || {})[x.area] = 1; }); }
   });
   if (S.me && !X.pp[S.me]) { S.me = ''; }
   buildChg();
@@ -83,7 +83,7 @@ function mineShift(x) { return !!S.me && x._ppl.indexOf(S.me) > -1; }
 function mineEv(e) { return hasMine(areasFor(e.id).concat(e.leadAreas || [])); }
 function evEnd(e) { return e.e == null ? e.s + 60 : e.e; }
 function shortName(n) { return String(n).split(' ')[0]; }
-function whoNames(area, evId) { var out = []; D.shifts.forEach(function (x) { if (x.area === area && (x.ev || []).indexOf(evId) > -1) { (x.who || []).forEach(function (w) { if (out.indexOf(w) < 0) { out.push(w); } }); } }); return out; }
+function whoNames(area, evId, sug) { var out = []; D.shifts.forEach(function (x) { if (x.area === area && !!x.sug === !!sug && (x.ev || []).indexOf(evId) > -1) { (x.who || []).forEach(function (w) { if (out.indexOf(w) < 0) { out.push(w); } }); } }); return out; }
 
 /* ---------- Piezas ---------- */
 var PIN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5a4.5 4.5 0 0 0-4.5 4.5c0 3.2 4.5 8.5 4.5 8.5S12.5 9.2 12.5 6A4.5 4.5 0 0 0 8 1.5Zm0 6.2A1.7 1.7 0 1 1 8 4.3a1.7 1.7 0 0 1 0 3.4Z" fill="currentColor"/></svg>';
@@ -118,15 +118,20 @@ function shiftRow(x, opt) {
   opt = opt || {};
   var done = !!S.done[x.id], t0 = absT(x.day, x.s), t1 = absT(x.day, x.e), now = Date.now() >= t0 && Date.now() < t1;
   var who = (x.who || []).length ? '<p class="nt">' + esc(x.who.join(' · ')) + '</p>' : '';
-  return '<li class="it' + (done ? ' done' : '') + (now ? ' now' : '') + '" data-row="' + x.id + '">' + chk(x.id, x.t) +
+  return '<li class="it' + (done ? ' done' : '') + (now ? ' now' : '') + (x.sug ? ' sug' : '') + '" data-row="' + x.id + '">' + chk(x.id, x.t) +
     '<div class="tm"><b>' + f(x.s) + '</b><span>a ' + f(x.e) + '</span></div><div class="bd">' +
-    '<p class="t">' + (now ? '<span class="badge now">Ahora</span> ' : '') + (X.chg['sh:' + x.id] ? '<span class="badge chg">Cambió</span> ' : '') + esc(x.t) + '</p>' +
+    '<p class="t">' + (x.sug ? '<span class="badge sugb">Sugerencia</span> ' : '') + (now ? '<span class="badge now">Ahora</span> ' : '') + (X.chg['sh:' + x.id] ? '<span class="badge chg">Cambió</span> ' : '') + esc(x.t) + '</p>' +
     '<div class="mt">' + venueLink(x.v) + (opt.area ? '<span class="tags">' + areaTag(x.area) + '</span>' : '') + relevo(x.s, x.e) + '</div>' +
     (x.note ? '<p class="nt">' + esc(x.note) + '</p>' : '') + (opt.who === false ? '' : who) + '</div></li>';
 }
 
+function sugBlock(key, list, opt) {
+  if (!list.length) { return ''; }
+  return det(key, 'sugbox', '<span class="sum-t">Sugerencias · ' + list.length + '</span><div class="sum-m">No son del cronograma oficial</div>',
+    '<p class="small muted">' + esc(D.notes.sug || '') + '</p><ul class="list" style="margin:0 -14px -14px;border-radius:0;border-left:0;border-right:0;border-bottom:0">' + list.map(function (x) { return shiftRow(x, opt); }).join('') + '</ul>');
+}
 /* ---------- Mi día ---------- */
-function myShiftsAll() { return D.shifts.filter(mineShift).map(function (x) { return { x: x, a: absT(x.day, x.s), b: absT(x.day, x.e) }; }).sort(by('a')); }
+function myShiftsAll() { return D.shifts.filter(function (x) { return !x.sug && mineShift(x); }).map(function (x) { return { x: x, a: absT(x.day, x.s), b: absT(x.day, x.e) }; }).sort(by('a')); }
 function statusCard() {
   var all = myShiftsAll(), t = Date.now(), ph = phase(), out = '';
   var cur = all.filter(function (o) { return o.a <= t && t < o.b; }), next = all.filter(function (o) { return o.a > t; })[0];
@@ -170,12 +175,14 @@ function vHoy() {
   if (!p) {
     return out + '<section class="card accent"><h2 style="font-size:21px">¿Quién sos?</h2><p>Elegí tu nombre: esta pantalla te va a mostrar tus tareas, dónde tenés que estar y qué cambió.</p>' + whoSelect() + '<p class="small muted">Se guarda solo en este teléfono. Lo podés cambiar en Más → Ajustes.</p></section>' + programaMini();
   }
-  var list = D.shifts.filter(function (x) { return x.day === S.day && mineShift(x); }).sort(by('s'));
+  var all = D.shifts.filter(function (x) { return x.day === S.day && mineShift(x); }).sort(by('s'));
+  var list = all.filter(function (x) { return !x.sug; }), sugs = all.filter(function (x) { return x.sug; });
   var trs = D.transfers.filter(function (t) { return t.day === S.day && hasMine(t.areas); });
   out += head('Hola, ' + shortName(p.n), esc(p.a.map(function (a) { return A(a).n; }).join(' · ')));
   out += myNewsCard() + statusCard();
   out += '<div class="h" style="margin-top:4px"><p class="kicker">Tus tareas · ' + esc(D.days[S.day].name + ' ' + D.days[S.day].k) + '</p><span class="sub">' + list.length + '</span></div>';
   out += list.length ? '<ul class="list">' + list.map(function (x) { return shiftRow(x, { area: p.a.length > 1 }); }).join('') + '</ul>' : '<p class="card muted small">No tenés tareas asignadas este día.</p>';
+  out += sugBlock('sug-me-' + S.day, sugs, { area: p.a.length > 1 });
   out += mealsLine();
   if (trs.length) { out += '<button class="btn" type="button" data-go="traslados">' + trs.length + (trs.length === 1 ? ' traslado' : ' traslados') + ' de tu área este día →</button>'; }
   out += programaMini();
@@ -187,13 +194,13 @@ function vHoy() {
 function films(e) { return e.films && e.films.length ? '<div class="kv"><b>Selección · ' + e.films.length + '</b><ol class="films">' + e.films.map(function (x) { return '<li>' + esc(typeof x === 'string' ? x : x.t + (x.by ? ' · ' + x.by : '')) + '</li>'; }).join('') + '</ol></div>' : ''; }
 function evRow(e) {
   var t = Date.now(), now = t >= absT(e.day, e.s) && t < absT(e.day, evEnd(e)), mine = S.me && mineEv(e), chg = X.chg['ev:' + e.id];
-  var ar = areasFor(e.id), dir = whoNames('dir', e.id), coo = whoNames('coo', e.id);
+  var ar = areasFor(e.id), dir = whoNames('dir', e.id), coo = whoNames('coo', e.id), sdir = whoNames('dir', e.id, true);
   var sum = '<div class="ev-sum"><div class="tm"><b>' + f(e.s) + '</b><span>' + (e.e != null ? f(e.e) : 'en adelante') + '</span></div><div><div class="sum-t">' + esc(e.t) + '</div><div class="sum-m"><span>' + esc(vtxt(e.v, e.room)) + '</span>' +
     (now ? '<span class="badge now">Ahora</span>' : '') + (chg ? '<span class="badge chg">Cambió</span>' : '') + (mine ? '<span class="badge mine">Tu área</span>' : '') + (e.flag ? '<span class="badge flag">A confirmar</span>' : '') + '</div></div></div>';
   var inner = (e.tag ? '<p><span class="badge">' + esc(e.tag) + '</span></p>' : '') + (e.d ? '<p>' + esc(e.d) + '</p>' : '') + films(e) + (e.flag ? '<p class="fl">' + esc(e.flag) + '</p>' : '') +
     (e.lead ? kv('A cargo', esc(e.lead)) : '') +
-    kv('Dirección', dir.length ? esc(dir.join(' · ')) : '<span class="muted">sin asignar</span>') +
-    kv('Coordinación', coo.length ? esc(coo.join(' · ')) : '<span class="muted">sin asignar</span>') +
+    (dir.length ? kv('Dirección', esc(dir.join(' · '))) : '') + (coo.length ? kv('Coordinación', esc(coo.join(' · '))) : '') +
+    (sdir.length ? kv('Sugerencia · Dirección', '<span class="muted">' + esc(sdir.join(' · ')) + '</span>') : '') +
     (ar.length ? '<div class="tags">' + ar.map(areaTag).join('') + '</div>' : '') +
     '<div class="mt">' + venueLink(e.v, e.room) + ' ' + relevo(e.s, e.e) + '</div>';
   return det('ev-' + e.id, 'ev' + (now ? ' now' : ''), sum, inner);
@@ -214,13 +221,15 @@ function vPrograma() {
 function bucket(s) { return s < 780 ? 'Mañana' : (s < 1140 ? 'Tarde' : 'Noche'); }
 function peak(list) { var best = 0; list.forEach(function (a) { var n = list.filter(function (b) { return b.s <= a.s && b.e > a.s; }).length; if (n > best) { best = n; } }); return best; }
 function areaCard(a, open) {
-  var items = D.shifts.filter(function (x) { return x.day === S.day && x.area === a; }).sort(by('s'));
+  var both = D.shifts.filter(function (x) { return x.day === S.day && x.area === a; }).sort(by('s'));
+  var items = both.filter(function (x) { return !x.sug; }), sugs = both.filter(function (x) { return x.sug; });
   var ppl = X.members[a] || [], n = ppl.length, pk = peak(items), rows = '', last = '';
   items.forEach(function (x) { var b = bucket(x.s); if (b !== last) { rows += '<li class="turno-lbl">' + b + '</li>'; last = b; } rows += shiftRow(x); });
   var warn = n === 0 ? 'Sin integrantes cargados: falta confirmar quién cubre el área.' : (pk > n ? 'Hay momentos con ' + pk + ' tareas a la vez y ' + n + (n === 1 ? ' persona' : ' personas') + ': conviene sumar apoyo.' : '');
   var sum = '<div class="area-h">' + ad(a) + '<span class="sum-t">' + esc(A(a).n) + '</span></div><div class="sum-m"><span>' + items.length + (items.length === 1 ? ' tarea' : ' tareas') + '</span><span>' + n + (n === 1 ? ' persona' : ' personas') + '</span>' + (warn ? '<span class="badge flag">Revisar</span>' : '') + (items.some(function (x) { return X.chg['sh:' + x.id]; }) ? '<span class="badge chg">Cambió</span>' : '') + '</div>';
   var inner = '<p class="nt small muted">' + (n ? ppl.map(function (id) { return esc(X.pp[id].n); }).join(' · ') : '') + '</p>' + (warn ? '<p class="warnline">' + warn + '</p>' : '') +
-    (items.length ? '<ul class="list" style="margin:0 -14px -14px;border-radius:0;border-left:0;border-right:0;border-bottom:0">' + rows + '</ul>' : '<p class="muted small">Sin tareas este día.</p>');
+    (items.length ? '<ul class="list" style="margin:0 -14px' + (sugs.length ? ' 0' : ' -14px') + ';border-radius:0;border-left:0;border-right:0;border-bottom:0">' + rows + '</ul>' : '<p class="muted small">Sin tareas del cronograma este día.</p>') +
+    sugBlock('sug-' + a + '-' + S.day, sugs);
   var key = 'ar-' + a;
   if (open && !(key in X.open)) { X.open[key] = 1; }
   return det(key, '', sum, inner);
@@ -541,7 +550,7 @@ function diff(Aa, B) {
   });
   Object.keys(a).forEach(function (id) { if (!b[id]) { push({ ref: 'ev:' + id, day: a[id].day, view: 'programa', mine: false, text: 'Se quitó del programa: “' + a[id].t + '” (' + dl(a[id].day) + ', ' + f(a[id].s) + ')' }); } });
 
-  a = idMap(Aa.shifts); b = idMap(B.shifts); var whoG = {};
+  a = idMap(Aa.shifts); b = idMap(B.shifts); var whoG = {}, sugG = {};
   function shMine(x) { return !!meId && (x.pids ? x.pids : (Bmembers[x.area] || [])).indexOf(meId) > -1; }
   Object.keys(b).forEach(function (id) {
     var n = b[id], o = a[id], base = { ref: 'sh:' + id, day: n.day, view: 'turnos', mine: shMine(n) || (o ? shMine(o) : false) };
@@ -552,7 +561,12 @@ function diff(Aa, B) {
     if (o.v !== n.v) { p('Cambió el lugar de “' + n.t + '”: ' + vn(o.v) + ' → ' + vn(n.v)); }
     if (o.t !== n.t) { p('Tarea de ' + who + ' renombrada: “' + n.t + '”'); }
     if (J(o.who) !== J(n.who) || J(o.pids) !== J(n.pids)) { (whoG[n.area] = whoG[n.area] || []).push(Object.assign({}, base, { text: 'Cambiaron las personas de “' + n.t + '”: ' + ((n.who || []).join(' · ') || 'toda el área') })); }
+    if (!!o.sug !== !!n.sug) { (sugG[n.area] = sugG[n.area] || []).push(Object.assign({}, base, { text: '“' + n.t + '” ' + (n.sug ? 'ahora es una sugerencia (no es del cronograma)' : 'ahora es una tarea del cronograma') })); }
     if (o.note !== n.note) { p('Nueva nota en “' + n.t + '”'); }
+  });
+  Object.keys(sugG).forEach(function (ar) {
+    var g = sugG[ar]; if (g.length <= 2) { g.forEach(push); return; }
+    push({ ref: g[0].ref, refs: g.map(function (x) { return x.ref; }), day: g[0].day, view: 'turnos', mine: g.some(function (x) { return x.mine; }), text: g.length + ' tareas de ' + (B.areas[ar] || { n: ar }).n + ' pasaron a «Sugerencias»: no son del cronograma oficial' });
   });
   Object.keys(whoG).forEach(function (ar) {
     var g = whoG[ar]; if (g.length <= 2) { g.forEach(push); return; }

@@ -87,6 +87,9 @@ select.big{width:100%;padding:12px;border-radius:12px;border:1px solid var(--lin
 .badge.next{background:var(--accent-soft);color:var(--accent)}
 .badge.chg{background:var(--warn);color:#fff}
 .badge.mine{background:var(--accent-soft);color:var(--accent)}
+.badge.sugb{background:transparent;border:1px dashed var(--muted);color:var(--muted)}
+.it.sug .t{font-weight:500}
+details.sugbox{border-style:dashed;background:transparent}
 .badge.flag{background:var(--warn-soft);color:var(--warn)}
 .venue{display:inline-flex;align-items:center;gap:3px;font-weight:600;color:var(--ink);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;text-decoration-thickness:2px}
 .venue svg{width:14px;height:14px;flex:none;color:var(--muted)}
