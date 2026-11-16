@@ -130,6 +130,29 @@ function sugBlock(key, list, opt) {
   return det(key, 'sugbox', '<span class="sum-t">Sugerencias · ' + list.length + '</span><div class="sum-m">No son del cronograma oficial</div>',
     '<p class="small muted">' + esc(D.notes.sug || '') + '</p><ul class="list" style="margin:0 -14px -14px;border-radius:0;border-left:0;border-right:0;border-bottom:0">' + list.map(function (x) { return shiftRow(x, opt); }).join('') + '</ul>');
 }
+var PDF = 'cronograma-faa-2026.pdf', PDFNAME = 'Cronograma FAA 2026.pdf';
+function pdfCard() {
+  return '<section class="card pdfcard"><div class="ico">PDF</div><div><h3>Cronograma oficial</h3><p class="small muted">Para pasarlo por WhatsApp o imprimirlo.</p></div>' +
+    '<div class="row-btns"><button class="btn sm pri" type="button" data-act="pdf-share">Compartir</button><a class="btn sm" href="' + PDF + '" download="' + PDFNAME + '">Descargar</a><a class="btn sm" href="' + PDF + '" target="_blank" rel="noopener">Ver</a></div></section>';
+}
+function getPdfFile() {
+  if (X.pdfFile) { return Promise.resolve(X.pdfFile); }
+  return fetch(PDF).then(function (r) { return r.blob(); }).then(function (b) { X.pdfFile = new File([b], PDFNAME, { type: 'application/pdf' }); return X.pdfFile; });
+}
+function copyLink(url) {
+  if (navigator.clipboard) { navigator.clipboard.writeText(url).then(function () { toast('Link del cronograma copiado.'); }, function () { toast(url); }); } else { toast(url); }
+}
+function sharePdf() {
+  var url = new URL(PDF, location.href).href, text = 'Cronograma del FAA! 2026 · del 25 al 29 de noviembre, El Bolsón';
+  function viaUrl() { if (navigator.share) { return navigator.share({ title: 'Cronograma FAA! 2026', text: text, url: url }).catch(function () {}); } copyLink(url); }
+  var go = function (f) {
+    if (f && navigator.canShare && navigator.canShare({ files: [f] })) {
+      return navigator.share({ files: [f], title: 'Cronograma FAA! 2026', text: text }).catch(function (e) { if (!e || e.name !== 'AbortError') { viaUrl(); } });
+    }
+    return viaUrl();
+  };
+  if (X.pdfFile) { go(X.pdfFile); } else { getPdfFile().then(go, viaUrl); }
+}
 /* ---------- Mi día ---------- */
 function myShiftsAll() { return D.shifts.filter(function (x) { return !x.sug && mineShift(x); }).map(function (x) { return { x: x, a: absT(x.day, x.s), b: absT(x.day, x.e) }; }).sort(by('a')); }
 function statusCard() {
@@ -173,13 +196,13 @@ function installCard() {
 function vHoy() {
   var p = me(), out = installCard();
   if (!p) {
-    return out + '<section class="card accent"><h2 style="font-size:21px">¿Quién sos?</h2><p>Elegí tu nombre: esta pantalla te va a mostrar tus tareas, dónde tenés que estar y qué cambió.</p>' + whoSelect() + '<p class="small muted">Se guarda solo en este teléfono. Lo podés cambiar en Más → Ajustes.</p></section>' + programaMini();
+    return out + pdfCard() + '<section class="card accent"><h2 style="font-size:21px">¿Quién sos?</h2><p>Elegí tu nombre: esta pantalla te va a mostrar tus tareas, dónde tenés que estar y qué cambió.</p>' + whoSelect() + '<p class="small muted">Se guarda solo en este teléfono. Lo podés cambiar en Más → Ajustes.</p></section>' + programaMini();
   }
   var all = D.shifts.filter(function (x) { return x.day === S.day && mineShift(x); }).sort(by('s'));
   var list = all.filter(function (x) { return !x.sug; }), sugs = all.filter(function (x) { return x.sug; });
   var trs = D.transfers.filter(function (t) { return t.day === S.day && hasMine(t.areas); });
   out += head('Hola, ' + shortName(p.n), esc(p.a.map(function (a) { return A(a).n; }).join(' · ')));
-  out += myNewsCard() + statusCard();
+  out += myNewsCard() + statusCard() + pdfCard();
   out += '<div class="h" style="margin-top:4px"><p class="kicker">Tus tareas · ' + esc(D.days[S.day].name + ' ' + D.days[S.day].k) + '</p><span class="sub">' + list.length + '</span></div>';
   out += list.length ? '<ul class="list">' + list.map(function (x) { return shiftRow(x, { area: p.a.length > 1 }); }).join('') + '</ul>' : '<p class="card muted small">No tenés tareas asignadas este día.</p>';
   out += sugBlock('sug-me-' + S.day, sugs, { area: p.a.length > 1 });
@@ -215,7 +238,7 @@ function evRow(e) {
 function vPrograma() {
   var list = D.events.filter(function (e) { return e.day === S.day; }).sort(by('s'));
   if (S.mineOnly && S.me) { list = list.filter(mineEv); }
-  var out = dayHead('Programa');
+  var out = dayHead('Programa') + pdfCard();
   if (S.me) { out += '<div class="chips"><button class="chip" type="button" data-mine="0" aria-pressed="' + !S.mineOnly + '">Todo el programa</button><button class="chip" type="button" data-mine="1" aria-pressed="' + S.mineOnly + '">Solo donde está mi área</button></div>'; }
   out += list.length ? '<div class="evlist">' + list.map(evRow).join('') + '</div>' : '<p class="card muted">Nada para mostrar con este filtro.</p>';
   out += mealsLine();
@@ -449,7 +472,7 @@ function renderNav() {
 function renderSync() {
   var b = $('sync'), off = SYNC.state === 'off' || SYNC.state === 'err';
   b.className = 'sync' + (SYNC.state === 'busy' ? ' busy' : off ? ' off' : '');
-  b.textContent = SYNC.state === 'busy' ? 'Actualizando…' : off ? (SYNC.state === 'off' ? 'Sin conexión' : 'Sin actualizar') : (SYNC.at ? 'Al día · ' + clock(SYNC.at) : 'Al día');
+  b.innerHTML = SYNC.state === 'busy' ? '<span class="lbl">Actualizando…</span>' : off ? '<span class="lbl">' + (SYNC.state === 'off' ? 'Sin conexión' : 'Sin actualizar') + '</span>' : (SYNC.at ? '<span class="lbl">Al día · </span>' + clock(SYNC.at) : 'Al día');
   b.title = SYNC.msg || 'Tocá para buscar actualizaciones';
 }
 function render(keepScroll) {
@@ -477,7 +500,8 @@ window.addEventListener('popstate', function () { if (D && readHash()) { X.readB
 
 document.addEventListener('click', function (e) {
   var t = e.target.closest('[data-go],[data-day],[data-done],[data-tarea],[data-mine],[data-layer],[data-theme],[data-act]');
-  if (!t || !D) { return; }
+  if (!t) { return; }
+  if (!D && !/^pdf/.test(t.getAttribute('data-act') || '')) { return; }
   if (t.hasAttribute('data-go')) { go(t.getAttribute('data-go')); return; }
   if (t.hasAttribute('data-day')) { S.day = +t.getAttribute('data-day'); setHash(); render(); return; }
   if (t.hasAttribute('data-done')) {
@@ -498,8 +522,12 @@ document.addEventListener('click', function (e) {
   else if (act === 'install-hide') { lsSet(K.inst, 1); render(true); }
   else if (act === 'notif') { toggleNotif(); }
   else if (act === 'reload') { location.reload(); }
+  else if (act === 'pdf') { var dl = $('pdfsheet'); getPdfFile().catch(function () {}); if (dl.showModal) { dl.showModal(); } else { window.open(PDF, '_blank'); } }
+  else if (act === 'pdf-close') { $('pdfsheet').close(); }
+  else if (act === 'pdf-share') { sharePdf(); }
 });
 $('sync').addEventListener('click', function () { pull(true); });
+$('pdfsheet').addEventListener('click', function (e) { if (e.target === this) { this.close(); } });
 document.addEventListener('change', function (e) {
   if (e.target.id !== 'who') { return; }
   S.me = e.target.value; S.tarea = ''; saveS(); render(true);
