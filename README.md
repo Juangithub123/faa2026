@@ -5,7 +5,7 @@ Web liviana e instalable (PWA) con los turnos, el programa, los traslados y los 
 ## Archivos
 - `index.html`, `app.css`, `app.js`: la app (sin dependencias, sin fuentes externas).
 - `data.json`: todos los datos (cronograma, turnos, traslados, ambientación, equipo, avisos). Es la base.
-- `config.js`: planillas de Google Sheets conectadas y cada cuántos minutos se revisan.
+- `config.js`: cada cuántos minutos la app busca una versión nueva de los datos.
 - `sw.js` + `manifest.webmanifest` + `icons/`: instalación en el teléfono y funcionamiento sin señal.
 - `map.webp`, `logo.webp`: imágenes (el mapa se carga solo cuando se abre).
 
@@ -15,7 +15,7 @@ Web liviana e instalable (PWA) con los turnos, el programa, los traslados y los 
 3. En un minuto queda en `https://USUARIO.github.io/faa2026/`.
 
 ## Cómo se actualiza
-- La app guarda los datos en el teléfono y busca cambios al abrirse, cada 5 minutos mientras está abierta y al volver la señal.
+- La app guarda los datos en el teléfono y busca una versión nueva de `data.json` al abrirse, cada 5 minutos mientras está abierta y al volver la señal.
 - Si algo cambió, muestra un aviso, suma el cambio en **Novedades** (campana) y marca con «Cambió» lo modificado. Si el cambio toca a la persona (su turno, su área), se lo destaca.
-- Para cambiar datos: editar `data.json` en GitHub, o conectar planillas en `config.js` (tipos: `eventos`, `turnos`, `traslados`, `personas`, `avisos`). La planilla tiene que estar compartida como «Cualquier persona con el enlace: lector» o publicada en la web.
+- Para cambiar datos: editar `data.json` y publicarlo en este repo.
 - Si se modifica `app.js`, `app.css` o `index.html`, subir el número de `VERSION` en `sw.js` para que los teléfonos bajen la versión nueva.

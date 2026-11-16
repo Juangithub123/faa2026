@@ -167,6 +167,7 @@ details.ev>.in{padding-left:76px}
 .people{display:flex;flex-wrap:wrap;gap:6px}
 .person{border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:14px;background:var(--surface)}
 .person.me{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700}
+ol.films{margin:4px 0 0;padding-left:22px;display:grid;gap:3px;font-size:14.5px;color:var(--ink)}
 ul.plain{margin:0;padding-left:20px;display:grid;gap:6px}
 
 /* Novedades */
