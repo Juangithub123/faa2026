@@ -191,7 +191,14 @@ function vHoy() {
 }
 
 /* ---------- Programa ---------- */
-function films(e) { return e.films && e.films.length ? '<div class="kv"><b>Selección · ' + e.films.length + '</b><ol class="films">' + e.films.map(function (x) { return '<li>' + esc(typeof x === 'string' ? x : x.t + (x.by ? ' · ' + x.by : '')) + '</li>'; }).join('') + '</ol></div>' : ''; }
+function films(e) {
+  if (!e.films || !e.films.length) { return ''; }
+  return '<div class="kv"><b>Selección · ' + e.films.length + '</b><ul class="films">' + e.films.map(function (x) {
+    if (typeof x === 'string') { return '<li><span></span><div><span class="ft">' + esc(x) + '</span></div></li>'; }
+    var meta = [x.by, [x.from, x.y].filter(Boolean).join(', '), x.dur].filter(Boolean).join(' · ');
+    return '<li>' + (x.img ? '<img loading="lazy" decoding="async" src="' + esc(x.img) + '" alt="" width="64" height="92">' : '<span class="noimg"></span>') + '<div><span class="ft">' + esc(x.t) + '</span><span class="fm">' + esc(meta) + '</span></div></li>';
+  }).join('') + '</ul></div>';
+}
 function evRow(e) {
   var t = Date.now(), now = t >= absT(e.day, e.s) && t < absT(e.day, evEnd(e)), mine = S.me && mineEv(e), chg = X.chg['ev:' + e.id];
   var ar = areasFor(e.id), dir = whoNames('dir', e.id), coo = whoNames('coo', e.id), sdir = whoNames('dir', e.id, true);
@@ -547,6 +554,7 @@ function diff(Aa, B) {
     if (o.v !== n.v || o.room !== n.room) { p('Cambió el lugar de “' + n.t + '”: ' + vn(o.v, o.room) + ' → ' + vn(n.v, n.room)); }
     if (o.t !== n.t) { p('Cambió el nombre: “' + o.t + '” → “' + n.t + '”'); }
     if (o.d !== n.d || o.flag !== n.flag || o.lead !== n.lead || o.tag !== n.tag) { p('Se actualizó la información de “' + n.t + '”'); }
+    if (J(o.films) !== J(n.films)) { p('Se actualizó la selección de “' + n.t + '”'); }
   });
   Object.keys(a).forEach(function (id) { if (!b[id]) { push({ ref: 'ev:' + id, day: a[id].day, view: 'programa', mine: false, text: 'Se quitó del programa: “' + a[id].t + '” (' + dl(a[id].day) + ', ' + f(a[id].s) + ')' }); } });
 
