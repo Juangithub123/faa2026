@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Logística FAA! 2026</title>
+<meta name="description" content="Guía de logística del equipo del FAA! 2026: tus turnos, el programa, los traslados y los cambios al día.">
+<meta name="theme-color" content="#1F3A12">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FAA! 2026">
+<link rel="stylesheet" href="app.css">
+<script>try{var t=localStorage.getItem('faa26-theme');if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}</script>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#hoy" aria-label="FAA! 2026 · Inicio"><img src="logo.webp" width="152" height="32" alt="Festival Artístico Audiovisual FAA! 2026"></a>
+  <button class="sync" id="sync" type="button" aria-live="polite">…</button>
+  <button class="bell" id="bell" type="button" data-go="novedades" aria-label="Novedades">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6v3.6L4.3 15.4A1 1 0 0 0 5.2 17h13.6a1 1 0 0 0 .9-1.6L18 12.6V9a6 6 0 0 0-6-6Zm-2.4 15.5a2.5 2.5 0 0 0 4.8 0Z" fill="currentColor"/></svg>
+    <span class="dot" id="bellcount" hidden></span>
+  </button>
+</header>
+<nav class="days" id="days" aria-label="Día del festival"></nav>
+<div id="banner"></div>
+<main id="app" tabindex="-1"><p class="loading">Cargando la logística…</p></main>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<nav class="nav" id="nav" aria-label="Secciones">
+  <button type="button" data-go="hoy"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21a8 8 0 0 1 16 0Z" fill="currentColor"/></svg><span>Mi día</span></button>
+  <button type="button" data-go="programa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3M17 2v3M3.5 9h17M5 4.5h14A1.5 1.5 0 0 1 20.5 6v13.5A1.5 1.5 0 0 1 19 21H5a1.5 1.5 0 0 1-1.5-1.5V6A1.5 1.5 0 0 1 5 4.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Programa</span></button>
+  <button type="button" data-go="turnos"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Turnos</span></button>
+  <button type="button" data-go="traslados"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 6.5h11v9h-11ZM13.5 9.5h4l3 3.5v2.5h-7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="6.5" cy="17.5" r="2" fill="currentColor"/><circle cx="17" cy="17.5" r="2" fill="currentColor"/></svg><span>Traslados</span></button>
+  <button type="button" data-go="mas"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="19" cy="12" r="2.2" fill="currentColor"/></svg><span>Más</span></button>
+</nav>
+<script src="config.js"></script>
+<script src="app.js" defer></script>
+</body>
+</html>
