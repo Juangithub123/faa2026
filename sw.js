@@ -2,7 +2,7 @@
    App: se guarda al instalar y se sirve desde el teléfono (funciona sin señal).
    data.json: siempre se pide a la red; si no hay señal, se usa la última copia guardada.
    Al publicar cambios en app.js, app.css o index.html, subí el número de VERSION. */
-var VERSION = 'faa26-v12';
+var VERSION = 'faa26-v13';
 /* El juego secreto se guarda aparte, para que funcione sin señal; se pide primero a la red para tomar cambios. */
 var GAME = 'faa26-juego', GAME_FILES = ['juego/', 'juego/juego.js', 'juego/ranking.js', 'juego/side.png', 'juego/back.png', 'juego/atlas.png', 'juego/n26.png', 'juego/carriles/', 'juego/carriles/carriles.js'];
 var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'config.js', 'manifest.webmanifest', 'logo.webp', 'map.webp', 'icons/icon-192.png', 'data.json', 'cronograma-faa-2026.pdf', 'vendor/leaflet.js', 'vendor/leaflet.css'];
@@ -30,7 +30,8 @@ self.addEventListener('fetch', function (e) {
   }
   if (url.origin !== location.origin) { return; }
   if (url.pathname.indexOf('/juego/') > -1) {
-    e.respondWith(fetch(req).then(function (res) {
+    /* no-cache: el navegador pregunta siempre si hay versión nueva (si no cambió, no se vuelve a bajar) */
+    e.respondWith(fetch(new Request(req.url, { cache: 'no-cache' })).then(function (res) {
       if (res.ok) { var copy = res.clone(); caches.open(GAME).then(function (c) { c.put(req.url.split('?')[0], copy); }); }
       return res;
     }).catch(function () { return caches.open(GAME).then(function (c) { return c.match(req, { ignoreSearch: true }); }).then(function (r) { return r || Response.error(); }); }));
