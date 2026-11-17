@@ -1,55 +1,52 @@
-/* ¡Corre, sonidista! · juego secreto del FAA! 2026. Canvas 2D, sin dependencias. */
+/* ¡Corre, sonidista! · modo clásico (de costado). Canvas 2D, sin dependencias.
+   Misma estética que el modo carriles (paletas, marcha estudiantil, código de colores) y plataformas para subir. */
 (function () {
 'use strict';
-var A = { case: [0, 0, 22, 18], case2: [23, 0, 22, 32], chairs: [46, 0, 18, 26], tripod: [65, 0, 16, 30], bang: [82, 0, 14, 22], n26: [97, 0, 28, 25], spot: [126, 0, 18, 14], mid: [0, 33, 280, 27] };
+var ART = window.FAAArte;
 /* Personaje: side.png, 16 cuadros de 62×70 por fila, una fila por paleta (Arrayán, Chilco, Campanilla).
    0-7 carrera · 8 impulso · 9 subida · 10 punto alto · 11 caída · 12-13 agachado · 14 golpe · 15 quieto */
-var CW = 62, CH = 70;
-/* Cajas de choque del cuerpo (sin el micrófono), dentro del cuadro de 62×70 */
-var HB = { run: [19, 7, 50, 68], jump: [19, 8, 50, 62], duck: [16, 43, 54, 68] };
-var H = 200, W = 320, GROUND = H - 24, PX = 26;
+var CW = 62, CH = 70, FEET = 68;           /* fila de los pies dentro del cuadro */
+/* Cajas de choque del cuerpo, más chicas que el dibujo (a favor del jugador): [x1, x2, alto desde los pies] */
+var HB = { run: [23, 46, 52], duck: [20, 50, 21] };
+var PX = 34;                                /* posición del personaje en pantalla */
+var W = 300, H = 480, GROUND = 400, S = 1;  /* unidades de mundo; S = escala a píxeles reales */
 var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
-var img = new Image(); img.src = 'atlas.png';
 var chr = new Image(); chr.src = 'side.png';
 var K = { best: 'faa26-juego-best', pal: 'faa26-juego-pal', mute: 'faa26-juego-mute' };
 function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function $(id) { return document.getElementById(id); }
+function show(id) { $(id).hidden = false; }
+function hide(id) { $(id).hidden = true; }
 
 var best = lsGet(K.best, 0), pal = lsGet(K.pal, 0), muted = lsGet(K.mute, false), takes = 0;
-var st = 'menu', p, obs, coins = [], nCoins = 0, dist, speed, t0, nextGap, seed, upHeld = false, downHeld = false, frameT = 0, deadT = 0;
-var scrollFar = 0, scrollMid = 0, scrollGround = 0, mountains = [];
+var st = 'menu', p, obs, plats, coins, flyers, nCoins = 0, dist = 0, speed = 0, nextX = 0, seed = 1, playT = 0;
+var upHeld = false, downHeld = false, frameT = 0, deadT = 0, shake = 0, mountains = [];
 
-/* ---------- Tamaño: alto interno fijo, ancho según la pantalla ---------- */
+/* ---------- Velocidad: arranca lenta para poder anticipar ---------- */
+var V0 = 92, VMAX = 235, ACC = 0.0095;      /* px/s; ACC por px recorrido */
+function speedAt(wx) { return Math.min(VMAX, V0 + Math.max(0, wx) * ACC); }
+/* Salto: flotante, con más altura si se mantiene apretado */
+var G = 1000, JV = 380, HOLD = 0.24, STEP = 1 / 120;
+var TIER = 54, T1 = 58, T2 = 112;          /* alturas de las plataformas: 58, 112, 166, 220… */
+var GRACE = 8;                              /* margen de gracia en px recorridos */
+
+/* ---------- Tamaño ---------- */
 function resize() {
-  var r = cv.parentElement.getBoundingClientRect();
-  var land = window.matchMedia('(orientation:landscape) and (max-height:520px)').matches;
-  var vert = !land && r.height > r.width * 0.9;
-  if (vert) {
-    /* vertical: el lienzo ocupa toda la zona de juego; más cielo arriba y más suelo abajo */
-    W = Math.round(Math.max(220, Math.min(300, r.width / 1.6)));
-    H = Math.round(W * r.height / Math.max(r.width, 1));
-    GROUND = H - Math.max(24, Math.round(H * 0.2));
-    cv.className = 'full'; cv.style.width = ''; cv.style.height = '';
-  } else {
-    H = 200; GROUND = H - 24; cv.className = '';
-    var aw = r.width, ah = land ? r.height : Math.min(r.height, r.width * 0.85);
-    W = Math.round(Math.max(240, Math.min(440, H * aw / Math.max(ah, 1))));
-    if (!land) { cv.style.width = '100%'; cv.style.height = 'auto'; } else { cv.style.height = '100%'; cv.style.width = 'auto'; }
-  }
-  cv.width = W; cv.height = H;
-  ctx.imageSmoothingEnabled = false;
-  buildMountains();
+  var r = cv.parentElement.getBoundingClientRect(), land = r.width > r.height * 1.15;
+  if (land) { H = 230; W = Math.round(H * r.width / Math.max(r.height, 1)); }
+  else { W = Math.round(Math.max(250, Math.min(380, r.width / 1.25))); H = Math.round(W * r.height / Math.max(r.width, 1)); }
+  GROUND = H - Math.max(26, Math.round(H * (land ? 0.11 : 0.15)));
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); S = cv.height / H;
   draw();
 }
 function rnd() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
-function buildMountains() {
-  /* Cordillera (con el Piltriquitrón de frente): alturas suavizadas que se repiten */
-  mountains = []; var s = 7, n = 64, raw = [];
-  for (var i = 0; i < n; i++) { s = (s * 1103515245 + 12345) >>> 0; raw.push((s >>> 16) / 65536); }
-  for (i = 0; i < n; i++) { var v = (raw[i] * 2 + raw[(i + 1) % n] + raw[(i + n - 1) % n]) / 4; mountains.push(v); }
-}
+(function () { var s = 7, n = 64, raw = [], i; for (i = 0; i < n; i++) { s = (s * 1103515245 + 12345) >>> 0; raw.push((s >>> 16) / 65536); } for (i = 0; i < n; i++) { mountains.push((raw[i] * 2 + raw[(i + 1) % n] + raw[(i + n - 1) % n]) / 4); } })();
+/* cuántos pisos de andamio entran en pantalla (en vertical, varios: así se usa toda la altura) */
+function maxTier() { return Math.max(1, Math.min(6, Math.floor((GROUND - 150 - 4) / TIER) + 1)); }
 
-/* ---------- Sonido mínimo (WebAudio, sin archivos) ---------- */
+/* ---------- Sonido mínimo ---------- */
 var ac = null;
 function beep(f1, f2, dur, type, vol) {
   if (muted) { return; }
@@ -64,173 +61,272 @@ function beep(f1, f2, dur, type, vol) {
 
 /* ---------- Partida ---------- */
 function reset() {
-  p = { y: 0, vy: 0, air: false, duck: false, hold: 0, land: 0 };
-  obs = []; coins = []; nCoins = 0; $('coins').textContent = '0'; dist = 0; speed = 115; nextGap = 220; seed = (Date.now() & 0xffff) || 1; deadT = 0;
+  p = { h: 0, vy: 0, air: false, duck: false, hold: 0, land: 0, coyote: 0, buf: 0, drop: 0, grace: 0, fast: false };
+  obs = []; plats = []; coins = []; flyers = []; nCoins = 0; dist = 0; speed = V0; playT = 0; deadT = 0; shake = 0;
+  seed = (Date.now() & 0xffff) || 1; nextX = 520;
+  $('coins').textContent = '0'; $('score').textContent = '0';
+  fill();
 }
-function start() {
-  reset(); playT = 0; st = 'play'; takes++;
-  hide('start'); hide('over'); beep(330, 660, 0.12, 'triangle', 0.05);
-}
+function start() { reset(); st = 'play'; takes++; hide('start'); hide('over'); beep(330, 660, 0.12, 'triangle', 0.05); }
 function over() {
-  st = 'over'; deadT = 0; beep(220, 55, 0.4, 'sawtooth', 0.07);
+  st = 'over'; deadT = 0; shake = 0.3; beep(220, 55, 0.4, 'sawtooth', 0.07);
   if (navigator.vibrate) { try { navigator.vibrate(80); } catch (e) {} }
   var m = Math.floor(dist / 10), rec = m > best;
   if (rec) { best = m; lsSet(K.best, best); }
   $('final').textContent = m; $('take').textContent = takes; $('best').textContent = best;
-  $('rec').textContent = rec ? '¡Nuevo récord en este teléfono!' : 'Récord: ' + best + ' m';
+  $('rec').textContent = (nCoins ? nCoins + ' fichas · ' : '') + (rec ? '¡nuevo récord en este teléfono!' : 'récord ' + best + ' m');
   if (window.FAARank) { FAARank.over({ score: m, coins: nCoins, secs: playT }); }
   setTimeout(function () { show('over'); }, 450);
 }
-function $(id) { return document.getElementById(id); }
-function show(id) { $(id).hidden = false; }
-function hide(id) { $(id).hidden = true; }
 
-/* Obstáculos: suelo (saltar) o aire (agacharse). Se arman en tandas al azar, siempre pasables. */
-var KINDS = [
-  { k: 'case', y: 0, w: 4 }, { k: 'chairs', y: 0, w: 3 }, { k: 'tripod', y: 0, w: 3 }, { k: 'case2', y: 0, w: 2, from: 40 },
-  { k: 'bang', air: 1, w: 2, from: 25 }, { k: 'n26', air: 1, w: 2, from: 60 }, { k: 'spot', air: 2, w: 2, from: 90 }
-];
-function pick() {
-  var m = dist / 10, list = KINDS.filter(function (o) { return !o.from || m >= o.from; }), tot = 0;
-  list.forEach(function (o) { tot += o.w; });
-  var r = rnd() * tot;
-  for (var i = 0; i < list.length; i++) { r -= list[i].w; if (r <= 0) { return list[i]; } }
-  return list[0];
+/* ---------- Generación procedural, por tramos ----------
+   Código de colores: amarillo = se salta · celeste = se pasa agachado · blanco = superficie (te podés subir).
+   Cada tramo deja después un espacio proporcional a la velocidad, para tener tiempo de anticipar. */
+var BANNERS = ['EDUCACIÓN|PÚBLICA', 'LA UNI|SE DEFIENDE', 'NI UN PASO|ATRÁS', 'PRESUPUESTO|YA'].map(function (t) { return ART.banner(t, 58, 26); });
+function wpick(list) { var tot = 0, i; for (i = 0; i < list.length; i++) { tot += list[i][1]; } var r = rnd() * tot; for (i = 0; i < list.length; i++) { r -= list[i][1]; if (r <= 0) { return list[i][0]; } } return list[0][0]; }
+function coinLine(x0, h, n, step) { for (var i = 0; i < n; i++) { coins.push({ x: x0 + i * step, h: h }); } }
+function coinArc(cx, v) {
+  /* sigue la curva de un salto corto a la velocidad que habrá al llegar */
+  var ta = JV / G;
+  for (var c = -2; c <= 2; c++) { var t = ta + c * 0.11; coins.push({ x: cx + v * (t - ta) - 7, h: JV * t - G * t * t / 2 + 2 }); }
 }
-function spawn() {
-  var o = pick(), a = A[o.k], x = W + 10, y;
-  if (!o.air) { y = GROUND - a[3] + 1; }
-  else { y = GROUND - 46 - a[3] - (o.air === 2 ? 0 : Math.floor(rnd() * 6)); }
-  obs.push({ k: o.k, x: x, y: y, w: a[2], h: a[3], air: !!o.air, bob: rnd() * 6.28 });
-  /* a veces, un segundo obstáculo de suelo pegado (más tarde en la partida) */
-  if (!o.air && dist / 10 > 70 && rnd() < 0.22) {
-    var b = A[rnd() < 0.5 ? 'case' : 'chairs'];
-    obs.push({ k: b === A.case ? 'case' : 'chairs', x: x + a[2] + 2, y: GROUND - b[3] + 1, w: b[2], h: b[3], air: false });
+function chunk() {
+  var x = nextX, m = x / 10, v = speedAt(x), end = x, mt = maxTier();
+  var kind = wpick([['jump', 4], ['plat', 3], ['duck', m > 12 ? 3 : 0], ['box', m > 6 ? 2 : 0], ['stairs', m > 50 ? 2 : 0], ['double', m > 110 ? 1.5 : 0]]);
+  if (kind === 'jump' || kind === 'double') {
+    var o = rnd() < 0.5 ? { t: 'valla', x: x, w: 30, y0: 0, y1: 26 } : { t: 'caja', x: x, w: 26, y0: 0, y1: 24 };
+    obs.push(o); end = x + o.w;
+    if (rnd() < 0.6) { coinArc(x + o.w / 2, v); }
+    if (kind === 'double') {
+      var x2 = end + Math.max(70, v * 0.95);
+      obs.push({ t: rnd() < 0.5 ? 'valla' : 'caja', x: x2, w: 26, y0: 0, y1: 24 }); end = x2 + 26;
+    }
+  } else if (kind === 'duck') {
+    obs.push({ t: 'cartel', x: x, w: 58, y0: 34, y1: 60, b: Math.floor(rnd() * BANNERS.length) }); end = x + 58;
+    if (rnd() < 0.7) { coinLine(x + 6, 4, 3, 18); }
+  } else if (kind === 'box') {
+    obs.push({ t: 'bafle', x: x, w: 34, y0: 0, y1: 44 }); end = x + 34;
+    coinLine(x + 4, 44 + 10, 2, 16);
+  } else if (kind === 'stairs') {
+    obs.push({ t: 'bafle', x: x, w: 34, y0: 0, y1: 44 });
+    obs.push({ t: 'bafle', x: x + 34, w: 34, y0: 0, y1: 88 });
+    coinLine(x + 38, 88 + 10, 2, 16); end = x + 68;
+    if (mt >= 2 && rnd() < 0.5) { var pp = { x: x + 68 + 20, w: 90 + rnd() * 50, y: T2 + 30 }; plats.push(pp); coinLine(pp.x + 10, pp.y + 10, 4, 20); end = pp.x + pp.w; }
+  } else if (kind === 'plat') {
+    /* andamios escalonados hacia arriba: cuanto más alto, más fichas */
+    var pl = { x: x, w: 110 + rnd() * 70, y: T1 }, lvl = 1, goal = 1 + Math.floor(rnd() * mt * 0.999);
+    if (mt > 2 && rnd() < 0.5) { goal = mt; }
+    plats.push(pl); end = pl.x + pl.w;
+    var first = pl;
+    while (lvl < goal) {
+      var nx = { x: pl.x + pl.w * (0.5 + rnd() * 0.15), w: 90 + rnd() * 60, y: T1 + lvl * TIER };
+      plats.push(nx); end = Math.max(end, nx.x + nx.w);
+      if (lvl >= 2 && rnd() < 0.5) { coinLine(nx.x + 8, nx.y + 10, 2, 20); }
+      pl = nx; lvl++;
+    }
+    var n = Math.max(3, Math.floor((pl.w - 20) / 20));
+    coinLine(pl.x + 10, pl.y + 10, Math.min(n, 2 + lvl), 20);
+    if (m > 35 && rnd() < 0.5) { obs.push({ t: rnd() < 0.5 ? 'valla' : 'caja', x: first.x + first.w * 0.4, w: 26, y0: 0, y1: 24 }); }
+    else if (rnd() < 0.5) { coinLine(first.x + 20, 4, 3, 18); }
   }
-  /* fichas 26: en arco sobre lo que se salta, a ras del piso bajo lo que se esquiva agachado, o en tira después */
-  var cx = x + a[2] / 2, r = rnd();
-  if (r < 0.55) {
-    if (!o.air) { [-20, 0, 20].forEach(function (d, i) { coins.push({ x: cx + d - 8, y: GROUND - a[3] - 26 + (i === 1 ? 0 : 10) }); }); }
-    else { [-16, 0, 16].forEach(function (d) { coins.push({ x: cx + d - 8, y: GROUND - 16 }); }); }
-  } else if (r < 0.8) {
-    for (var k = 0; k < 3; k++) { coins.push({ x: x + a[2] + 50 + k * 18, y: GROUND - 16 }); }
-  }
-  var air = 2 * 430 / 1500; /* tiempo de vuelo base */
-  var minGap = speed * air + 40 + (o.air ? 10 : 0);
-  nextGap = minGap + rnd() * (150 + 120 * Math.max(0, 1 - speed / 420));
+  if (rnd() < 0.3) { flyers.push({ x: x + rnd() * 120, h: 90 + rnd() * (GROUND - 160), ph: rnd() * 6 }); }
+  nextX = end + Math.max(120, v * (0.95 + rnd() * 0.75) + 30);
 }
+function fill() { while (nextX < dist + W + 260) { chunk(); } }
 
-/* ---------- Física (paso fijo) ---------- */
-var G = 1500, JV = 430, STEP = 1 / 120;
-var playT = 0;
+/* ---------- Física ---------- */
+function feetX() { return [dist + PX + 24, dist + PX + 44]; }
+function overlapX(a, b, x0, x1) { return a < x1 && b > x0; }
+function supports() {
+  /* superficies donde se puede pisar: andamios (se atraviesan desde abajo) y la tapa de los bafles */
+  var f = feetX(), list = [];
+  if (p.drop <= 0) { plats.forEach(function (s) { if (overlapX(f[0], f[1], s.x, s.x + s.w)) { list.push(s.y); } }); }
+  obs.forEach(function (o) { if (o.t === 'bafle' && overlapX(f[0], f[1], o.x, o.x + o.w)) { list.push(o.y1); } });
+  return list;
+}
 function update(dt) {
   frameT += dt;
-  if (st !== 'play') { if (st === 'over') { deadT += dt; } return; }
+  if (shake > 0) { shake = Math.max(0, shake - dt); }
+  if (st === 'over') { deadT += dt; return; }
+  if (st !== 'play') { return; }
   playT += dt;
-  speed = Math.min(430, 115 + dist * 0.04);
-  var dx = speed * dt; dist += dx; nextGap -= dx;
-  scrollFar += dx * 0.12; scrollMid += dx * 0.4; scrollGround += dx;
-  if (nextGap <= 0) { spawn(); }
+  speed = speedAt(dist + PX);
+  var dx = speed * dt; dist += dx;
+  fill();
+  var cut = dist - 60;
+  obs = obs.filter(function (o) { return o.x + o.w > cut; });
+  plats = plats.filter(function (s) { return s.x + s.w > cut; });
+  coins = coins.filter(function (c) { return c.x + 16 > cut; });
+  flyers = flyers.filter(function (f) { return f.x > cut - 40; });
   /* personaje */
-  p.duck = downHeld && !p.air;
-  if (p.land > 0) { p.land -= dt; }
-  if (p.air) {
-    var g = p.vy > 0 ? G * 1.25 : G;
-    p.t += dt;
-    if (upHeld && p.vy < 0 && p.hold < 0.22) { g = G * 0.5; p.hold += dt; }
-    /* salto corto: si soltás ↑ mientras sube, frena la subida (mínimo garantizado para pasar la caja más alta) */
-    if (!upHeld && !p.cut && p.vy < -120 && p.t >= 0.09) { p.vy *= 0.45; p.cut = true; }
-    if (downHeld) { g = G * 2.6; }
-    p.vy += g * dt; p.y += p.vy * dt;
-    if (p.y >= 0) { p.y = 0; p.vy = 0; p.air = false; p.land = 0.07; if (downHeld) { p.duck = true; } }
+  ['land', 'coyote', 'buf', 'drop'].forEach(function (k) { if (p[k] > 0) { p[k] -= dt; } });
+  var prevH = p.h, sup = supports();
+  if (!p.air) {
+    /* ¿sigue apoyado? si no, empieza a caer (con unos instantes para todavía poder saltar) */
+    var onIt = p.h <= 0.01 || sup.some(function (y) { return Math.abs(y - p.h) < 0.6; });
+    if (!onIt) { p.air = true; p.vy = 0; p.coyote = 0.1; }
   }
-  /* obstáculos */
-  for (var i = obs.length - 1; i >= 0; i--) { obs[i].x -= dx; if (obs[i].x + obs[i].w < -10) { obs.splice(i, 1); } }
-  /* choque */
-  var hb = p.duck ? HB.duck : (p.air ? HB.jump : HB.run), top = GROUND - CH + Math.round(p.y);
-  var bx1 = PX + hb[0], by1 = top + hb[1], bx2 = PX + hb[2], by2 = top + hb[3];
-  /* fichas */
-  for (i = coins.length - 1; i >= 0; i--) {
-    var c = coins[i]; c.x -= dx;
-    if (c.x < -20) { coins.splice(i, 1); continue; }
-    if (bx1 - 3 < c.x + 16 && bx2 + 3 > c.x && by1 - 3 < c.y + 14 && by2 + 3 > c.y) {
-      coins.splice(i, 1); nCoins++; $('coins').textContent = nCoins; beep(880 + (nCoins % 5) * 60, 1320, 0.07, 'square', 0.03);
+  if (p.air) {
+    var g = p.vy < 0 ? G * 1.25 : G;
+    if (upHeld && p.vy > 0 && p.hold < HOLD) { g = G * 0.5; p.hold += dt; }
+    if (p.fast) { g = G * 3; }
+    p.vy -= g * dt; p.h += p.vy * dt;
+    if (p.vy <= 0) {
+      var land = -1;
+      sup.forEach(function (y) { if (prevH >= y - 0.5 && p.h <= y && y > land) { land = y; } });
+      if (p.h <= 0 && land < 0) { land = 0; }
+      if (land >= 0) {
+        p.h = land; p.vy = 0; p.air = false; p.land = 0.07; p.fast = false;
+        if (p.buf > 0) { p.buf = 0; jump(); }
+      }
     }
   }
-  for (i = 0; i < obs.length; i++) {
-    var o = obs[i], m = 3, oy = o.air ? o.y + Math.sin(frameT * 3 + o.bob) * 2 : o.y;
-    if (bx1 < o.x + o.w - m && bx2 > o.x + m && by1 < oy + o.h - m && by2 > oy + m) { over(); break; }
+  p.duck = downHeld && !p.air;
+  /* choques con margen de gracia (en distancia): se puede salvar justo, pero no atravesar */
+  var hb = p.duck ? HB.duck : HB.run, x1 = dist + PX + hb[0], x2 = dist + PX + hb[1], y1 = p.h + 2, y2 = p.h + hb[2], hit = false;
+  obs.forEach(function (o) {
+    if (!overlapX(x1, x2, o.x + 2, o.x + o.w - 2)) { return; }
+    if (o.t === 'cartel') { if (y2 > o.y0 + 2) { hit = true; } return; }
+    if (o.t === 'bafle') { if (p.h < o.y1 - 6 && y2 > 2) { hit = true; } return; }
+    if (y1 < o.y1 - 3) { hit = true; }
+  });
+  if (hit) { p.grace += dx; if (p.grace > GRACE) { over(); return; } } else { p.grace = 0; }
+  /* fichas */
+  for (var i = coins.length - 1; i >= 0; i--) {
+    var c = coins[i];
+    if (overlapX(x1 - 4, x2 + 4, c.x, c.x + 16) && y1 - 4 < c.h + 14 && y2 + 4 > c.h) {
+      coins.splice(i, 1); nCoins++; $('coins').textContent = nCoins; beep(880 + (nCoins % 5) * 60, 1320, 0.07, 'square', 0.03);
+    }
   }
   $('score').textContent = Math.floor(dist / 10);
 }
 function jump() {
   if (st !== 'play') { return; }
-  if (!p.air) { p.air = true; p.vy = -JV; p.hold = 0; p.t = 0; p.cut = false; beep(420, 820, 0.09, 'square', 0.035); }
+  if (p.air && p.coyote <= 0) { if (p.vy < 0) { p.buf = 0.16; } return; }
+  p.air = true; p.vy = JV; p.hold = 0; p.coyote = 0; p.fast = false; beep(420, 820, 0.09, 'square', 0.035);
+}
+function down() {
+  if (st !== 'play') { return; }
+  if (p.air) { p.fast = true; return; }
+  /* parado sobre un andamio: se baja atravesándolo */
+  var onPlat = p.h > 0.5 && plats.some(function (s) { var f = feetX(); return overlapX(f[0], f[1], s.x, s.x + s.w) && Math.abs(s.y - p.h) < 0.6; });
+  if (onPlat) { p.drop = 0.25; p.air = true; p.vy = -40; return; }
+  beep(300, 160, 0.06, 'square', 0.03);
 }
 
 /* ---------- Dibujo ---------- */
-var SKY = [
-  [[246, 239, 196], [244, 201, 120], [226, 150, 90]],   /* tarde */
-  [[244, 201, 120], [214, 120, 70], [140, 62, 40]],     /* atardecer */
-  [[90, 60, 110], [140, 62, 70], [107, 42, 14]]          /* noche FAA! */
-];
-function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
-function skyAt(m) {
-  var c = (m / 600) % SKY.length, i = Math.floor(c), t = Math.min(1, (c - i) * 3), a = SKY[i], b = SKY[(i + 1) % SKY.length];
-  return a.map(function (col, k) { return col.map(function (v, j) { return lerp(v, b[k][j], t); }); });
+var OUT = '#140803';
+function sx(wx) { return wx - dist; }
+function gy(h) { return GROUND - h; }
+function box(x, y, w, h, col) { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); }
+function framed(x, y, w, h, col) { box(x - 0.8, y - 0.8, w + 1.6, h + 1.6, OUT); box(x, y, w, h, col); }
+function drawObs(o) {
+  var x = sx(o.x), k;
+  if (x > W + 20 || x + o.w < -20) { return; }
+  if (o.t === 'valla') {
+    box(x + 2, gy(26), 3, 26, '#1a0e08'); box(x + o.w - 5, gy(26), 3, 26, '#1a0e08');
+    framed(x, gy(26), o.w, 12, '#FFD23F');
+    for (k = 0; k < 4; k++) { if (k % 2) { box(x + k * o.w / 4, gy(26), o.w / 4, 12, '#1a0e08'); } }
+  } else if (o.t === 'caja') {
+    framed(x, gy(24), o.w, 24, '#FFD23F');
+    box(x, gy(24), o.w, 4, '#FFE88C'); box(x, gy(17), o.w, 2.5, '#1a0e08'); box(x + o.w / 2 - 3, gy(12), 6, 5, '#1a0e08');
+  } else if (o.t === 'bafle') {
+    framed(x, gy(o.y1), o.w, o.y1, '#F6EFC4');
+    for (k = 0; k < o.y1 / 44; k++) {
+      var b = k * 44;
+      box(x, gy(b + 44), o.w, 3, '#E0457B');
+      ctx.fillStyle = '#1a0e08'; ctx.beginPath(); ctx.arc(x + o.w / 2, gy(b + 20), 10, 0, 7); ctx.fill();
+      ctx.fillStyle = '#5a4a3a'; ctx.beginPath(); ctx.arc(x + o.w / 2, gy(b + 20), 5, 0, 7); ctx.fill();
+    }
+  } else if (o.t === 'cartel') {
+    ctx.strokeStyle = '#1a0e08'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x + 4, -2); ctx.lineTo(x + 4, gy(o.y1)); ctx.moveTo(x + o.w - 4, -2); ctx.lineTo(x + o.w - 4, gy(o.y1)); ctx.stroke();
+    box(x - 0.8, gy(o.y1) - 0.8, o.w + 1.6, o.y1 - o.y0 + 1.6, OUT);
+    ctx.drawImage(BANNERS[o.b], x, gy(o.y1), o.w, o.y1 - o.y0);
+  }
 }
-function rgb(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
-function draw() {
-  if (!img.complete || !chr.complete) { return; }
-  var m = dist / 10 || 0, sky = skyAt(m), bands = 6, i;
-  /* cielo en franjas, estilo pixel */
-  for (i = 0; i < bands; i++) {
-    var t = i / (bands - 1), c = t < 0.5 ? sky[0].map(function (v, j) { return lerp(v, sky[1][j], t * 2); }) : sky[1].map(function (v, j) { return lerp(v, sky[2][j], (t - 0.5) * 2); });
-    ctx.fillStyle = rgb(c); ctx.fillRect(0, Math.floor(i * GROUND / bands), W, Math.ceil(GROUND / bands) + 1);
-  }
-  /* cordillera lejana */
-  var mc = sky[2].map(function (v) { return Math.round(v * 0.72); });
-  ctx.fillStyle = rgb(mc);
-  var seg = 10, off = scrollFar % seg, base = Math.floor(scrollFar / seg);
-  for (var x = -seg; x < W + seg; x += 2) {
-    var idx = base + Math.floor((x + off) / seg), fr = ((x + off) % seg) / seg;
-    var h0 = mountains[((idx % 64) + 64) % 64], h1 = mountains[(((idx + 1) % 64) + 64) % 64];
-    var hh = 34 + (h0 + (h1 - h0) * fr) * 46;
-    ctx.fillRect(x, GROUND - hh, 2, hh);
-  }
-  /* nieve en los picos */
-  /* letras del festival (capa media) */
-  var mid = A.mid, mo = Math.floor(scrollMid % mid[2]);
-  for (x = -mo; x < W; x += mid[2]) { ctx.drawImage(img, mid[0], mid[1], mid[2], mid[3], x, GROUND - mid[3], mid[2], mid[3]); }
-  /* suelo */
-  ctx.fillStyle = '#6B2A0E'; ctx.fillRect(0, GROUND, W, H - GROUND);
-  ctx.fillStyle = '#F6EFC4'; ctx.fillRect(0, GROUND, W, 2);
-  ctx.fillStyle = '#8c3e16';
-  var go = Math.floor(scrollGround % 16);
-  for (var gy = GROUND; gy < H; gy += 14) { for (x = -go; x < W; x += 16) { ctx.fillRect(x + (gy - GROUND) % 9, gy + 6, 6, 2); ctx.fillRect(x + 9, gy + 13, 3, 2); } }
-  /* obstáculos */
-  obs.forEach(function (o) {
-    var a = A[o.k], y = o.air ? o.y + Math.round(Math.sin(frameT * 3 + o.bob) * 2) : o.y, x0 = Math.round(o.x);
-    if (o.k === 'spot') { ctx.fillStyle = '#1a0e08'; ctx.fillRect(x0 + 8, 0, 2, y); }
-    ctx.drawImage(img, a[0], a[1], a[2], a[3], x0, y, a[2], a[3]);
-  });
-  /* fichas 26 (suavizadas para que el número se lea) */
-  var n26 = A.n26; ctx.imageSmoothingEnabled = true;
-  coins.forEach(function (c) {
-    var sp = Math.abs(Math.cos(frameT * 3 + c.x * 0.05)), w = 16 * Math.max(0.2, sp), bob = Math.sin(frameT * 4 + c.x * 0.1) * 1.5;
-    ctx.drawImage(img, n26[0], n26[1], n26[2], n26[3], c.x + (16 - w) / 2, c.y + bob, w, 14);
-  });
-  ctx.imageSmoothingEnabled = false;
-  /* personaje */
-  var fr2;
+function drawPlat(s) {
+  var x = sx(s.x);
+  if (x > W + 20 || x + s.w < -20) { return; }
+  /* andamio: patas y diagonales finas (no se chocan), tablón crema arriba */
+  ctx.strokeStyle = 'rgba(26,14,8,.75)'; ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  for (var px = x + 6; px < x + s.w; px += 46) { ctx.moveTo(px, gy(s.y)); ctx.lineTo(px, GROUND); }
+  ctx.moveTo(x + s.w - 6, gy(s.y)); ctx.lineTo(x + s.w - 6, GROUND);
+  ctx.stroke();
+  ctx.lineWidth = 0.9; ctx.beginPath();
+  for (px = x + 6; px + 46 <= x + s.w; px += 46) { ctx.moveTo(px, gy(s.y) + 4); ctx.lineTo(px + 46, GROUND); }
+  ctx.stroke();
+  framed(x, gy(s.y), s.w, 6, '#F6EFC4');
+  box(x, gy(s.y) + 4, s.w, 2, '#E0457B');
+}
+function drawCoin(c) {
+  var x = sx(c.x); if (x < -20 || x > W + 20 || !ART.N26.complete) { return; }
+  var sp = Math.abs(Math.cos(frameT * 3 + c.x * 0.05)), w = 16 * Math.max(0.2, sp), bob = Math.sin(frameT * 4 + c.x * 0.1) * 1.5;
+  ctx.drawImage(ART.N26, x + (16 - w) / 2, gy(c.h + 14) + bob, w, 14);
+}
+function drawPlayer() {
+  var fr;
   if (st === 'play') {
-    if (p.duck) { fr2 = 12 + Math.floor(frameT * 8) % 2; }
-    else if (p.air) { fr2 = p.vy < -170 ? 9 : (p.vy < 170 ? 10 : 11); }
-    else if (p.land > 0) { fr2 = 8; }
-    else { fr2 = Math.floor(frameT * (11 + speed / 40)) % 8; }
-  } else { fr2 = st === 'over' ? 14 : 15; }
-  var py = GROUND - CH + Math.round(p ? p.y : 0) + 1;
-  ctx.drawImage(chr, fr2 * CW, pal * CH, CW, CH, PX, py, CW, CH);
+    if (p.duck) { fr = 12 + Math.floor(frameT * 8) % 2; }
+    else if (p.air) { fr = p.vy > 140 ? 9 : (p.vy > -140 ? 10 : 11); }
+    else if (p.land > 0) { fr = 8; }
+    else { fr = Math.floor(frameT * (9 + speed / 22)) % 8; }
+  } else { fr = st === 'over' ? 14 : 15; }
+  var px = function (v) { return Math.round(v * S) / S; };
+  var y = px(gy(p.h) - FEET);
+  ctx.fillStyle = 'rgba(20,8,3,.3)';
+  var sh = supports().filter(function (h) { return h <= p.h + 0.6; }).reduce(function (a, b) { return Math.max(a, b); }, 0);
+  ctx.beginPath(); ctx.ellipse(PX + 34, gy(sh) + 1, Math.max(6, 13 - (p.h - sh) * 0.06), 2.2, 0, 0, 7); ctx.fill();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(chr, fr * CW, pal * CH, CW, CH, px(PX), y, CW, CH);
+  ctx.imageSmoothingEnabled = true;
+}
+function draw() {
+  if (!chr.complete || !p) { return; }
+  ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = true;
+  var m = dist / 10, TH = ART.themeAt(m), sky = TH.sky, x;
+  var ox = shake > 0 ? (Math.random() - 0.5) * 5 * shake / 0.3 : 0;
+  ctx.save(); ctx.translate(ox, 0);
+  /* cielo */
+  var sg = ctx.createLinearGradient(0, 0, 0, GROUND);
+  sg.addColorStop(0, ART.rgb(sky[0])); sg.addColorStop(0.6, ART.rgb(sky[1])); sg.addColorStop(1, ART.rgb(sky[2]));
+  ctx.fillStyle = sg; ctx.fillRect(-6, -6, W + 12, GROUND + 7);
+  /* cordillera lejana */
+  var far = dist * 0.1;
+  ctx.fillStyle = ART.rgb(TH.mt); ctx.beginPath(); ctx.moveTo(-6, GROUND);
+  for (x = -6; x <= W + 6; x += 3) {
+    var u = (x + far) / 12, i0 = Math.floor(u), fr = u - i0;
+    var h0 = mountains[((i0 % 64) + 64) % 64], h1 = mountains[(((i0 + 1) % 64) + 64) % 64];
+    ctx.lineTo(x, GROUND - 40 - (h0 + (h1 - h0) * fr) * Math.min(230, GROUND * 0.45));
+  }
+  ctx.lineTo(W + 6, GROUND); ctx.closePath(); ctx.fill();
+  /* la marcha (capa media, más lenta que el suelo, apagada para que no distraiga) */
+  var mid = dist * 0.4, cw = 130, k0 = Math.floor(mid / cw) - 1;
+  ctx.globalAlpha = 0.92;
+  for (var k = k0; k < k0 + Math.ceil(W / cw) + 3; k++) {
+    var hsh = ((k * 2654435761) >>> 0) % 97;
+    if (hsh < 18) { continue; }
+    var cr = ART.CROWDS[hsh % ART.CROWDS.length], sc = 0.95, cx = k * cw - mid + (hsh % 30);
+    ctx.drawImage(cr, cx, GROUND + 2 - cr.uh * sc, cr.uw * sc, cr.uh * sc);
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = ART.rgb(sky[2], 0.22); ctx.fillRect(-6, GROUND - 75, W + 12, 75);
+  /* panfletos volando */
+  flyers.forEach(function (f) { var fx = sx(f.x); ctx.fillStyle = ART.MPAL.wht; ctx.fillRect(fx, gy(f.h + Math.sin(frameT * 2 + f.ph) * 6), 6 * Math.abs(Math.cos(frameT * 3 + f.ph)), 4); });
+  /* suelo */
+  box(-6, GROUND, W + 12, H - GROUND + 8, ART.rgb(TH.trA));
+  box(-6, GROUND, W + 12, 3, ART.rgb(TH.edge));
+  ctx.fillStyle = ART.rgb(TH.dash); var go = dist % 26;
+  for (x = -go; x < W + 26; x += 26) { ctx.fillRect(x, GROUND + 9, 12, 2); }
+  ctx.fillStyle = ART.rgb(TH.trB); go = dist % 38;
+  for (x = -go; x < W + 38; x += 38) { ctx.fillRect(x + 8, GROUND + 18, 5, 2); ctx.fillRect(x + 24, GROUND + 26, 4, 2); }
+  /* mundo */
+  plats.forEach(drawPlat);
+  obs.forEach(drawObs);
+  coins.forEach(drawCoin);
+  drawPlayer();
+  ctx.restore();
   if (st === 'over') { ctx.fillStyle = 'rgba(58,22,6,' + Math.min(0.35, deadT) + ')'; ctx.fillRect(0, 0, W, H); }
 }
 
@@ -245,7 +341,7 @@ function loop(ts) {
 /* ---------- Controles ---------- */
 function upOn() { if (st === 'menu') { return; } if (st === 'over') { if (deadT > 0.6) { start(); } return; } upHeld = true; jump(); }
 function upOff() { upHeld = false; }
-function downOn() { downHeld = true; if (st === 'play' && !p.air) { beep(300, 160, 0.06, 'square', 0.03); } }
+function downOn() { downHeld = true; down(); }
 function downOff() { downHeld = false; }
 document.addEventListener('keydown', function (e) {
   if (e.target && e.target.tagName === 'INPUT') { return; }
@@ -265,10 +361,10 @@ function hold(el, on, off) {
 }
 hold($('bUp'), upOn, upOff);
 hold($('bDown'), downOn, downOff);
-/* tocar el juego = saltar; deslizar hacia abajo = agacharse */
+/* tocar el juego = saltar (mantener = más alto); deslizar hacia abajo = agacharse o bajar del andamio */
 var ty0 = null;
 cv.addEventListener('pointerdown', function (e) { ty0 = e.clientY; upOn(); });
-cv.addEventListener('pointermove', function (e) { if (ty0 != null && e.clientY - ty0 > 24) { upOff(); downOn(); ty0 = -9999; } });
+cv.addEventListener('pointermove', function (e) { if (ty0 != null && e.clientY - ty0 > 14) { upOff(); downOn(); ty0 = -9999; } });
 ['pointerup', 'pointercancel'].forEach(function (ev) { cv.addEventListener(ev, function () { ty0 = null; upOff(); downOff(); }); });
 
 /* ---------- Menús ---------- */
@@ -285,6 +381,6 @@ reset();
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', function () { setTimeout(resize, 200); });
 var started = false;
-function ready() { if (started || !img.complete || !chr.complete) { return; } started = true; resize(); requestAnimationFrame(loop); }
-img.onload = ready; chr.onload = ready; ready();
+function ready() { if (started || !chr.complete) { return; } started = true; resize(); requestAnimationFrame(loop); }
+chr.onload = ready; ART.N26.onload = function () { draw(); }; ready();
 })();

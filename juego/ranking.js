@@ -4,7 +4,7 @@
 'use strict';
 var URL = 'https://script.google.com/macros/s/AKfycbwxL9zxyDG1T9gg9pPqzpRNzI5wFGNc9XR6aMMdax-PdUywFKKR-ace5_Biw4nfhT_MkA/exec';
 
-var VER = '17/11 f', NICK = 'faa26-nick', POZO = 'faa26-pozo-pend', game = '', last = null, sent = false;
+var VER = '17/11 g', NICK = 'faa26-nick', POZO = 'faa26-pozo-pend', game = '', last = null, sent = false;
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 function clean(n) { return String(n || '').replace(/[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ _.]/g, '').replace(/^[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]+/, '').slice(0, 12); }

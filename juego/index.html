@@ -15,9 +15,8 @@ body{display:flex;flex-direction:column;-webkit-user-select:none;user-select:non
 .bar .sp{flex:1}
 .score{font:800 18px ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;text-align:right}
 .score small{display:block;font:600 11px system-ui;opacity:.75;letter-spacing:.04em;text-transform:uppercase}
-.stage{position:relative;flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
-canvas.full{position:absolute;inset:0;width:100%;height:100%}
-canvas{display:block;width:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;background:#F6EFC4}
+.stage{position:relative;flex:1;min-height:0;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;background:#F6EFC4}
 .pad{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 14px calc(14px + env(safe-area-inset-bottom))}
 .pad button{height:min(22vh,120px);border-radius:22px;border:0;font:900 20px system-ui;color:#3a1606;background:#F4C95C;box-shadow:0 6px 0 #a8742a;touch-action:none;display:grid;place-items:center;gap:2px}
 .pad button:active,.pad button.on{transform:translateY(4px);box-shadow:0 2px 0 #a8742a}
@@ -30,7 +29,6 @@ canvas{display:block;width:100%;image-rendering:pixelated;image-rendering:crisp-
   .pad{padding:6px 14px calc(6px + env(safe-area-inset-bottom));gap:10px}
   .pad button{height:64px;display:flex;justify-content:center;align-items:center;gap:10px}
   .pad b{font-size:24px}
-  canvas{height:100%;width:auto;max-width:100%}
 }
 .ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:14px;background:rgba(58,22,6,.72)}
 .ov[hidden]{display:none}
@@ -71,7 +69,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;image-rendering:crisp-
       </div>
       <button class="go" type="button" id="play">Grabando… ¡Acción!</button>
       <a href="carriles/" style="color:#F4C95C;font:800 14px system-ui">Probar el modo carriles (3D) →</a>
-      <p class="keys">Juntá las fichas 26: van al pozo común para la universidad pública. Saltá con ↑ y agachate con ↓ (o con los botones de abajo). Mantené ↑ para saltar más alto.</p>
+      <p class="keys"><b style="color:#F4C95C">Amarillo</b>: saltalo · <b style="color:#74C6E8">celeste</b>: pasá agachado · <b>blanco</b>: subite encima. Los andamios se suben saltando y se bajan con ↓. Mantené ↑ para saltar más alto. Las fichas 26 van al pozo común para la universidad pública.</p>
     </div>
   </div>
   <div class="ov" id="over" hidden>
@@ -90,7 +88,8 @@ canvas{display:block;width:100%;image-rendering:pixelated;image-rendering:crisp-
   <button type="button" id="bUp" aria-label="Saltar"><b>↑</b><span>Saltar</span></button>
   <button type="button" id="bDown" class="down" aria-label="Agacharse"><b>↓</b><span>Agacharse</span></button>
 </div>
-<script src="ranking.js?v=1117f"></script>
-<script src="juego.js?v=1117c"></script>
+<script src="arte.js?v=1117g"></script>
+<script src="ranking.js?v=1117g"></script>
+<script src="juego.js?v=1117g"></script>
 </body>
 </html>
