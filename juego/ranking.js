@@ -69,6 +69,7 @@ function flush() {
   var sent = { f: q.f, s: q.s, k: q.k || 1 };
   flushP = call({ op: 'pozo', juego: game, fichas: sent.f, seg: Math.max(1, Math.round(sent.s)), partidas: sent.k })
     .then(function (j) {
+      if (j.pozo == null) { throw new Error('sin-pozo'); } /* el script todavía no tiene el pozo: se guarda para después */
       var now = pend(); setPend({ f: Math.max(0, now.f - sent.f), s: Math.max(0, now.s - sent.s), k: Math.max(0, (now.k || 0) - sent.k) });
       flushing = false; showPozo(j.pozo); return true;
     })
