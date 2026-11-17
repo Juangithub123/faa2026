@@ -4,7 +4,7 @@
 'use strict';
 var URL = 'https://script.google.com/macros/s/AKfycbwxL9zxyDG1T9gg9pPqzpRNzI5wFGNc9XR6aMMdax-PdUywFKKR-ace5_Biw4nfhT_MkA/exec';
 
-var NICK = 'faa26-nick', game = '', last = null, sent = false;
+var VER = '17/11 c', NICK = 'faa26-nick', game = '', last = null, sent = false;
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 function clean(n) { return String(n || '').replace(/[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ _.]/g, '').replace(/^[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]+/, '').slice(0, 12); }
@@ -78,6 +78,7 @@ window.FAARank = {
     var sb = block('rk-start'); sb.hidden = true;
     see.addEventListener('click', function () { sb.hidden = !sb.hidden; see.textContent = sb.hidden ? 'Ver ranking del staff' : 'Ocultar ranking'; if (!sb.hidden) { load(sb); } });
     startBox.appendChild(see); startBox.appendChild(sb);
+    var ver = document.createElement('p'); ver.textContent = 'versión ' + VER; ver.style.cssText = 'font-size:11px;opacity:.45;margin:0'; startBox.appendChild(ver);
     var ob = block('rk-over');
     overBox.insertBefore(ob, overBox.querySelector('.go'));
     $('rk-send').addEventListener('click', send);
