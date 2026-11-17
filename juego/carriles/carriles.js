@@ -253,7 +253,7 @@ var DUCKS = ['EDUCACIÓN|PÚBLICA', 'LA UNI|SE DEFIENDE', 'NI UN PASO|ATRÁS'].m
 var N26 = new Image(); N26.src = '../n26.png';
 
 /* ---------- Física (paso fijo) ---------- */
-var G = 1700, JV = 455, JV2 = 760, STEP = 1 / 120, ROLL = 0.8, GRACE = 0.085, ACC = 0.0052, FLYY = 150;
+var G = 1700, JV = 455, JV2 = 760, STEP = 1 / 120, ROLL = 0.8, GRACE = 12, ACC = 0.0052, FLYY = 150;
 var TOP = { truck: 86, stack: 96 };
 function update(dt) {
   frameT += dt;
@@ -313,7 +313,9 @@ function update(dt) {
       if (o.t === 'duck' && p.y < 60 && !(p.roll > 0 && p.y < 16)) { hitNow = true; }
     }
   }
-  if (hitNow) { p.grace += dt; if (p.grace > GRACE) { over(); return; } } else { p.grace = 0; }
+  /* la gracia se mide en distancia recorrida (no en tiempo): a cualquier velocidad alcanza para salvarse justo,
+     pero nunca para atravesar un obstáculo entero */
+  if (hitNow) { p.grace += speed * dt; if (p.grace > GRACE) { over(); return; } } else { p.grace = 0; }
   /* imán (megáfono): las fichas cercanas vienen solas */
   for (i = coins.length - 1; i >= 0; i--) {
     var c = coins[i];
