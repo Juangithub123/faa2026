@@ -816,7 +816,8 @@ function apply(nd, quiet) {
   return true;
 }
 function fetchOK(url, type) {
-  return fetch(url, { cache: 'no-store' }).then(function (r) { if (!r.ok) { throw new Error(r.status); } return type === 'json' ? r.json().then(function (j) { return { j: j, cached: r.headers.get('x-faa-cache') === '1' }; }) : r.text(); });
+  /* no-cache: pregunta al servidor si cambió; si no cambió responde "igual" y no se vuelve a bajar el archivo */
+  return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error(r.status); } return type === 'json' ? r.json().then(function (j) { return { j: j, cached: r.headers.get('x-faa-cache') === '1' }; }) : r.text(); });
 }
 var pulling = null;
 function pull(manual) {
