@@ -2,7 +2,7 @@
    Para activarlo, pegá abajo la URL de la implementación ("…/exec"). Vacía = el ranking no se muestra. */
 (function () {
 'use strict';
-var URL = '';
+var URL = 'https://script.google.com/macros/s/AKfycbwxL9zxyDG1T9gg9pPqzpRNzI5wFGNc9XR6aMMdax-PdUywFKKR-ace5_Biw4nfhT_MkA/exec';
 
 var NICK = 'faa26-nick', game = '', last = null, sent = false;
 function $(id) { return document.getElementById(id); }
