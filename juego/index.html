@@ -40,7 +40,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;image-rendering:crisp-
 .picks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .pick{background:#F6EFC4;border:3px solid transparent;border-radius:14px;padding:6px 0 4px;display:grid;justify-items:center;gap:2px;color:#3a1606;font:800 12px system-ui;cursor:pointer}
 .pick[aria-pressed="true"]{border-color:#F4C95C;box-shadow:0 0 0 3px #3a1606 inset}
-.pick i{display:block;width:82px;height:130px;background:url(atlas.png) no-repeat;background-size:560px auto;image-rendering:pixelated}
+.pick i{display:block;width:93px;height:105px;background:url(side.png) no-repeat;background-size:1488px auto;image-rendering:pixelated}
 .go{border:0;border-radius:999px;padding:14px 18px;font:900 18px system-ui;background:#F4C95C;color:#3a1606;box-shadow:0 5px 0 #a8742a}
 .go:active{transform:translateY(3px);box-shadow:0 2px 0 #a8742a}
 .keys{font-size:12.5px;opacity:.75}
@@ -63,9 +63,9 @@ canvas{display:block;width:100%;image-rendering:pixelated;image-rendering:crisp-
       <h1>¡Corre, <em>sonidista</em>!</h1>
       <p>Elegí tu vestuario</p>
       <div class="picks" id="picks">
-        <button class="pick" type="button" data-p="0" aria-pressed="true"><i style="background-position:0 0"></i>Tierra</button>
-        <button class="pick" type="button" data-p="1" aria-pressed="false"><i style="background-position:0 -130px"></i>Noche</button>
-        <button class="pick" type="button" data-p="2" aria-pressed="false"><i style="background-position:0 -260px"></i>Bosque</button>
+        <button class="pick" type="button" data-p="0" aria-pressed="true"><i style="background-position:-1395px 0"></i>Arrayán</button>
+        <button class="pick" type="button" data-p="1" aria-pressed="false"><i style="background-position:-1395px -105px"></i>Chilco</button>
+        <button class="pick" type="button" data-p="2" aria-pressed="false"><i style="background-position:-1395px -210px"></i>Campanilla</button>
       </div>
       <button class="go" type="button" id="play">Grabando… ¡Acción!</button>
       <a href="carriles/" style="color:#F4C95C;font:800 14px system-ui">Probar el modo carriles (3D) →</a>

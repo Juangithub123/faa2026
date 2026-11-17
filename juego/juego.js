@@ -1,13 +1,16 @@
 /* ¡Corre, sonidista! · juego secreto del FAA! 2026. Canvas 2D, sin dependencias. */
 (function () {
 'use strict';
-var A = { case: [0, 196, 22, 18], case2: [23, 196, 22, 32], chairs: [46, 196, 18, 26], tripod: [65, 196, 16, 30], bang: [82, 196, 14, 22], n26: [97, 196, 28, 25], spot: [126, 196, 18, 14], mid: [0, 229, 280, 27] };
-var CW = 41, CH = 65;
-/* Cajas de choque del personaje (coordenadas dentro del cuadro de 41×65) */
-var HB = { run: [12, 9, 32, 64], jump: [12, 9, 32, 55], duck: [12, 31, 33, 64] };
-var H = 200, W = 320, GROUND = H - 24, PX = 34;
+var A = { case: [0, 0, 22, 18], case2: [23, 0, 22, 32], chairs: [46, 0, 18, 26], tripod: [65, 0, 16, 30], bang: [82, 0, 14, 22], n26: [97, 0, 28, 25], spot: [126, 0, 18, 14], mid: [0, 33, 280, 27] };
+/* Personaje: side.png, 16 cuadros de 62×70 por fila, una fila por paleta (Arrayán, Chilco, Campanilla).
+   0-7 carrera · 8 impulso · 9 subida · 10 punto alto · 11 caída · 12-13 agachado · 14 golpe · 15 quieto */
+var CW = 62, CH = 70;
+/* Cajas de choque del cuerpo (sin el micrófono), dentro del cuadro de 62×70 */
+var HB = { run: [19, 7, 50, 68], jump: [19, 8, 50, 62], duck: [16, 43, 54, 68] };
+var H = 200, W = 320, GROUND = H - 24, PX = 26;
 var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 var img = new Image(); img.src = 'atlas.png';
+var chr = new Image(); chr.src = 'side.png';
 var K = { best: 'faa26-juego-best', pal: 'faa26-juego-pal', mute: 'faa26-juego-mute' };
 function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -51,7 +54,7 @@ function beep(f1, f2, dur, type, vol) {
 
 /* ---------- Partida ---------- */
 function reset() {
-  p = { y: 0, vy: 0, air: false, duck: false, hold: 0 };
+  p = { y: 0, vy: 0, air: false, duck: false, hold: 0, land: 0 };
   obs = []; dist = 0; speed = 150; nextGap = 220; seed = (Date.now() & 0xffff) || 1; deadT = 0;
 }
 function start() {
@@ -109,12 +112,13 @@ function update(dt) {
   if (nextGap <= 0) { spawn(); }
   /* personaje */
   p.duck = downHeld && !p.air;
+  if (p.land > 0) { p.land -= dt; }
   if (p.air) {
     var g = G;
     if (upHeld && p.vy < 0 && p.hold < 0.22) { g = G * 0.5; p.hold += dt; }
     if (downHeld) { g = G * 2.6; }
     p.vy += g * dt; p.y += p.vy * dt;
-    if (p.y >= 0) { p.y = 0; p.vy = 0; p.air = false; if (downHeld) { p.duck = true; } }
+    if (p.y >= 0) { p.y = 0; p.vy = 0; p.air = false; p.land = 0.07; if (downHeld) { p.duck = true; } }
   }
   /* obstáculos */
   for (var i = obs.length - 1; i >= 0; i--) { obs[i].x -= dx; if (obs[i].x + obs[i].w < -10) { obs.splice(i, 1); } }
@@ -145,7 +149,7 @@ function skyAt(m) {
 }
 function rgb(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
 function draw() {
-  if (!img.complete) { return; }
+  if (!img.complete || !chr.complete) { return; }
   var m = dist / 10 || 0, sky = skyAt(m), bands = 6, i;
   /* cielo en franjas, estilo pixel */
   for (i = 0; i < bands; i++) {
@@ -179,9 +183,15 @@ function draw() {
     ctx.drawImage(img, a[0], a[1], a[2], a[3], x0, y, a[2], a[3]);
   });
   /* personaje */
-  var fr2 = st === 'play' ? (p.duck ? 5 : (p.air ? 4 : Math.floor(frameT * (6 + speed / 60)) % 4)) : (st === 'over' ? 4 : Math.floor(frameT * 3) % 2 * 1);
+  var fr2;
+  if (st === 'play') {
+    if (p.duck) { fr2 = 12 + Math.floor(frameT * 8) % 2; }
+    else if (p.air) { fr2 = p.vy < -170 ? 9 : (p.vy < 170 ? 10 : 11); }
+    else if (p.land > 0) { fr2 = 8; }
+    else { fr2 = Math.floor(frameT * (11 + speed / 40)) % 8; }
+  } else { fr2 = st === 'over' ? 14 : 15; }
   var py = GROUND - CH + Math.round(p ? p.y : 0) + 1;
-  ctx.drawImage(img, fr2 * CW, pal * CH, CW, CH, PX, py, CW, CH);
+  ctx.drawImage(chr, fr2 * CW, pal * CH, CW, CH, PX, py, CW, CH);
   if (st === 'over') { ctx.fillStyle = 'rgba(58,22,6,' + Math.min(0.35, deadT) + ')'; ctx.fillRect(0, 0, W, H); }
 }
 
@@ -233,6 +243,7 @@ setMute(muted); setPal(pal); $('best').textContent = best;
 reset();
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', function () { setTimeout(resize, 200); });
-img.onload = function () { resize(); requestAnimationFrame(loop); };
-if (img.complete) { img.onload(); }
+var started = false;
+function ready() { if (started || !img.complete || !chr.complete) { return; } started = true; resize(); requestAnimationFrame(loop); }
+img.onload = ready; chr.onload = ready; ready();
 })();

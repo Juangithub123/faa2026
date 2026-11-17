@@ -1,9 +1,11 @@
 /* ¡Corre, sonidista! · modo carriles. Falso 3D en Canvas 2D (proyección en perspectiva), sin dependencias. */
 (function () {
 'use strict';
-var A = { case: [0, 196, 22, 18], case2: [23, 196, 22, 32], chairs: [46, 196, 18, 26], tripod: [65, 196, 16, 30], bang: [82, 196, 14, 22], n26: [97, 196, 28, 25], spot: [126, 196, 18, 14], logo: [145, 196, 64, 24] };
-var LETTERS = [[0, 50], [58, 81], [153, 43], [204, 67]]; /* tramos de letras del banner (y 229, alto 27) */
-var CW = 41, CH = 65, CX = 22;          /* cuadro del personaje y su centro */
+var A = { case: [0, 0, 22, 18], case2: [23, 0, 22, 32], chairs: [46, 0, 18, 26], tripod: [65, 0, 16, 30], bang: [82, 0, 14, 22], n26: [97, 0, 28, 25], spot: [126, 0, 18, 14], logo: [145, 0, 64, 24] };
+var LETTERS = [[0, 50], [58, 81], [153, 43], [204, 67]]; /* tramos de letras del banner (y 33, alto 27) */
+/* Personaje de espaldas: back.png, 16 cuadros de 58×70, una fila por paleta (Arrayán, Chilco, Campanilla).
+   0-7 carrera · 8 impulso · 9 subida · 10 punto alto · 11 caída · 12-13 rodando · 14 inclinado */
+var CW = 58, CH = 70, CX = 22;
 var LW = 50;                             /* ancho de carril (unidades de mundo = px a la distancia del personaje) */
 var D = 170, F = 170;                    /* cámara: distancia detrás del personaje y focal */
 var DMAX = 2300;                         /* distancia de dibujo */
@@ -11,6 +13,7 @@ var PXM = 38;                            /* unidades por metro */
 var W = 180, H = 320, HOR = 110, CAMY = 166;
 var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 var img = new Image(); img.src = '../atlas.png';
+var chr = new Image(); chr.src = '../back.png';
 var K = { best: 'faa26-carril-best', pal: 'faa26-juego-pal', mute: 'faa26-juego-mute' };
 function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -50,7 +53,7 @@ function beep(f1, f2, dur, type, vol) {
 
 /* ---------- Partida ---------- */
 function reset() {
-  p = { lane: 0, x: 0, nudge: 0, y: 0, vy: 0, air: false, roll: 0, stumble: -9 };
+  p = { lane: 0, x: 0, nudge: 0, y: 0, vy: 0, air: false, roll: 0, stumble: -9, land: 0 };
   obs = []; coins = []; decos = []; dist = 0; speed = 430; nCoins = 0; deadT = 0; shake = 0; camX = 0;
   seed = (Date.now() & 0xffff) || 1; rowZ = 900; decoZ = 0;
   fillWorld();
@@ -153,9 +156,10 @@ function update(dt) {
   p.nudge *= Math.max(0, 1 - dt * 10);
   if (p.air) {
     p.vy -= G * dt; p.y += p.vy * dt;
-    if (p.y <= 0) { p.y = 0; p.vy = 0; p.air = false; }
+    if (p.y <= 0) { p.y = 0; p.vy = 0; p.air = false; p.land = 0.07; }
   }
   if (p.roll > 0 && !p.air) { p.roll -= dt; }
+  if (p.land > 0) { p.land -= dt; }
   /* choques */
   for (i = 0; i < obs.length; i++) {
     var o = obs[i];
@@ -278,7 +282,7 @@ function drawObs(o) {
 function drawDeco(o) {
   var d = o.z + D;
   if (d < 40) { return; }
-  if (o.k === 'letters') { var L = LETTERS[o.i]; spr([L[0], 229, L[1], 27], o.x, 0, d, 1.8); }
+  if (o.k === 'letters') { var L = LETTERS[o.i]; spr([L[0], 33, L[1], 27], o.x, 0, d, 1.8); }
   else if (o.k === 'tripod') { spr(A.tripod, o.x, 0, d, 2.4); }
   else if (o.k === 'chairs') { spr(A.chairs, o.x, 0, d, 2.2); }
   else if (o.k === 'logo') {
@@ -293,14 +297,22 @@ function drawCoin(c) {
   spr(A.n26, c.lane * LW, y, d, 0.72, 0.5, Math.max(0.15, s));
 }
 function drawPlayer() {
-  var fr = st === 'play' ? (p.roll > 0 && !p.air ? 5 : (p.air ? 4 : Math.floor(frameT * (7 + speed / 110)) % 4)) : (st === 'over' ? 4 : Math.floor(frameT * 3) % 2);
-  var x = Math.round(sx(p.x + p.nudge, D)), gy = Math.round(sy(0, D));
+  var fr, flip = false, lean = p.lane * LW - p.x;
+  if (st === 'play') {
+    if (p.roll > 0 && !p.air) { fr = 12 + Math.floor(frameT * 10) % 2; }
+    else if (p.air) { fr = p.vy > 170 ? 9 : (p.vy > -170 ? 10 : 11); }
+    else if (p.land > 0) { fr = 8; }
+    else if (Math.abs(lean) > 7) { fr = 14; flip = lean > 0; }
+    else { fr = Math.floor(frameT * (12 + speed / 70)) % 8; }
+  } else { fr = st === 'over' ? 11 : 0; }
+  var x = Math.round(sx(p.x + p.nudge, D)), gy = Math.round(sy(0, D)), y = Math.round(sy(p.y, D)) - CH + 1;
   ctx.fillStyle = 'rgba(30,10,4,.35)';
-  var sw = Math.max(10, 26 - p.y * 0.15); ctx.fillRect(x - sw / 2, gy - 2, sw, 4);
-  ctx.drawImage(img, fr * CW, pal * CH, CW, CH, x - CX, Math.round(sy(p.y, D)) - CH + 1, CW, CH);
+  var sw = Math.max(12, 30 - p.y * 0.15); ctx.fillRect(x - sw / 2, gy - 2, sw, 4);
+  if (flip) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(chr, fr * CW, pal * CH, CW, CH, -CX, y, CW, CH); ctx.restore(); }
+  else { ctx.drawImage(chr, fr * CW, pal * CH, CW, CH, x - CX, y, CW, CH); }
 }
 function draw() {
-  if (!img.complete || !p) { return; }
+  if (!img.complete || !chr.complete || !p) { return; }
   var m = dist / PXM, sky = skyAt(m), i;
   var ox = shake > 0 ? Math.round((Math.random() - 0.5) * 6 * shake / 0.35) : 0, oy = shake > 0 ? Math.round((Math.random() - 0.5) * 4 * shake / 0.35) : 0;
   ctx.save(); ctx.translate(ox, oy);
@@ -425,6 +437,7 @@ setMute(muted); setPal(pal); $('best').textContent = best;
 reset();
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', function () { setTimeout(resize, 200); });
-img.onload = function () { resize(); requestAnimationFrame(loop); };
-if (img.complete && img.naturalWidth) { img.onload(); }
+var started = false;
+function ready() { if (started || !img.complete || !chr.complete) { return; } started = true; resize(); requestAnimationFrame(loop); }
+img.onload = ready; chr.onload = ready; ready();
 })();
