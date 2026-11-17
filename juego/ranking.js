@@ -13,9 +13,9 @@ function setNick(n) { try { localStorage.setItem(NICK, n); } catch (e) {} }
 
 function call(params) {
   var q = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
-  var ctl = window.AbortController ? new AbortController() : null, t = setTimeout(function () { if (ctl) { ctl.abort(); } }, 9000);
+  var ctl = window.AbortController ? new AbortController() : null, t = setTimeout(function () { if (ctl) { ctl.abort(); } }, 25000); /* el script de Google puede tardar en "despertarse" */
   return fetch(URL + '?' + q, { cache: 'no-store', signal: ctl ? ctl.signal : undefined })
-    .then(function (r) { return r.json(); })
+    .then(function (r) { clearTimeout(t); return r.json(); })
     .then(function (j) { clearTimeout(t); if (!j.ok) { throw new Error(j.err || 'error'); } return j; });
 }
 function list(el, rows, me, myScore) {
