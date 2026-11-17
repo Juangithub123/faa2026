@@ -21,7 +21,7 @@ function show(id) { $(id).hidden = false; }
 function hide(id) { $(id).hidden = true; }
 
 var best = lsGet(K.best, 0), pal = lsGet(K.pal, 0), muted = lsGet(K.mute, false), takes = 0;
-var st = 'menu', p, obs, coins, decos, pups, dist, speed, seed, rowZ, frameT = 0, deadT = 0, shake = 0, camX = 0, nCoins = 0, decoZ = 0, mountains = [];
+var playT = 0, st = 'menu', p, obs, coins, decos, pups, dist, speed, seed, rowZ, frameT = 0, deadT = 0, shake = 0, camX = 0, nCoins = 0, decoZ = 0, mountains = [];
 
 /* ---------- Tamaño: la resolución interna sigue la forma de la pantalla ---------- */
 function resize() {
@@ -58,7 +58,7 @@ function reset() {
   fillWorld();
   $('coins').textContent = '0'; $('score').textContent = '0';
 }
-function start() { reset(); st = 'play'; takes++; hide('start'); hide('over'); hide('pause'); beep(330, 660, 0.12, 'triangle', 0.05); }
+function start() { reset(); playT = 0; st = 'play'; takes++; hide('start'); hide('over'); hide('pause'); beep(330, 660, 0.12, 'triangle', 0.05); }
 function over() {
   st = 'over'; deadT = 0; shake = 0.35; beep(220, 55, 0.45, 'sawtooth', 0.07);
   if (navigator.vibrate) { try { navigator.vibrate(90); } catch (e) {} }
@@ -66,6 +66,7 @@ function over() {
   if (rec) { best = m; lsSet(K.best, best); }
   $('final').textContent = m; $('fcoins').textContent = nCoins; $('take').textContent = takes; $('best').textContent = best;
   $('rec').textContent = rec ? '¡nuevo récord en este teléfono!' : 'récord ' + best + ' m';
+  if (window.FAARank) { FAARank.over({ score: m, coins: nCoins, secs: playT }); }
   setTimeout(function () { show('over'); }, 600);
 }
 
@@ -96,7 +97,9 @@ function makeRow(z) {
   var m = (z + dist) / PXM, n = 1;
   if (m > 40 && rnd() < 0.55) { n = 2; }
   if (m > 220 && rnd() < 0.3) { n = 3; }
-  var lanes = [-1, 0, 1].sort(function () { return rnd() - 0.5; }).slice(0, n), row = [];
+  /* no poner nada en un carril que todavía está ocupado por un camión */
+  var lanes = [-1, 0, 1].filter(function (l) { return !hardAt(l, z - 40, z + 66); }).sort(function () { return rnd() - 0.5; }).slice(0, n), row = [];
+  if (!lanes.length) { return; }
   lanes.forEach(function (l, i) {
     var types = [['low', 4]];
     if (m > 20) { types.push(['duck', 3]); }
@@ -109,7 +112,7 @@ function makeRow(z) {
   /* si la fila no es justa, los obstáculos duros pasan a ser saltables */
   for (var k = 0; k < 3 && !fair(z, row); k++) { row.forEach(function (o) { if (HARD[o.t] && !fair(z, row)) { o.t = rnd() < 0.5 ? 'low' : 'duck'; o.len = 26; } }); }
   /* nada de fichas metidas dentro de un obstáculo */
-  coins = coins.filter(function (c) { return c.y > 120 || !row.some(function (o) { return o.lane === c.lane && c.z > o.z - 40 && c.z < o.z + o.len + 40; }); });
+  coins = coins.filter(function (c) { return c.y > 90 || !row.some(function (o) { return o.lane === c.lane && c.z > o.z - 40 && c.z < o.z + o.len + 40; }); });
   pups = pups.filter(function (u) { return !row.some(function (o) { return o.lane === u.lane && u.z > o.z - 40 && u.z < o.z + o.len + 40; }); });
   obs = obs.concat(row);
   /* fichas en lugares difíciles: en arco sobre lo que se salta, bajo las pancartas y justo detrás de los obstáculos */
@@ -128,6 +131,11 @@ function makeRow(z) {
     var n2 = o.t === 'stack' ? 4 : 3;
     for (c = 0; c < n2; c++) { coins.push({ lane: o.lane, z: after + c * 30, y: 16, ph: c * 0.6 }); }
     placed++;
+  });
+  /* fichas en el techo de camiones y pilas (se llega con las zapatillas o desde arriba de otro camión) */
+  row.forEach(function (o) {
+    if (o.t === 'truck' && rnd() < 0.6) { for (var zc = o.z + 40; zc < o.z + o.len - 30; zc += 42) { coins.push({ lane: o.lane, z: zc, y: TOP.truck + 16, ph: zc * 0.02 }); } }
+    else if (o.t === 'stack' && rnd() < 0.3) { coins.push({ lane: o.lane, z: o.z + o.len / 2, y: TOP.stack + 16, ph: 0 }); }
   });
   /* poderes: pocos y en lugares difíciles (detrás de algo duro, en lo alto de un salto o bajo una pancarta) */
   if (m > 35 && !pups.length && !p.mag && !p.sj && !p.fly && rnd() < 0.08) {
@@ -253,6 +261,7 @@ function update(dt) {
   if (shake > 0) { shake = Math.max(0, shake - dt); }
   if (st === 'over') { deadT += dt; return; }
   if (st !== 'play') { return; }
+  playT += dt;
   speed = Math.min(880, 430 + dist * ACC);
   var dz = speed * dt; dist += dz;
   rowZ -= dz; decoZ -= dz;
@@ -611,6 +620,7 @@ function loop(ts) {
 function pause() { if (st === 'play') { st = 'pause'; show('pause'); } }
 function resume() { if (st === 'pause') { st = 'play'; hide('pause'); last = performance.now(); acc = 0; } }
 document.addEventListener('keydown', function (e) {
+  if (e.target && e.target.tagName === 'INPUT') { return; }
   var k = e.key;
   if (/^Arrow/.test(k) || k === ' ') { e.preventDefault(); }
   if (e.repeat) { return; }
@@ -655,6 +665,7 @@ $('resume').addEventListener('click', resume);
 $('change').addEventListener('click', function () { st = 'menu'; hide('over'); show('start'); });
 function setMute(v) { muted = v; lsSet(K.mute, v); $('mute').textContent = v ? '♪̸' : '♪'; $('mute').setAttribute('aria-pressed', String(!v)); }
 $('mute').addEventListener('click', function () { setMute(!muted); });
+if (window.FAARank) { FAARank.mount('carriles'); }
 setMute(muted); setPal(pal); $('best').textContent = best;
 reset();
 window.addEventListener('resize', resize);

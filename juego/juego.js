@@ -68,7 +68,7 @@ function reset() {
   obs = []; dist = 0; speed = 115; nextGap = 220; seed = (Date.now() & 0xffff) || 1; deadT = 0;
 }
 function start() {
-  reset(); st = 'play'; takes++;
+  reset(); playT = 0; st = 'play'; takes++;
   hide('start'); hide('over'); beep(330, 660, 0.12, 'triangle', 0.05);
 }
 function over() {
@@ -78,6 +78,7 @@ function over() {
   if (rec) { best = m; lsSet(K.best, best); }
   $('final').textContent = m; $('take').textContent = takes; $('best').textContent = best;
   $('rec').textContent = rec ? '¡Nuevo récord en este teléfono!' : 'Récord: ' + best + ' m';
+  if (window.FAARank) { FAARank.over({ score: m, coins: 0, secs: playT }); }
   setTimeout(function () { show('over'); }, 450);
 }
 function $(id) { return document.getElementById(id); }
@@ -113,9 +114,11 @@ function spawn() {
 
 /* ---------- Física (paso fijo) ---------- */
 var G = 1500, JV = 430, STEP = 1 / 120;
+var playT = 0;
 function update(dt) {
   frameT += dt;
   if (st !== 'play') { if (st === 'over') { deadT += dt; } return; }
+  playT += dt;
   speed = Math.min(430, 115 + dist * 0.04);
   var dx = speed * dt; dist += dx; nextGap -= dx;
   scrollFar += dx * 0.12; scrollMid += dx * 0.4; scrollGround += dx;
@@ -222,6 +225,7 @@ function upOff() { upHeld = false; }
 function downOn() { downHeld = true; if (st === 'play' && !p.air) { beep(300, 160, 0.06, 'square', 0.03); } }
 function downOff() { downHeld = false; }
 document.addEventListener('keydown', function (e) {
+  if (e.target && e.target.tagName === 'INPUT') { return; }
   if (e.repeat) { if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); } return; }
   if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w' || e.key === 'W') { e.preventDefault(); if (st === 'menu') { start(); } else { upOn(); } }
   if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { e.preventDefault(); downOn(); }
@@ -252,6 +256,7 @@ $('again').addEventListener('click', start);
 $('change').addEventListener('click', function () { st = 'menu'; hide('over'); show('start'); });
 function setMute(v) { muted = v; lsSet(K.mute, v); $('mute').textContent = v ? '♪̸' : '♪'; $('mute').setAttribute('aria-pressed', String(!v)); }
 $('mute').addEventListener('click', function () { setMute(!muted); });
+if (window.FAARank) { FAARank.mount('clasico'); }
 setMute(muted); setPal(pal); $('best').textContent = best;
 reset();
 window.addEventListener('resize', resize);
