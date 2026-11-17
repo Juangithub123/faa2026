@@ -376,10 +376,10 @@ function sx(x, d) { return W / 2 + (x - camX) * F / d; }
 function sy(y, d) { return HOR + (CY - y) * F / d; }
 
 /* ---------- Dibujo ---------- */
-/* Paleta del escenario: cambia cada 1000 m (Arrayán → Campanilla → Chilco) y queda en Chilco. Es solo estética. */
+/* Paleta del escenario: cambia cada 1000 m (Campanilla → Arrayán → Chilco) y queda en Chilco. Es solo estética. */
 var THEMES = [
-  { sky: [[246, 239, 196], [244, 201, 120], [226, 150, 90]], mt: [150, 74, 40], sideA: [113, 53, 25], sideB: [122, 58, 28], edge: [185, 138, 62], trA: [71, 32, 13], trB: [64, 26, 10], dash: [167, 143, 106] },
   { sky: [[242, 240, 205], [216, 222, 150], [158, 168, 92]], mt: [92, 98, 48], sideA: [82, 86, 32], sideB: [92, 96, 38], edge: [214, 202, 112], trA: [50, 52, 22], trB: [44, 46, 18], dash: [196, 190, 136] },
+  { sky: [[246, 239, 196], [244, 201, 120], [226, 150, 90]], mt: [150, 74, 40], sideA: [113, 53, 25], sideB: [122, 58, 28], edge: [185, 138, 62], trA: [71, 32, 13], trB: [64, 26, 10], dash: [167, 143, 106] },
   { sky: [[64, 28, 86], [150, 52, 122], [224, 92, 140]], mt: [96, 30, 82], sideA: [88, 28, 70], sideB: [99, 34, 79], edge: [226, 128, 176], trA: [44, 14, 40], trB: [38, 11, 34], dash: [206, 156, 196] }
 ];
 function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
