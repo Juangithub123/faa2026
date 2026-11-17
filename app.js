@@ -23,7 +23,7 @@ function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^=
 
 /* ---------- Estado ---------- */
 var D = null, DH = '', X = { open: {} };
-var S = { me: '', done: {}, tarea: '', mineOnly: false, notif: false, day: 0, view: 'hoy', map: { rec: true, trl: true, full: false } };
+var S = { me: '', done: {}, tarea: '', mineOnly: false, notif: false, day: 0, view: 'hoy', map: { rec: true, trl: true, mine: false, loc: false } };
 (function () { var st = lsGet(K.state); if (st) { ['me', 'done', 'tarea', 'mineOnly', 'notif'].forEach(function (k) { if (k in st) { S[k] = st[k]; } }); } X.open = lsGet(K.open) || {}; })();
 function saveS() { lsSet(K.state, { me: S.me, done: S.done, tarea: S.tarea, mineOnly: S.mineOnly, notif: S.notif }); }
 var NEWS = lsGet(K.news) || { items: [], read: 0 };
@@ -236,6 +236,7 @@ function vHoy() {
   out += myNewsCard() + statusCard() + pdfCard();
   out += '<div class="h" style="margin-top:4px"><p class="kicker">Tus tareas · ' + esc(D.days[S.day].name + ' ' + D.days[S.day].k) + '</p><span class="sub">' + list.length + '</span></div>';
   out += list.length ? '<ul class="list">' + list.map(function (x) { return shiftRow(x, { area: p.a.length > 1 }); }).join('') + '</ul>' : '<p class="card muted small">No tenés tareas asignadas este día.</p>';
+  out += myRouteCard();
   out += sugBlock('sug-me-' + S.day, sugs, { area: p.a.length > 1 });
   out += mealsLine();
   if (trs.length) { out += '<button class="btn" type="button" data-go="traslados">' + trs.length + (trs.length === 1 ? ' traslado' : ' traslados') + ' de tu área este día →</button>'; }
@@ -272,6 +273,8 @@ function vPrograma() {
   var out = dayHead('Programa') + pdfCard();
   if (S.me) { out += '<div class="chips"><button class="chip" type="button" data-mine="0" aria-pressed="' + !S.mineOnly + '">Todo el programa</button><button class="chip" type="button" data-mine="1" aria-pressed="' + S.mineOnly + '">Solo donde está mi área</button></div>'; }
   out += list.length ? '<div class="evlist">' + list.map(evRow).join('') + '</div>' : '<p class="card muted">Nada para mostrar con este filtro.</p>';
+  var dl0 = legs(stops('day')).filter(function (l) { return l.tight; });
+  if (dl0.length) { out += det('froute-' + S.day, '', '<span class="sum-t">Recorrido del público</span><div class="sum-m"><span class="badge flag">' + dl0.length + ' cambio' + (dl0.length > 1 ? 's' : '') + ' de sede justo' + (dl0.length > 1 ? 's' : '') + '</span></div>', routeList('day')); }
   out += mealsLine();
   var al = (D.alerts[S.day] || []).length;
   if (al) { out += '<button class="btn" type="button" data-go="pendientes">' + al + ' avisos y pendientes de este día →</button>'; }
@@ -338,80 +341,153 @@ function vTraslados() {
   var out = dayHead('Traslados');
   if (S.me) { out += '<div class="chips"><button class="chip" type="button" data-mine="0" aria-pressed="' + !S.mineOnly + '">Todos</button><button class="chip" type="button" data-mine="1" aria-pressed="' + S.mineOnly + '">Solo los de mi área</button></div>'; }
   out += list.length ? '<div class="evlist">' + list.map(trRow).join('') + '</div>' : '<p class="card muted">No hay traslados para mostrar.</p>';
-  out += det('map-' + S.day, '', '<span class="sum-t">Mapa del día</span><div class="sum-m">Recorrido entre sedes y traslados</div>', '<div data-map></div>');
+  out += '<button class="btn" type="button" data-go="mapa">Ver los traslados en el mapa →</button>';
   if (S.day === 0 && D.rider) { out += det('rider', '', '<span class="sum-t">Equipamiento para la apertura</span><div class="sum-m">' + D.rider.length + ' ítems y de dónde salen</div>', '<ul class="plain">' + D.rider.map(function (x) { return '<li><b>' + esc(x[0]) + '</b> · ' + esc(x[1]) + '</li>'; }).join('') + '</ul>'); }
   out += '<p class="small muted">' + esc(D.notes.traslados) + '</p>';
   return out;
 }
 
-/* ---------- Mapa ---------- */
-var MAPW = 1255, MAPH = 870, MAPIMG = 'map.webp';
-var NODE = { orig: { x: 400, y: 750, n: 'Origen a definir' }, tbc: { x: 700, y: 770, n: 'A confirmar' } };
-var LAB = { unrn: { dx: -24, dy: 7, a: 'end' }, gim: { dx: 24, dy: 7, a: 'start' }, bic: { dx: -24, dy: 7, a: 'end' }, ea: { dx: 24, dy: -12, a: 'start' }, pm: { dx: -24, dy: -4, a: 'end' }, awka: { dx: 24, dy: 16, a: 'start' }, obr: { dx: 24, dy: 7, a: 'start' } };
+/* ---------- Mapa (Leaflet + OpenStreetMap) ---------- */
 var GEO = { s: 0.9927, tx: 517.616, ty: 458.691, k: 111320 * Math.cos(41.964 * Math.PI / 180), lat0: -41.964, lng0: -71.534 };
+var WALK = 75, DETOUR = 1.3, MARGIN = 5; /* metros por minuto a pie, rodeo de calles, minutos de margen */
+function hasLL(v) { var o = D.venues[v]; return !!(o && !o.nomap && o.lat != null); }
 function dist(a, b) { var R = 6371000, r = Math.PI / 180, P = V(a), Q = V(b), dla = (Q.lat - P.lat) * r, dg = (Q.lng - P.lng) * r; var h = Math.sin(dla / 2) * Math.sin(dla / 2) + Math.cos(P.lat * r) * Math.cos(Q.lat * r) * Math.sin(dg / 2) * Math.sin(dg / 2); return 2 * R * Math.asin(Math.sqrt(h)); }
 function fmtDist(x) { return x < 950 ? Math.round(x / 10) * 10 + ' m' : (x / 1000).toFixed(1).replace('.', ',') + ' km'; }
+function walk(a, b) { var mtr = dist(a, b) * DETOUR; return { m: mtr, min: Math.max(1, Math.round(mtr / WALK)) }; }
 function ll(v) { return V(v).lat + ',' + V(v).lng; }
 function dirURL(list, mode) { var o = list[0], d = list[list.length - 1], mid = list.slice(1, -1); return 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(ll(o)) + '&destination=' + encodeURIComponent(ll(d)) + (mid.length ? '&waypoints=' + encodeURIComponent(mid.map(ll).join('|')) : '') + '&travelmode=' + mode; }
-function daySeq(d) { var out = []; D.events.filter(function (e) { return e.day === d; }).sort(by('s')).forEach(function (e) { if (e.v === 'virt' || !e.v) { return; } if (!out.length || out[out.length - 1].v !== e.v) { out.push({ v: e.v, t: e.s }); } }); return out; }
-function dayVenues(d) { var out = []; daySeq(d).forEach(function (x) { if (!V(x.v).nomap && out.indexOf(x.v) < 0) { out.push(x.v); } }); D.transfers.filter(function (t) { return t.day === d; }).forEach(function (t) { [t.from, t.to].forEach(function (v) { if (v && !V(v).nomap && out.indexOf(v) < 0) { out.push(v); } }); }); return out; }
-function inMap(v) { return !!NODE[v] || !!(D.venues[v] && !D.venues[v].nomap && D.venues[v].lat != null); }
-function pos(v) {
-  if (NODE[v]) { return NODE[v]; }
-  var o = V(v), p = { x: GEO.s * (o.lng - GEO.lng0) * GEO.k + GEO.tx, y: -GEO.s * (o.lat - GEO.lat0) * 111200 + GEO.ty };
-  if (p.x > 0 && p.x < MAPW && p.y > 0 && p.y < MAPH) { return p; }
-  return { x: Math.min(Math.max(p.x, 300), 760), y: S.map.full ? 50 : 262, off: true };
-}
-function leg(a, b, off, id, label, color, dash, u) {
-  var dx = b.x - a.x, dy = b.y - a.y, L = Math.sqrt(dx * dx + dy * dy) || 1, ux = dx / L, uy = dy / L, nx = -uy, ny = ux, r = 21 * u;
-  var x1 = a.x + ux * r, y1 = a.y + uy * r, x2 = b.x - ux * (r + 4 * u), y2 = b.y - uy * (r + 4 * u), cx = (x1 + x2) / 2 + nx * off * 2 * u, cy = (y1 + y2) / 2 + ny * off * 2 * u;
-  var mx = 0.25 * x1 + 0.5 * cx + 0.25 * x2, my = 0.25 * y1 + 0.5 * cy + 0.25 * y2;
-  var s = '<path d="M' + x1.toFixed(1) + ' ' + y1.toFixed(1) + ' Q' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ' ' + x2.toFixed(1) + ' ' + y2.toFixed(1) + '" fill="none" stroke="' + color + '" stroke-width="' + (5 * u) + '" stroke-linecap="round" ' + (dash ? 'stroke-dasharray="' + (12 * u) + ' ' + (10 * u) + '" ' : '') + 'marker-end="url(#ah-' + id + ')"/>';
-  if (label) { s += '<text x="' + mx.toFixed(1) + '" y="' + (my + 6 * u).toFixed(1) + '" text-anchor="middle" font-size="' + (17 * u) + '" font-weight="800" fill="' + color + '" stroke="#fff" stroke-width="' + (6 * u) + '" paint-order="stroke" stroke-linejoin="round">' + esc(label) + '</text>'; }
-  return s;
-}
-function mapSVG() {
-  var u = S.map.full ? 2.3 : 1, vb = S.map.full ? [0, 0, MAPW, MAPH] : [250, 236, 540, 634], LC = '#1d3a0b', TC = '#b3470f';
-  var seq = daySeq(S.day), trs = D.transfers.filter(function (t) { return t.day === S.day; }), ord = [], drawn = {};
-  seq.forEach(function (x) { if (ord.indexOf(x.v) < 0) { ord.push(x.v); } });
-  dayVenues(S.day).forEach(function (v) { if (ord.indexOf(v) < 0) { ord.push(v); } });
-  trs.forEach(function (t) { if (!t.from && inMap(t.to) && ord.indexOf('orig') < 0) { ord.push('orig'); } [t.from, t.to].forEach(function (k) { if (k === 'tbc' && ord.indexOf(k) < 0) { ord.push(k); } }); });
-  var s = '<div class="mapframe" style="padding-bottom:' + (vb[3] / vb[2] * 100).toFixed(2) + '%"><svg viewBox="' + vb.join(' ') + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Mapa de El Bolsón con las sedes, el recorrido y los traslados del día" font-family="system-ui,Arial,sans-serif">' +
-    '<defs><marker id="ah-rec" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="' + (14 * u) + '" markerHeight="' + (14 * u) + '" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L8 4L0 8z" fill="' + LC + '"/></marker><marker id="ah-trl" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="' + (14 * u) + '" markerHeight="' + (14 * u) + '" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L8 4L0 8z" fill="' + TC + '"/></marker></defs>' +
-    '<image href="' + MAPIMG + '" x="0" y="0" width="' + MAPW + '" height="' + MAPH + '" preserveAspectRatio="none"/><rect width="' + MAPW + '" height="' + MAPH + '" fill="#fff" opacity=".18"/>';
-  if (S.map.rec) { for (var i = 0; i < seq.length - 1; i++) { if (inMap(seq[i].v) && inMap(seq[i + 1].v)) { s += leg(pos(seq[i].v), pos(seq[i + 1].v), 14, 'rec', f(seq[i + 1].t), LC, false, u); } } }
-  if (S.map.trl) { trs.forEach(function (t) { var a = t.from || 'orig', key = a + '>' + t.to; if (inMap(a) && inMap(t.to) && !drawn[key]) { drawn[key] = 1; s += leg(pos(a), pos(t.to), -14, 'trl', /^\d/.test(t.phases[0][0]) ? 'Traslado ' + t.phases[0][0] : 'A confirmar', TC, true, u); } }); }
-  var all = Object.keys(D.venues).filter(function (k) { return inMap(k) && (!pos(k).off || ord.indexOf(k) > -1); }).concat(['orig', 'tbc'].filter(function (k) { return ord.indexOf(k) > -1; }));
-  all.forEach(function (v) {
-    var p = pos(v), on = ord.indexOf(v) > -1, isN = !!NODE[v], nm = isN ? NODE[v].n : V(v).n, n = ord.indexOf(v) + 1, L = isN ? { dx: 0, dy: 38, a: 'middle' } : (LAB[v] || { dx: 24, dy: 7, a: 'start' });
-    s += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + (16 * u) + '" fill="' + (on ? (isN ? '#1d3a0b' : '#b3470f') : '#fff') + '" stroke="' + (on ? '#fff' : '#4d6733') + '" stroke-width="' + (4 * u) + '"' + (isN ? ' stroke-dasharray="' + (5 * u) + ' ' + (4 * u) + '"' : '') + '/>';
-    if (on) { s += '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + 6 * u).toFixed(1) + '" text-anchor="middle" font-size="' + (18 * u) + '" font-weight="800" fill="#fff">' + (isN ? '?' : n) + '</text>'; }
-    s += '<text x="' + (p.x + L.dx * u).toFixed(1) + '" y="' + (p.y + L.dy * u).toFixed(1) + '" text-anchor="' + L.a + '" font-size="' + ((on ? 23 : 20) * u) + '" font-weight="' + (on ? 800 : 700) + '" fill="' + (on ? '#1d3a0b' : '#4d6733') + '" stroke="#fff" stroke-width="' + (7 * u) + '" paint-order="stroke" stroke-linejoin="round">' + esc(nm + (p.off ? ' · al norte' : '')) + '</text>';
+function routeMode() { return S.map.mine && S.me ? 'mine' : 'day'; }
+/* Paradas del día en orden: las actividades del festival, o las tareas propias. */
+function stops(mode, day) {
+  day = day == null ? S.day : day;
+  var src = mode === 'mine'
+    ? D.shifts.filter(function (x) { return x.day === day && !x.sug && mineShift(x); }).map(function (x) { return { v: x.v, s: x.s, e: x.e, t: x.t }; })
+    : D.events.filter(function (e) { return e.day === day && e.v && e.v !== 'virt'; }).map(function (e) { return { v: e.v, s: e.s, e: evEnd(e), t: e.t }; });
+  src.sort(by('s'));
+  var out = [];
+  src.forEach(function (x) {
+    var p = out[out.length - 1];
+    if (p && p.v === x.v && x.s <= p.e + 30) { p.e = Math.max(p.e, x.e); p.t.push(x.t); return; }
+    out.push({ v: x.v, s: x.s, e: x.e, t: [x.t] });
   });
-  var bx = vb[0] + 22 * u, byy = vb[1] + vb[3] - 22 * u;
-  s += '<g font-weight="800" fill="#1d3a0b" font-size="' + (17 * u) + '" stroke="#fff" stroke-width="' + (5 * u) + '" paint-order="stroke"><line x1="' + bx + '" y1="' + byy + '" x2="' + (bx + GEO.s * 100) + '" y2="' + byy + '" stroke="#1d3a0b" stroke-width="' + (5 * u) + '"/><text x="' + bx + '" y="' + (byy - 10 * u) + '">100 m</text><text x="' + (vb[0] + vb[2] - 30 * u) + '" y="' + (vb[1] + 34 * u) + '" text-anchor="middle">N</text></g></svg></div>';
-  return s;
+  return out;
 }
-function mapBox() {
-  var seq = daySeq(S.day).map(function (x) { return x.v; }).filter(function (v) { return !V(v).nomap; });
-  var link = seq.length >= 2 ? '<a class="chip" href="' + dirURL(seq, 'walking') + '" target="_blank" rel="noopener">Recorrido en Google Maps ↗</a>' : '';
-  return '<div class="chips"><button class="chip" type="button" data-layer="rec" aria-pressed="' + S.map.rec + '">Recorrido</button><button class="chip" type="button" data-layer="trl" aria-pressed="' + S.map.trl + '">Traslados</button><button class="chip" type="button" data-layer="full" aria-pressed="' + S.map.full + '">Mapa completo</button>' + link + '</div>' + mapSVG() +
-    '<div class="legend"><span><svg width="34" height="8" aria-hidden="true"><line x1="1" y1="4" x2="33" y2="4" stroke="#1d3a0b" stroke-width="3"/></svg>Recorrido entre sedes, con la hora de llegada</span><span><svg width="34" height="8" aria-hidden="true"><line x1="1" y1="4" x2="33" y2="4" stroke="#b3470f" stroke-width="3" stroke-dasharray="7 6"/></svg>Traslado de equipos, con la hora de salida</span></div>';
+function legs(st) {
+  var out = [];
+  for (var i = 1; i < st.length; i++) {
+    var a = st[i - 1], b = st[i], gap = b.s - a.e, l = { a: a, b: b, gap: gap };
+    if (a.v !== b.v && hasLL(a.v) && hasLL(b.v)) { var w = walk(a.v, b.v); l.m = w.m; l.min = w.min; l.tight = gap < w.min + MARGIN; }
+    out.push(l);
+  }
+  return out;
 }
-function fillMaps() { document.querySelectorAll('[data-map]').forEach(function (el) { if (!el.closest('details:not([open])')) { el.innerHTML = mapBox(); } }); }
+function legHtml(l) {
+  if (l.a.v === l.b.v) { return ''; }
+  var info = l.min != null ? l.min + ' min a pie (' + fmtDist(l.m) + ')' : 'distancia sin calcular';
+  var warn = l.tight ? (l.gap <= 0 ? 'Se superponen: ' + (l.gap < 0 ? 'empieza ' + (-l.gap) + ' min antes de que termine lo anterior' : 'empieza a la misma hora que termina lo anterior') : 'Cambio justo: hay ' + l.gap + ' min y se tarda ' + l.min) : '';
+  return '<li class="leg' + (l.tight ? ' tight' : '') + '"><span class="walk">' + esc(info) + '</span>' + (warn ? '<span class="warnline">' + esc(warn) + '</span>' : '') + '</li>';
+}
+function routeList(mode, day) {
+  var st = stops(mode, day), lg = legs(st);
+  if (!st.length) { return '<p class="small muted">' + (mode === 'mine' ? 'No tenés tareas este día.' : 'No hay actividades con sede este día.') + '</p>'; }
+  var n = 0, seen = {}, html = '<ol class="route">';
+  st.forEach(function (s, i) {
+    if (i > 0) { html += legHtml(lg[i - 1]); }
+    var mapped = hasLL(s.v); if (mapped && !(s.v in seen)) { seen[s.v] = ++n; }
+    html += '<li class="stop"><span class="pinn' + (mapped ? '' : ' off') + '">' + (mapped ? seen[s.v] : '?') + '</span><div><b class="num">' + f(s.s) + ' a ' + f(s.e) + '</b> · ' + venueLink(s.v) + '<p class="nt">' + esc(s.t.join(' · ')) + '</p></div></li>';
+  });
+  html += '</ol>';
+  var tight = lg.filter(function (l) { return l.tight; }).length, mapped = st.filter(function (s) { return hasLL(s.v); }).map(function (s) { return s.v; });
+  var uniq2 = mapped.filter(function (v, i) { return i === 0 || mapped[i - 1] !== v; });
+  return (tight ? '<p class="warnline">' + tight + (tight === 1 ? ' cambio justo' : ' cambios justos') + ' de una sede a otra.</p>' : '') + html +
+    (uniq2.length >= 2 ? '<a class="btn sm" href="' + dirURL(uniq2, 'walking') + '" target="_blank" rel="noopener">Todo el recorrido en Google Maps ↗</a>' : '');
+}
+function myRouteCard() {
+  if (!S.me) { return ''; }
+  var st = stops('mine'), lg = legs(st), moves = lg.filter(function (l) { return l.a.v !== l.b.v; });
+  if (!moves.length) { return ''; }
+  var tight = moves.filter(function (l) { return l.tight; }).length;
+  return det('myroute-' + S.day, '', '<span class="sum-t">Mi recorrido</span><div class="sum-m">' + moves.length + (moves.length === 1 ? ' cambio de sede' : ' cambios de sede') + (tight ? '<span class="badge flag">' + tight + ' justo' + (tight > 1 ? 's' : '') + '</span>' : '') + '</div>',
+    routeList('mine') + '<button class="btn sm" type="button" data-act="map-mine">Ver en el mapa</button>');
+}
+/* Carga diferida de Leaflet: solo cuando se abre un mapa. */
+function loadLeaflet() {
+  if (window.L) { return Promise.resolve(window.L); }
+  if (X.lfp) { return X.lfp; }
+  X.lfp = new Promise(function (res, rej) {
+    var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'vendor/leaflet.css'; document.head.appendChild(css);
+    var sc = document.createElement('script'); sc.src = 'vendor/leaflet.js'; sc.onload = function () { res(window.L); }; sc.onerror = function () { X.lfp = null; rej(); }; document.head.appendChild(sc);
+  });
+  return X.lfp;
+}
+function killMap() { if (X.lmap) { try { X.lmap.remove(); } catch (e) {} X.lmap = null; X.lme = null; } }
+function popupHtml(v) {
+  var o = V(v), li = D.events.filter(function (e) { return e.day === S.day && e.v === v; }).sort(by('s')).map(function (e) { return '<li><b>' + f(e.s) + '</b> ' + esc(e.t) + '</li>'; }).join('');
+  return '<div class="pop"><b>' + esc(o.n) + '</b><br><span>' + esc(o.addr || '') + '</span>' + (li ? '<ul>' + li + '</ul>' : '') + '<a href="' + gmaps(v) + '" target="_blank" rel="noopener">Cómo llegar ↗</a></div>';
+}
+function mountMap() {
+  var el = document.getElementById('lmap'); if (!el) { return; }
+  loadLeaflet().then(function (L) {
+    if (!document.body.contains(el)) { return; }
+    killMap();
+    var map = L.map(el, { zoomControl: true, attributionControl: true, scrollWheelZoom: false, tap: true });
+    X.lmap = map;
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
+    if (!navigator.onLine) {
+      var lngOf = function (x) { return (x - GEO.tx) / (GEO.s * GEO.k) + GEO.lng0; }, latOf = function (y) { return GEO.lat0 - (y - GEO.ty) / (GEO.s * 111200); };
+      L.imageOverlay('map.webp', [[latOf(870), lngOf(0)], [latOf(0), lngOf(1255)]], { opacity: 1 }).addTo(map);
+    }
+    var mode = routeMode(), st = stops(mode), order = [], pts = [];
+    st.forEach(function (s) { if (hasLL(s.v)) { order.push(s.v); } });
+    /* Recorrido */
+    if (S.map.rec) {
+      var path = order.filter(function (v, i) { return i === 0 || order[i - 1] !== v; }).map(function (v) { return [V(v).lat, V(v).lng]; });
+      if (path.length > 1) { L.polyline(path, { color: '#1d3a0b', weight: 5, opacity: .85 }).addTo(map); }
+    }
+    /* Traslados */
+    if (S.map.trl) {
+      D.transfers.filter(function (t) { return t.day === S.day && (!S.map.mine || !S.me || hasMine(t.areas)); }).forEach(function (t) {
+        if (t.from && hasLL(t.from) && hasLL(t.to) && t.from !== t.to) { L.polyline([[V(t.from).lat, V(t.from).lng], [V(t.to).lat, V(t.to).lng]], { color: '#b3470f', weight: 4, dashArray: '8 8' }).bindTooltip(esc(t.phases[0][0] + ' · ' + t.title)).addTo(map); }
+      });
+    }
+    /* Sedes */
+    var num = {}, n = 0; order.forEach(function (v) { if (!(v in num)) { num[v] = ++n; } });
+    Object.keys(D.venues).filter(hasLL).forEach(function (v) {
+      var on = v in num, o = V(v);
+      var icon = L.divIcon({ className: 'lpin' + (on ? ' on' : ''), html: '<span>' + (on ? num[v] : '') + '</span><em>' + esc(o.n) + '</em>', iconSize: [28, 28], iconAnchor: [14, 14] });
+      L.marker([o.lat, o.lng], { icon: icon, zIndexOffset: on ? 500 : 0, title: o.n }).bindPopup(popupHtml(v)).addTo(map);
+      if (on) { pts.push([o.lat, o.lng]); }
+    });
+    if (!pts.length) { Object.keys(D.venues).filter(hasLL).forEach(function (v) { pts.push([V(v).lat, V(v).lng]); }); }
+    if (pts.length === 1) { map.setView(pts[0], 17); } else { map.fitBounds(pts, { padding: [36, 36], maxZoom: 17 }); }
+    map.on('locationfound', function (e) {
+      if (!X.lme) { X.lme = L.circleMarker(e.latlng, { radius: 8, color: '#fff', weight: 3, fillColor: '#2b7de9', fillOpacity: 1 }).addTo(map); X.lacc = L.circle(e.latlng, { radius: e.accuracy, color: '#2b7de9', weight: 1, fillOpacity: .1 }).addTo(map); map.setView(e.latlng, Math.max(map.getZoom(), 16)); }
+      else { X.lme.setLatLng(e.latlng); X.lacc.setLatLng(e.latlng).setRadius(e.accuracy); }
+    });
+    map.on('locationerror', function () { toast('No se pudo obtener tu ubicación. Revisá el permiso de ubicación del navegador.'); S.map.loc = false; var b = document.querySelector('[data-act="map-loc"]'); if (b) { b.setAttribute('aria-pressed', 'false'); } });
+    if (S.map.loc) { map.locate({ watch: true, enableHighAccuracy: true }); }
+  }, function () { el.innerHTML = '<p class="small muted" style="padding:14px">No se pudo cargar el mapa. Con conexión se carga una vez y queda guardado.</p>'; });
+}
 function vMapa() {
-  var act = dayVenues(S.day), all = Object.keys(D.venues).filter(function (k) { return !V(k).nomap; });
-  all.sort(function (a, b) { var x = act.indexOf(a), y = act.indexOf(b); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y); });
+  var mode = routeMode(), nomapUsed = [];
+  stops('day').concat(S.me ? stops('mine') : []).forEach(function (s) { if (!hasLL(s.v) && nomapUsed.indexOf(s.v) < 0) { nomapUsed.push(s.v); } });
+  D.transfers.filter(function (t) { return t.day === S.day; }).forEach(function (t) { [t.from, t.to].forEach(function (v) { if (v && !hasLL(v) && nomapUsed.indexOf(v) < 0) { nomapUsed.push(v); } }); });
+  var chips = '<div class="chips">' + (S.me ? '<button class="chip" type="button" data-maptab="day" aria-pressed="' + (mode === 'day') + '">Recorrido del festival</button><button class="chip" type="button" data-maptab="mine" aria-pressed="' + (mode === 'mine') + '">Mi recorrido</button>' : '') +
+    '<button class="chip" type="button" data-layer="trl" aria-pressed="' + S.map.trl + '">Traslados</button><button class="chip" type="button" data-act="map-loc" aria-pressed="' + !!S.map.loc + '">Mi ubicación</button></div>';
+  var act = stops(mode).map(function (s) { return s.v; }).filter(hasLL);
+  var all = Object.keys(D.venues).filter(hasLL).sort(function (a, b) { var x = act.indexOf(a), y = act.indexOf(b); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y); });
   var cards = all.map(function (v) {
-    var o = V(v), on = act.indexOf(v) > -1;
-    var li = D.events.filter(function (e) { return e.day === S.day && e.v === v; }).sort(by('s')).map(function (e) { return '<li><b class="num">' + f(e.s) + '</b> ' + esc(e.t) + '</li>'; }).join('') +
+    var o = V(v), li = D.events.filter(function (e) { return e.day === S.day && e.v === v; }).sort(by('s')).map(function (e) { return '<li><b class="num">' + f(e.s) + '</b> ' + esc(e.t) + '</li>'; }).join('') +
       D.transfers.filter(function (t) { return t.day === S.day && (t.to === v || t.from === v); }).map(function (t) { return '<li><b class="num">' + esc(t.phases[0][0]) + '</b> Traslado: ' + esc(t.title) + '</li>'; }).join('');
-    return det('v-' + v, '', '<span class="sum-t">' + (on ? '<span class="badge mine">' + (act.indexOf(v) + 1) + '</span> ' : '') + esc(o.n) + '</span><div class="sum-m">' + esc(o.addr || '') + '</div>',
-      (li ? '<ul class="plain small">' + li + '</ul>' : '<p class="muted small">Sin actividades este día.</p>') + '<a class="btn sm" href="' + gmaps(v) + '" target="_blank" rel="noopener">Abrir en Google Maps ↗</a>');
+    return det('v-' + v, '', '<span class="sum-t">' + esc(o.n) + '</span><div class="sum-m">' + esc(o.addr || '') + '</div>',
+      (li ? '<ul class="plain small">' + li + '</ul>' : '<p class="muted small">Sin actividades este día.</p>') + '<a class="btn sm" href="' + gmaps(v) + '" target="_blank" rel="noopener">Cómo llegar ↗</a>');
   }).join('');
-  return dayHead('Mapa y sedes') + '<section class="card" data-map></section>' + cards;
+  return dayHead('Mapa y sedes') + chips + '<div class="lmap" id="lmap"></div>' +
+    '<p class="small muted">Tiempos a pie estimados por distancia (unos 4,5 km/h). Tocá una sede para ver qué pasa ahí.</p>' +
+    (nomapUsed.length ? '<section class="card"><h3>Sin ubicación en el mapa</h3><ul class="plain small">' + nomapUsed.map(function (v) { return '<li><b>' + esc(V(v).n) + '</b>' + (V(v).addr ? ' · ' + esc(V(v).addr) : '') + '</li>'; }).join('') + '</ul></section>' : '') +
+    '<section class="card"><h3>' + (mode === 'mine' ? 'Mi recorrido' : 'Recorrido del festival') + '</h3>' + routeList(mode) + '</section>' +
+    '<p class="kicker">Sedes</p>' + cards;
 }
-
 /* ---------- Más ---------- */
 function vArte() {
   var list = D.art.filter(function (a) { return a.day === S.day; });
@@ -510,8 +586,9 @@ function render(keepScroll) {
   if (!D) { return; }
   var y = window.scrollY;
   renderDays(); renderNav(); renderSync();
+  killMap();
   app.innerHTML = (VIEWS[S.view] || vHoy)();
-  fillMaps();
+  if (S.view === 'mapa') { mountMap(); }
   if (S.view === 'novedades') { markRead(); }
   if (keepScroll) { window.scrollTo(0, y); }
 }
@@ -530,7 +607,7 @@ function go(view) { if (view !== 'novedades') { X.readBefore = null; } S.view = 
 window.addEventListener('popstate', function () { if (D && readHash()) { X.readBefore = null; render(); } });
 
 document.addEventListener('click', function (e) {
-  var t = e.target.closest('[data-go],[data-day],[data-done],[data-tarea],[data-mine],[data-layer],[data-theme],[data-act]');
+  var t = e.target.closest('[data-go],[data-day],[data-done],[data-tarea],[data-mine],[data-layer],[data-maptab],[data-theme],[data-act]');
   if (!t) { return; }
   if (!D && !/^pdf/.test(t.getAttribute('data-act') || '')) { return; }
   if (t.hasAttribute('data-go')) { go(t.getAttribute('data-go')); return; }
@@ -544,7 +621,8 @@ document.addEventListener('click', function (e) {
   }
   if (t.hasAttribute('data-tarea')) { S.tarea = t.getAttribute('data-tarea'); saveS(); render(true); return; }
   if (t.hasAttribute('data-mine')) { S.mineOnly = t.getAttribute('data-mine') === '1'; saveS(); render(true); return; }
-  if (t.hasAttribute('data-layer')) { var l = t.getAttribute('data-layer'); S.map[l] = !S.map[l]; t.setAttribute('aria-pressed', S.map[l]); fillMaps(); return; }
+  if (t.hasAttribute('data-layer')) { var l = t.getAttribute('data-layer'); S.map[l] = !S.map[l]; render(true); return; }
+  if (t.hasAttribute('data-maptab')) { S.map.mine = t.getAttribute('data-maptab') === 'mine'; render(true); return; }
   if (t.hasAttribute('data-theme')) { var th = t.getAttribute('data-theme'); if (th === 'auto') { document.documentElement.removeAttribute('data-theme'); try { localStorage.removeItem(K.theme); } catch (er) {} } else { document.documentElement.setAttribute('data-theme', th); lsSet(K.theme, th); } render(true); return; }
   var act = t.getAttribute('data-act');
   if (act === 'sync') { pull(true); }
@@ -556,6 +634,8 @@ document.addEventListener('click', function (e) {
   else if (act === 'pdf') { var dl = $('pdfsheet'); getPdfFile().catch(function () {}); if (dl.showModal) { dl.showModal(); } else { window.open(PDF, '_blank'); } }
   else if (act === 'pdf-close') { $('pdfsheet').close(); }
   else if (act === 'pdf-share') { sharePdf(); }
+  else if (act === 'map-mine') { S.map.mine = true; go('mapa'); }
+  else if (act === 'map-loc') { S.map.loc = !S.map.loc; t.setAttribute('aria-pressed', S.map.loc); if (X.lmap) { if (S.map.loc) { X.lmap.locate({ watch: true, enableHighAccuracy: true }); } else { X.lmap.stopLocate(); if (X.lme) { X.lmap.removeLayer(X.lme); X.lmap.removeLayer(X.lacc); X.lme = null; } } } }
 });
 $('sync').addEventListener('click', function () { pull(true); });
 $('pdfsheet').addEventListener('click', function (e) { if (e.target === this) { this.close(); } });
@@ -567,7 +647,6 @@ document.addEventListener('toggle', function (e) {
   var d = e.target; if (!d.matches || !d.matches('details[data-k]')) { return; }
   var k = d.getAttribute('data-k'); if (d.open) { X.open[k] = 1; } else { X.open[k] = 0; }
   lsSet(K.open, X.open);
-  if (d.open && d.querySelector('[data-map]')) { fillMaps(); }
 }, true);
 
 /* ---------- Avisos ---------- */

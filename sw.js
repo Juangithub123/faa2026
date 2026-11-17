@@ -2,18 +2,28 @@
    App: se guarda al instalar y se sirve desde el teléfono (funciona sin señal).
    data.json: siempre se pide a la red; si no hay señal, se usa la última copia guardada.
    Al publicar cambios en app.js, app.css o index.html, subí el número de VERSION. */
-var VERSION = 'faa26-v6';
-var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'config.js', 'manifest.webmanifest', 'logo.webp', 'map.webp', 'icons/icon-192.png', 'data.json', 'cronograma-faa-2026.pdf'];
+var VERSION = 'faa26-v7';
+var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'config.js', 'manifest.webmanifest', 'logo.webp', 'map.webp', 'icons/icon-192.png', 'data.json', 'cronograma-faa-2026.pdf', 'vendor/leaflet.js', 'vendor/leaflet.css'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(SHELL.map(function (u) { return new Request(u, { cache: 'reload' }); })); }).then(function () { return self.skipWaiting(); }));
 });
 self.addEventListener('activate', function (e) {
-  e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== VERSION; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));
+  e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== VERSION && k !== 'faa26-tiles'; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));
 });
 self.addEventListener('fetch', function (e) {
   var req = e.request, url = new URL(req.url);
-  if (req.method !== 'GET' || url.origin !== location.origin) { return; }
+  if (req.method !== 'GET') { return; }
+  if (url.hostname === 'tile.openstreetmap.org') {
+    e.respondWith(caches.open('faa26-tiles').then(function (c) {
+      return c.match(req).then(function (hit) {
+        var net = fetch(req).then(function (res) { if (res.ok || res.type === 'opaque') { c.put(req, res.clone()); } return res; });
+        return hit || net;
+      });
+    }));
+    return;
+  }
+  if (url.origin !== location.origin) { return; }
   if (/\/data\.json$/.test(url.pathname) || /\/config\.js$/.test(url.pathname)) {
     e.respondWith(fetch(req).then(function (res) {
       if (res.ok) { var copy = res.clone(); caches.open(VERSION).then(function (c) { c.put(url.pathname.endsWith('config.js') ? 'config.js' : 'data.json', copy); }); }
