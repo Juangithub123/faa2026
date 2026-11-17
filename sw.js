@@ -2,7 +2,7 @@
    App: se guarda al instalar y se sirve desde el teléfono (funciona sin señal).
    data.json: siempre se pide a la red; si no hay señal, se usa la última copia guardada.
    Al publicar cambios en app.js, app.css o index.html, subí el número de VERSION. */
-var VERSION = 'faa26-v8';
+var VERSION = 'faa26-v9';
 var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'config.js', 'manifest.webmanifest', 'logo.webp', 'map.webp', 'icons/icon-192.png', 'data.json', 'cronograma-faa-2026.pdf', 'vendor/leaflet.js', 'vendor/leaflet.css'];
 
 self.addEventListener('install', function (e) {
@@ -23,7 +23,7 @@ self.addEventListener('fetch', function (e) {
     }));
     return;
   }
-  if (url.origin !== location.origin) { return; }
+  if (url.origin !== location.origin || url.pathname.indexOf('/juego/') > -1) { return; }
   if (/\/data\.json$/.test(url.pathname) || /\/config\.js$/.test(url.pathname)) {
     e.respondWith(fetch(req).then(function (res) {
       if (res.ok) { var copy = res.clone(); caches.open(VERSION).then(function (c) { c.put(url.pathname.endsWith('config.js') ? 'config.js' : 'data.json', copy); }); }
