@@ -63,6 +63,7 @@ function send() {
       msg.textContent = e.message === 'puntaje' ? 'Ese puntaje no se pudo validar.' :
         navigator.onLine === false ? 'Sin señal: probá de nuevo cuando vuelva.' :
         e.name === 'SyntaxError' ? 'El ranking respondió algo inesperado (revisar el script).' :
+        /^script: /.test(e.message) ? 'Error del ranking: ' + e.message.slice(8) :
         'No se pudo conectar con el ranking (' + (e.name || 'error') + ').';
     });
 }
