@@ -124,8 +124,11 @@ function update(dt) {
   p.duck = downHeld && !p.air;
   if (p.land > 0) { p.land -= dt; }
   if (p.air) {
-    var g = G;
+    var g = p.vy > 0 ? G * 1.25 : G;
+    p.t += dt;
     if (upHeld && p.vy < 0 && p.hold < 0.22) { g = G * 0.5; p.hold += dt; }
+    /* salto corto: si soltás ↑ mientras sube, frena la subida (mínimo garantizado para pasar la caja más alta) */
+    if (!upHeld && !p.cut && p.vy < -120 && p.t >= 0.09) { p.vy *= 0.45; p.cut = true; }
     if (downHeld) { g = G * 2.6; }
     p.vy += g * dt; p.y += p.vy * dt;
     if (p.y >= 0) { p.y = 0; p.vy = 0; p.air = false; p.land = 0.07; if (downHeld) { p.duck = true; } }
@@ -143,7 +146,7 @@ function update(dt) {
 }
 function jump() {
   if (st !== 'play') { return; }
-  if (!p.air) { p.air = true; p.vy = -JV; p.hold = 0; beep(420, 820, 0.09, 'square', 0.035); }
+  if (!p.air) { p.air = true; p.vy = -JV; p.hold = 0; p.t = 0; p.cut = false; beep(420, 820, 0.09, 'square', 0.035); }
 }
 
 /* ---------- Dibujo ---------- */
