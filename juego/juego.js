@@ -16,7 +16,7 @@ function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ?
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 
 var best = lsGet(K.best, 0), pal = lsGet(K.pal, 0), muted = lsGet(K.mute, false), takes = 0;
-var st = 'menu', p, obs, dist, speed, t0, nextGap, seed, upHeld = false, downHeld = false, frameT = 0, deadT = 0;
+var st = 'menu', p, obs, coins = [], nCoins = 0, dist, speed, t0, nextGap, seed, upHeld = false, downHeld = false, frameT = 0, deadT = 0;
 var scrollFar = 0, scrollMid = 0, scrollGround = 0, mountains = [];
 
 /* ---------- Tamaño: alto interno fijo, ancho según la pantalla ---------- */
@@ -65,7 +65,7 @@ function beep(f1, f2, dur, type, vol) {
 /* ---------- Partida ---------- */
 function reset() {
   p = { y: 0, vy: 0, air: false, duck: false, hold: 0, land: 0 };
-  obs = []; dist = 0; speed = 115; nextGap = 220; seed = (Date.now() & 0xffff) || 1; deadT = 0;
+  obs = []; coins = []; nCoins = 0; $('coins').textContent = '0'; dist = 0; speed = 115; nextGap = 220; seed = (Date.now() & 0xffff) || 1; deadT = 0;
 }
 function start() {
   reset(); playT = 0; st = 'play'; takes++;
@@ -78,7 +78,7 @@ function over() {
   if (rec) { best = m; lsSet(K.best, best); }
   $('final').textContent = m; $('take').textContent = takes; $('best').textContent = best;
   $('rec').textContent = rec ? '¡Nuevo récord en este teléfono!' : 'Récord: ' + best + ' m';
-  if (window.FAARank) { FAARank.over({ score: m, coins: 0, secs: playT }); }
+  if (window.FAARank) { FAARank.over({ score: m, coins: nCoins, secs: playT }); }
   setTimeout(function () { show('over'); }, 450);
 }
 function $(id) { return document.getElementById(id); }
@@ -106,6 +106,14 @@ function spawn() {
   if (!o.air && dist / 10 > 70 && rnd() < 0.22) {
     var b = A[rnd() < 0.5 ? 'case' : 'chairs'];
     obs.push({ k: b === A.case ? 'case' : 'chairs', x: x + a[2] + 2, y: GROUND - b[3] + 1, w: b[2], h: b[3], air: false });
+  }
+  /* fichas 26: en arco sobre lo que se salta, a ras del piso bajo lo que se esquiva agachado, o en tira después */
+  var cx = x + a[2] / 2, r = rnd();
+  if (r < 0.55) {
+    if (!o.air) { [-20, 0, 20].forEach(function (d, i) { coins.push({ x: cx + d - 8, y: GROUND - a[3] - 26 + (i === 1 ? 0 : 10) }); }); }
+    else { [-16, 0, 16].forEach(function (d) { coins.push({ x: cx + d - 8, y: GROUND - 16 }); }); }
+  } else if (r < 0.8) {
+    for (var k = 0; k < 3; k++) { coins.push({ x: x + a[2] + 50 + k * 18, y: GROUND - 16 }); }
   }
   var air = 2 * 430 / 1500; /* tiempo de vuelo base */
   var minGap = speed * air + 40 + (o.air ? 10 : 0);
@@ -141,6 +149,14 @@ function update(dt) {
   /* choque */
   var hb = p.duck ? HB.duck : (p.air ? HB.jump : HB.run), top = GROUND - CH + Math.round(p.y);
   var bx1 = PX + hb[0], by1 = top + hb[1], bx2 = PX + hb[2], by2 = top + hb[3];
+  /* fichas */
+  for (i = coins.length - 1; i >= 0; i--) {
+    var c = coins[i]; c.x -= dx;
+    if (c.x < -20) { coins.splice(i, 1); continue; }
+    if (bx1 - 3 < c.x + 16 && bx2 + 3 > c.x && by1 - 3 < c.y + 14 && by2 + 3 > c.y) {
+      coins.splice(i, 1); nCoins++; $('coins').textContent = nCoins; beep(880 + (nCoins % 5) * 60, 1320, 0.07, 'square', 0.03);
+    }
+  }
   for (i = 0; i < obs.length; i++) {
     var o = obs[i], m = 3, oy = o.air ? o.y + Math.sin(frameT * 3 + o.bob) * 2 : o.y;
     if (bx1 < o.x + o.w - m && bx2 > o.x + m && by1 < oy + o.h - m && by2 > oy + m) { over(); break; }
@@ -198,6 +214,13 @@ function draw() {
     if (o.k === 'spot') { ctx.fillStyle = '#1a0e08'; ctx.fillRect(x0 + 8, 0, 2, y); }
     ctx.drawImage(img, a[0], a[1], a[2], a[3], x0, y, a[2], a[3]);
   });
+  /* fichas 26 (suavizadas para que el número se lea) */
+  var n26 = A.n26; ctx.imageSmoothingEnabled = true;
+  coins.forEach(function (c) {
+    var sp = Math.abs(Math.cos(frameT * 3 + c.x * 0.05)), w = 16 * Math.max(0.2, sp), bob = Math.sin(frameT * 4 + c.x * 0.1) * 1.5;
+    ctx.drawImage(img, n26[0], n26[1], n26[2], n26[3], c.x + (16 - w) / 2, c.y + bob, w, 14);
+  });
+  ctx.imageSmoothingEnabled = false;
   /* personaje */
   var fr2;
   if (st === 'play') {

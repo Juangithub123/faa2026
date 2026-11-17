@@ -4,7 +4,7 @@
 'use strict';
 var URL = 'https://script.google.com/macros/s/AKfycbwxL9zxyDG1T9gg9pPqzpRNzI5wFGNc9XR6aMMdax-PdUywFKKR-ace5_Biw4nfhT_MkA/exec';
 
-var VER = '17/11 e', NICK = 'faa26-nick', game = '', last = null, sent = false;
+var VER = '17/11 f', NICK = 'faa26-nick', POZO = 'faa26-pozo-pend', game = '', last = null, sent = false;
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 function clean(n) { return String(n || '').replace(/[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ _.]/g, '').replace(/^[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]+/, '').slice(0, 12); }
@@ -36,14 +36,15 @@ function list(el, rows, me, myScore) {
 }
 function css() {
   var s = document.createElement('style');
-  s.textContent = '.rk{display:grid;gap:8px;text-align:left}' +
+  s.textContent = '.rk{display:grid;gap:8px;text-align:left}.rk[hidden]{display:none}' +
     '.rk-row{display:flex;gap:6px}.rk-row input{flex:1;min-width:0;border:2px solid #F4C95C;border-radius:999px;background:#3a1606;color:#F6EFC4;padding:9px 13px;font:700 15px system-ui;-webkit-user-select:text;user-select:text}' +
     '.rk-row button{border:0;border-radius:999px;background:#8FBABA;color:#3a1606;font:900 14px system-ui;padding:9px 14px}' +
     '.rk ol{list-style:none;padding:0;margin:0;display:grid;gap:2px;font:600 14px system-ui}' +
     '.rk li{display:flex;gap:8px;align-items:baseline;padding:4px 8px;border-radius:8px;background:rgba(246,239,196,.07)}' +
     '.rk li b{width:20px;color:#F4C95C;font-variant-numeric:tabular-nums}.rk li span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
     '.rk li em{font-style:normal;font-variant-numeric:tabular-nums;opacity:.9}.rk li.me{background:#F4C95C;color:#3a1606}.rk li.me b{color:#3a1606}' +
-    '.rk-msg{font-size:12.5px;opacity:.8;min-height:1em;text-align:center}.rk-empty{opacity:.7}.rk h2{font:900 15px system-ui;text-align:center;color:#8FBABA;letter-spacing:.04em;text-transform:uppercase}';
+    '.rk-msg{font-size:12.5px;opacity:.8;min-height:1em;text-align:center}.rk-empty{opacity:.7}.rk h2{font:900 15px system-ui;text-align:center;color:#F4C95C;letter-spacing:.04em;text-transform:uppercase;border-top:1px solid rgba(246,239,196,.25);padding-top:10px}' +
+    '.rk-pozo{margin:0;padding:8px 12px;border-radius:12px;background:rgba(116,198,232,.14);border:1px solid rgba(116,198,232,.55);color:#F6EFC4;font:600 13.5px/1.3 system-ui;text-align:center}.rk-pozo b{color:#74C6E8;font:900 17px ui-monospace,Menlo,monospace}.rk-pozo small{display:block;opacity:.8;font-size:12px;margin-top:2px}';
   document.head.appendChild(s);
 }
 function block(id) {
@@ -53,10 +54,36 @@ function block(id) {
     '<ol></ol><p class="rk-msg"></p>';
   return d;
 }
+/* ---------- Pozo común: todas las fichas de todas las partidas van a la universidad pública ----------
+   Se mandan solas al terminar cada partida. Sin señal quedan guardadas en el teléfono y se mandan después. */
+function pend() { try { return JSON.parse(localStorage.getItem(POZO)) || { f: 0, s: 0, k: 0 }; } catch (e) { return { f: 0, s: 0, k: 0 }; } }
+function setPend(o) { try { localStorage.setItem(POZO, JSON.stringify(o)); } catch (e) {} }
+function fmt(n) { try { return Number(n).toLocaleString('es-AR'); } catch (e) { return String(n); } }
+function showPozo(n) { if (n == null) { return; } document.querySelectorAll('.rk-pozo b').forEach(function (b) { b.textContent = fmt(n); }); }
+var flushing = false, flushP = null;
+function flush() {
+  var q = pend();
+  if (flushing) { return flushP.then(function () { return pend().f > 0 ? flush() : true; }); }
+  if (!(q.f > 0)) { return Promise.resolve(true); }
+  flushing = true;
+  var sent = { f: q.f, s: q.s, k: q.k || 1 };
+  flushP = call({ op: 'pozo', juego: game, fichas: sent.f, seg: Math.max(1, Math.round(sent.s)), partidas: sent.k })
+    .then(function (j) {
+      var now = pend(); setPend({ f: Math.max(0, now.f - sent.f), s: Math.max(0, now.s - sent.s), k: Math.max(0, (now.k || 0) - sent.k) });
+      flushing = false; showPozo(j.pozo); return true;
+    })
+    .catch(function (e) { flushing = false; if (e.message === 'fichas') { setPend({ f: 0, s: 0, k: 0 }); } return false; });
+  return flushP;
+}
+function pozoLine(id) {
+  var d = document.createElement('p'); d.className = 'rk-pozo'; d.id = id;
+  d.innerHTML = 'Pozo común para la universidad pública: <b>…</b> fichas<small></small>';
+  return d;
+}
 function load(box, hint) {
   var msg = box.querySelector('.rk-msg'), ol = box.querySelector('ol');
   msg.textContent = 'Cargando…';
-  call({ op: 'top', juego: game }).then(function (j) { if (box.id === 'rk-over' && sent) { return; } list(ol, j.top, getNick()); msg.textContent = hint || ''; })
+  call({ op: 'top', juego: game }).then(function (j) { showPozo(j.pozo); if (box.id === 'rk-over' && sent) { return; } list(ol, j.top, getNick()); msg.textContent = hint || ''; })
     .catch(function () { msg.textContent = navigator.onLine === false ? 'Sin conexión: el ranking se ve con internet.' : 'No se pudo cargar el ranking.'; });
 }
 function send() {
@@ -66,7 +93,7 @@ function send() {
   if (sent || !last) { return; }
   setNick(n); sent = true; $('rk-send').disabled = true; msg.textContent = 'Subiendo…';
   call({ op: 'anotar', juego: game, apodo: n, metros: last.score, fichas: last.coins || 0, seg: Math.round(last.secs) })
-    .then(function (j) { list(box.querySelector('ol'), j.top, n); msg.textContent = 'Quedaste en el puesto ' + j.pos + '.'; })
+    .then(function (j) { showPozo(j.pozo); list(box.querySelector('ol'), j.top, n); msg.textContent = 'Quedaste en el puesto ' + j.pos + '.'; })
     .catch(function (e) {
       sent = false; $('rk-send').disabled = false;
       msg.textContent = e.message === 'puntaje' ? 'Ese puntaje no se pudo validar.' :
@@ -87,10 +114,16 @@ window.FAARank = {
     see.style.cssText = 'background:transparent;border:0;color:#F4C95C;font:800 14px system-ui;text-decoration:underline';
     var sb = block('rk-start'); sb.hidden = true;
     see.addEventListener('click', function () { sb.hidden = !sb.hidden; see.textContent = sb.hidden ? 'Ver ranking del staff' : 'Ocultar ranking'; if (!sb.hidden) { load(sb); } });
+    var ps = pozoLine('rk-pozo-start'); startBox.insertBefore(ps, startBox.querySelector('.go').nextSibling);
     startBox.appendChild(see); startBox.appendChild(sb);
     var ver = document.createElement('p'); ver.textContent = 'versión ' + VER; ver.style.cssText = 'font-size:11px;opacity:.45;margin:0'; startBox.appendChild(ver);
     var ob = block('rk-over');
     overBox.insertBefore(ob, overBox.querySelector('.go'));
+    overBox.insertBefore(pozoLine('rk-pozo-over'), ob);
+    /* al abrir el juego: muestra el total y manda lo que haya quedado pendiente */
+    call({ op: 'top', juego: game }).then(function (j) { showPozo(j.pozo); }).catch(function () {});
+    flush();
+    window.addEventListener('online', flush);
     $('rk-send').addEventListener('click', send);
     $('rk-nick').addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter') { send(); } });
   },
@@ -98,6 +131,12 @@ window.FAARank = {
   over: function (r) {
     if (!URL) { return; }
     last = r; sent = false;
+    var po = $('rk-pozo-over'), note = po.querySelector('small'), c = Math.max(0, Math.floor(r.coins || 0));
+    if (c > 0) {
+      var q = pend(); q.f += c; q.s += r.secs || 0; q.k = (q.k || 0) + 1; setPend(q);
+      note.textContent = 'Tus ' + fmt(c) + ' fichas se están sumando…';
+      flush().then(function (ok) { note.textContent = ok ? 'Tus ' + fmt(c) + ' fichas ya se sumaron. ¡Gracias!' : 'Tus ' + fmt(c) + ' fichas se suman cuando haya señal.'; });
+    } else { note.textContent = 'Juntá fichas 26 para sumar al pozo.'; }
     var inp = $('rk-nick'); inp.value = getNick(); $('rk-send').disabled = !(r.score > 0);
     load($('rk-over'), r.score > 0 ? (getNick() ? 'Tocá Subir para anotar esta toma.' : 'Poné tu apodo para anotar esta toma.') : '');
   }
