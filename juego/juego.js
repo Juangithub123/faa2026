@@ -7,7 +7,7 @@ var ART = window.FAAArte;
    0-7 carrera · 8 impulso · 9 subida · 10 punto alto · 11 caída · 12-13 agachado · 14 golpe · 15 quieto */
 var CW = 62, CH = 70, FEET = 68;           /* fila de los pies dentro del cuadro */
 /* Cajas de choque del cuerpo, más chicas que el dibujo (a favor del jugador): [x1, x2, alto desde los pies] */
-var HB = { run: [23, 46, 52], duck: [20, 50, 21] };
+var HB = { run: [24, 45, 52], duck: [20, 50, 21] };
 var PX = 34;                                /* posición del personaje en pantalla */
 var W = 300, H = 480, GROUND = 400, S = 1;  /* unidades de mundo; S = escala a píxeles reales */
 var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
@@ -27,7 +27,8 @@ var upHeld = false, downHeld = false, frameT = 0, deadT = 0, shake = 0, mountain
 var V0 = 92, VMAX = 235, ACC = 0.0095;      /* px/s; ACC por px recorrido */
 function speedAt(wx) { return Math.min(VMAX, V0 + Math.max(0, wx) * ACC); }
 /* Salto: flotante, con más altura si se mantiene apretado */
-var G = 1000, JV = 380, HOLD = 0.24, STEP = 1 / 120;
+/* Salto corto con un toque; cuanto más se mantiene ↑ (hasta 0,32 s), más alto. */
+var G = 1200, JV = 320, HOLDG = 0.3, HOLD = 0.32, CUT = 0.45, STEP = 1 / 120;
 var TIER = 54, T1 = 58, T2 = 112;          /* alturas de las plataformas: 58, 112, 166, 220… */
 var GRACE = 8;                              /* margen de gracia en px recorridos */
 
@@ -63,7 +64,7 @@ function beep(f1, f2, dur, type, vol) {
 function reset() {
   p = { h: 0, vy: 0, air: false, duck: false, hold: 0, land: 0, coyote: 0, buf: 0, drop: 0, grace: 0, fast: false };
   obs = []; plats = []; coins = []; flyers = []; nCoins = 0; dist = 0; speed = V0; playT = 0; deadT = 0; shake = 0;
-  seed = (Date.now() & 0xffff) || 1; nextX = 520;
+  seed = (Date.now() & 0xffff) || 1; nextX = 520; section = null; lastAir = -1;
   $('coins').textContent = '0'; $('score').textContent = '0';
   fill();
 }
@@ -85,52 +86,129 @@ function over() {
 var BANNERS = ['EDUCACIÓN|PÚBLICA', 'LA UNI|SE DEFIENDE', 'NI UN PASO|ATRÁS', 'PRESUPUESTO|YA'].map(function (t) { return ART.banner(t, 58, 26); });
 function wpick(list) { var tot = 0, i; for (i = 0; i < list.length; i++) { tot += list[i][1]; } var r = rnd() * tot; for (i = 0; i < list.length; i++) { r -= list[i][1]; if (r <= 0) { return list[i][0]; } } return list[0][0]; }
 function coinLine(x0, h, n, step) { for (var i = 0; i < n; i++) { coins.push({ x: x0 + i * step, h: h }); } }
-function coinArc(cx, v) {
-  /* sigue la curva de un salto corto a la velocidad que habrá al llegar */
-  var ta = JV / G;
-  for (var c = -2; c <= 2; c++) { var t = ta + c * 0.11; coins.push({ x: cx + v * (t - ta) - 7, h: JV * t - G * t * t / 2 + 2 }); }
+/* trayectoria de un salto manteniendo ↑ "hold" segundos: sirve para poner fichas donde el salto pasa */
+function jumpPath(hold) {
+  var y = 0, vy = JV, t = 0, h = 0, cut = false, out = [], dt = 1 / 60;
+  while (t < 2) {
+    var up = t < hold, g = vy < 0 ? G * 1.25 : G;
+    if (up && vy > 0 && h < HOLD) { g = G * HOLDG; h += dt; }
+    if (!up && !cut && vy > 60 && t >= 0.06) { vy *= CUT; cut = true; }
+    vy -= g * dt; y += vy * dt; t += dt;
+    if (y <= 0) { break; }
+    out.push([t, y]);
+  }
+  return out;
+}
+var PATH = jumpPath(0.3), PATH_T = PATH.length ? PATH[PATH.length - 1][0] : 0.7;
+function apexT() { var m = 0, tt = 0; PATH.forEach(function (q) { if (q[1] > m) { m = q[1]; tt = q[0]; } }); return tt; }
+var TAPEX = apexT();
+function coinArc(cx, v, base) {
+  /* fichas sobre un obstáculo, siguiendo el salto largo con la cima justo encima */
+  [-0.2, -0.1, 0, 0.1, 0.2].forEach(function (d) {
+    var t = TAPEX + d, q = PATH[Math.max(0, Math.min(PATH.length - 1, Math.round(t * 60) - 1))];
+    coins.push({ x: cx + v * d - 7, h: (base || 0) + q[1] - 8 });
+  });
+}
+function coinGapArc(x0, h0, x1, h1) {
+  /* fichas en arco entre dos andamios: marcan el salto */
+  var top = Math.max(h0, h1) + 34;
+  for (var i = 1; i <= 3; i++) { var f = i / 4, h = (1 - f) * h0 + f * h1 + (top - Math.max(h0, h1)) * 4 * f * (1 - f) + 6; coins.push({ x: x0 + (x1 - x0) * f - 7, h: h }); }
+}
+function coinDiamond(cx, h) { [[0, 0], [-14, 13], [14, 13], [0, 26]].forEach(function (d) { coins.push({ x: cx + d[0] - 7, h: h + d[1] }); }); }
+function valla(x) { obs.push({ t: 'valla', x: x, w: 24, y0: 0, y1: 26 }); return x + 24; }
+function caja(x) { obs.push({ t: 'caja', x: x, w: 22, y0: 0, y1: 24 }); return x + 22; }
+function amarillo(x) { return rnd() < 0.5 ? valla(x) : caja(x); }
+function cartel(x) { obs.push({ t: 'cartel', x: x, w: 58, y0: 34, y1: 60, b: Math.floor(rnd() * BANNERS.length) }); return x + 58; }
+function bafle(x, h) { obs.push({ t: 'bafle', x: x, w: 34, y0: 0, y1: h }); return x + 34; }
+function plat(x, w, y, hang) { var o = { x: x, w: w, y: y, hang: !!hang }; plats.push(o); return o; }
+
+/* ---------- Diseño de nivel ----------
+   El recorrido alterna tramos de SUELO (patrones con sentido: ritmo de saltos, agacharse y saltar, elegir ir por
+   arriba o por abajo) y ETAPAS AÉREAS de andamios colgantes con muchas fichas. Los elementos aparecen de a poco. */
+var section = null, lastAir = -1;
+function newSection(x) {
+  /* la primera etapa aérea llega a los ~110 m; después, una cada ~250 m (si entra en pantalla) */
+  var m = x / 10;
+  if (section && section.type === 'suelo' && m > 110 && maxTier() >= 2 && (lastAir < 0 || m - lastAir > 250)) {
+    lastAir = m; return { type: 'aire', n: 0, max: 8 + Math.floor(rnd() * 6) };
+  }
+  return { type: 'suelo', n: 0, max: 4 + Math.floor(rnd() * 4) };
+}
+function groundPattern(x, v, m) {
+  var list = [['salto', 4], ['andamioBajo', 3]];
+  if (m > 40) { list.push(['pancarta', 3], ['ritmo', 2]); }
+  if (m > 70) { list.push(['escalon', 2], ['agachaSalta', 2]); }
+  if (m > 100) { list.push(['arribaOAbajo', 3], ['escalera', 2]); }
+  var k = wpick(list), e = x, a, b, i;
+  if (k === 'salto') {
+    /* un obstáculo amarillo y las fichas marcan el salto largo */
+    a = x; e = amarillo(x); if (rnd() < 0.7) { coinArc((a + e) / 2, v); }
+  } else if (k === 'ritmo') {
+    /* dos o tres saltos seguidos con el mismo ritmo; fichas a ras del piso entre medio */
+    var n = 2 + (m > 160 && rnd() < 0.5 ? 1 : 0), sp = Math.max(80, v * 1.05);
+    for (i = 0; i < n; i++) { a = e + (i ? sp : 0); e = amarillo(a); if (i < n - 1) { coinLine(e + sp * 0.35, 2, 2, 16); } }
+  } else if (k === 'pancarta') {
+    /* pancarta celeste: fichas debajo, para pasar agachado */
+    a = x; e = cartel(x); coinLine(a + 8, 3, 3, 18);
+  } else if (k === 'agachaSalta') {
+    /* agacharse y enseguida saltar */
+    e = cartel(x); coinLine(x + 8, 3, 3, 18);
+    a = e + Math.max(70, v * 0.9); e = amarillo(a); coinArc(a + 12, v);
+  } else if (k === 'andamioBajo') {
+    /* un andamio bajo con fichas: subir es opcional */
+    var w = Math.max(110, v * 1.2 + rnd() * 50), p1 = plat(x, w, T1);
+    coinLine(x + 14, T1 + 10, Math.floor((w - 28) / 22), 22); e = x + w;
+  } else if (k === 'escalon') {
+    /* bafle bajo y uno alto: se sube de a uno, arriba hay fichas, después se cae con fichas en la bajada */
+    bafle(x, 44); e = bafle(x + 34, 88); coinLine(x + 38, 98, 2, 16);
+    coinLine(e + 16, 70, 1, 0); coinLine(e + 34, 40, 1, 0);
+  } else if (k === 'arribaOAbajo') {
+    /* andamio largo arriba (con fichas) y vallas abajo: elegís el camino */
+    var L = Math.max(220, v * 2.6), pa = plat(x, L, T1);
+    var nv = 2, gap = L / (nv + 1);
+    for (i = 1; i <= nv; i++) { amarillo(x + gap * i - 12); }
+    coinLine(x + 16, T1 + 10, Math.floor((L - 32) / 20), 20); e = x + L;
+  } else if (k === 'escalera') {
+    /* escalera de andamios: cada piso un poco más adelante; arriba, un rombo de fichas */
+    var mt = Math.min(maxTier(), 4), y = T1, px = x, top = null;
+    for (i = 0; i < mt; i++) { var pw = 90 + rnd() * 40; top = plat(px, pw, y); if (i) { coinLine(px + 10, y + 10, 2, 20); } e = Math.max(e, px + pw); px += pw * 0.55; y += TIER; }
+    coinDiamond(top.x + top.w / 2, top.y + 30);
+  }
+  return e;
+}
+function airStage(x, v) {
+  /* etapa aérea: andamios colgantes a distintas alturas, unidos por saltos marcados con fichas */
+  var mt = maxTier(), e = x, lvl = 1, y, prev = null, i;
+  /* entrada: dos escalones blancos para subir */
+  bafle(x, 44); e = bafle(x + 34, 88); coinLine(x + 38, 98, 2, 16);
+  prev = plat(e + Math.max(16, v * 0.22), 110, T2, true); lvl = 2; e = prev.x + prev.w;
+  coinLine(prev.x + 12, prev.y + 10, 4, 22);
+  for (i = 0; i < section.max; i++) {
+    var dl = wpick([[1, lvl < mt ? 3 : 0], [0, 2], [-1, lvl > 2 ? 2 : 0]]);
+    lvl += dl; y = T1 + (lvl - 1) * TIER;
+    var gap = dl > 0 ? v * (0.18 + rnd() * 0.2) : (dl === 0 ? v * (0.25 + rnd() * 0.25) : v * (0.3 + rnd() * 0.3));
+    gap = Math.max(16, gap);
+    var w = 80 + rnd() * 70, nx = prev.x + prev.w + gap, pl = plat(nx, w, y, true);
+    coinGapArc(prev.x + prev.w, prev.y, nx, y);
+    var r = rnd();
+    if (r < 0.45) { coinLine(nx + 10, y + 10, Math.floor((w - 20) / 20), 20); }
+    else if (r < 0.75) { coinDiamond(nx + w / 2, y + 30); }
+    else { coinLine(nx + 10, y + 10, 2, 20); coinDiamond(nx + w * 0.7, y + 30); }
+    /* abajo, en el suelo, algo de qué ocuparse si te caés (pero espaciado) */
+    if (rnd() < 0.35) { amarillo(nx + w * 0.3); }
+    prev = pl; e = nx + w;
+  }
+  /* salida: fichas en la caída */
+  coinLine(e + 10, Math.max(20, prev.y - 30), 1, 0); coinLine(e + 26, Math.max(10, prev.y - 70), 1, 0);
+  return e + 20;
 }
 function chunk() {
-  var x = nextX, m = x / 10, v = speedAt(x), end = x, mt = maxTier();
-  var kind = wpick([['jump', 4], ['plat', 3], ['duck', m > 12 ? 3 : 0], ['box', m > 6 ? 2 : 0], ['stairs', m > 50 ? 2 : 0], ['double', m > 110 ? 1.5 : 0]]);
-  if (kind === 'jump' || kind === 'double') {
-    var o = rnd() < 0.5 ? { t: 'valla', x: x, w: 30, y0: 0, y1: 26 } : { t: 'caja', x: x, w: 26, y0: 0, y1: 24 };
-    obs.push(o); end = x + o.w;
-    if (rnd() < 0.6) { coinArc(x + o.w / 2, v); }
-    if (kind === 'double') {
-      var x2 = end + Math.max(70, v * 0.95);
-      obs.push({ t: rnd() < 0.5 ? 'valla' : 'caja', x: x2, w: 26, y0: 0, y1: 24 }); end = x2 + 26;
-    }
-  } else if (kind === 'duck') {
-    obs.push({ t: 'cartel', x: x, w: 58, y0: 34, y1: 60, b: Math.floor(rnd() * BANNERS.length) }); end = x + 58;
-    if (rnd() < 0.7) { coinLine(x + 6, 4, 3, 18); }
-  } else if (kind === 'box') {
-    obs.push({ t: 'bafle', x: x, w: 34, y0: 0, y1: 44 }); end = x + 34;
-    coinLine(x + 4, 44 + 10, 2, 16);
-  } else if (kind === 'stairs') {
-    obs.push({ t: 'bafle', x: x, w: 34, y0: 0, y1: 44 });
-    obs.push({ t: 'bafle', x: x + 34, w: 34, y0: 0, y1: 88 });
-    coinLine(x + 38, 88 + 10, 2, 16); end = x + 68;
-    if (mt >= 2 && rnd() < 0.5) { var pp = { x: x + 68 + 20, w: 90 + rnd() * 50, y: T2 + 30 }; plats.push(pp); coinLine(pp.x + 10, pp.y + 10, 4, 20); end = pp.x + pp.w; }
-  } else if (kind === 'plat') {
-    /* andamios escalonados hacia arriba: cuanto más alto, más fichas */
-    var pl = { x: x, w: 110 + rnd() * 70, y: T1 }, lvl = 1, goal = 1 + Math.floor(rnd() * mt * 0.999);
-    if (mt > 2 && rnd() < 0.5) { goal = mt; }
-    plats.push(pl); end = pl.x + pl.w;
-    var first = pl;
-    while (lvl < goal) {
-      var nx = { x: pl.x + pl.w * (0.5 + rnd() * 0.15), w: 90 + rnd() * 60, y: T1 + lvl * TIER };
-      plats.push(nx); end = Math.max(end, nx.x + nx.w);
-      if (lvl >= 2 && rnd() < 0.5) { coinLine(nx.x + 8, nx.y + 10, 2, 20); }
-      pl = nx; lvl++;
-    }
-    var n = Math.max(3, Math.floor((pl.w - 20) / 20));
-    coinLine(pl.x + 10, pl.y + 10, Math.min(n, 2 + lvl), 20);
-    if (m > 35 && rnd() < 0.5) { obs.push({ t: rnd() < 0.5 ? 'valla' : 'caja', x: first.x + first.w * 0.4, w: 26, y0: 0, y1: 24 }); }
-    else if (rnd() < 0.5) { coinLine(first.x + 20, 4, 3, 18); }
-  }
-  if (rnd() < 0.3) { flyers.push({ x: x + rnd() * 120, h: 90 + rnd() * (GROUND - 160), ph: rnd() * 6 }); }
-  nextX = end + Math.max(120, v * (0.95 + rnd() * 0.75) + 30);
+  var x = nextX, m = x / 10, v = speedAt(x), e;
+  if (!section || section.n >= section.max) { section = newSection(x); }
+  if (section.type === 'aire') { e = airStage(x, v); section.n = section.max; }
+  else { e = groundPattern(x, v, m); section.n++; }
+  if (rnd() < 0.3) { flyers.push({ x: x + rnd() * 120, h: 90 + rnd() * Math.max(10, GROUND - 160), ph: rnd() * 6 }); }
+  nextX = e + Math.max(110, v * (0.9 + rnd() * 0.6) + 24);
 }
 function fill() { while (nextX < dist + W + 260) { chunk(); } }
 
@@ -168,7 +246,10 @@ function update(dt) {
   }
   if (p.air) {
     var g = p.vy < 0 ? G * 1.25 : G;
-    if (upHeld && p.vy > 0 && p.hold < HOLD) { g = G * 0.5; p.hold += dt; }
+    p.t += dt;
+    if (upHeld && p.vy > 0 && p.hold < HOLD) { g = G * HOLDG; p.hold += dt; }
+    /* soltó ↑ mientras sube: frena la subida (salto corto) */
+    if (!upHeld && !p.cut && p.vy > 60 && p.t >= 0.06) { p.vy *= CUT; p.cut = true; }
     if (p.fast) { g = G * 3; }
     p.vy -= g * dt; p.h += p.vy * dt;
     if (p.vy <= 0) {
@@ -203,7 +284,7 @@ function update(dt) {
 function jump() {
   if (st !== 'play') { return; }
   if (p.air && p.coyote <= 0) { if (p.vy < 0) { p.buf = 0.16; } return; }
-  p.air = true; p.vy = JV; p.hold = 0; p.coyote = 0; p.fast = false; beep(420, 820, 0.09, 'square', 0.035);
+  p.air = true; p.vy = JV; p.hold = 0; p.t = 0; p.cut = false; p.coyote = 0; p.fast = false; beep(420, 820, 0.09, 'square', 0.035);
 }
 function down() {
   if (st !== 'play') { return; }
@@ -248,6 +329,13 @@ function drawObs(o) {
 function drawPlat(s) {
   var x = sx(s.x);
   if (x > W + 20 || x + s.w < -20) { return; }
+  if (s.hang) {
+    /* andamio colgante: cuelga con cables desde arriba */
+    ctx.strokeStyle = 'rgba(26,14,8,.8)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x + 5, -2); ctx.lineTo(x + 5, gy(s.y)); ctx.moveTo(x + s.w - 5, -2); ctx.lineTo(x + s.w - 5, gy(s.y)); ctx.stroke();
+    framed(x, gy(s.y), s.w, 6, '#F6EFC4'); box(x, gy(s.y) + 4, s.w, 2, '#E0457B');
+    return;
+  }
   /* andamio: patas y diagonales finas (no se chocan), tablón crema arriba */
   ctx.strokeStyle = 'rgba(26,14,8,.75)'; ctx.lineWidth = 1.6;
   ctx.beginPath();
