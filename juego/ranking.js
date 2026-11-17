@@ -4,7 +4,7 @@
 'use strict';
 var URL = 'https://script.google.com/macros/s/AKfycbwxL9zxyDG1T9gg9pPqzpRNzI5wFGNc9XR6aMMdax-PdUywFKKR-ace5_Biw4nfhT_MkA/exec';
 
-var VER = '17/11 d', NICK = 'faa26-nick', game = '', last = null, sent = false;
+var VER = '17/11 e', NICK = 'faa26-nick', game = '', last = null, sent = false;
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 function clean(n) { return String(n || '').replace(/[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ _.]/g, '').replace(/^[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]+/, '').slice(0, 12); }
@@ -56,7 +56,7 @@ function block(id) {
 function load(box, hint) {
   var msg = box.querySelector('.rk-msg'), ol = box.querySelector('ol');
   msg.textContent = 'Cargando…';
-  call({ a: 'top', g: game }).then(function (j) { if (box.id === 'rk-over' && sent) { return; } list(ol, j.top, getNick()); msg.textContent = hint || ''; })
+  call({ op: 'top', juego: game }).then(function (j) { if (box.id === 'rk-over' && sent) { return; } list(ol, j.top, getNick()); msg.textContent = hint || ''; })
     .catch(function () { msg.textContent = navigator.onLine === false ? 'Sin conexión: el ranking se ve con internet.' : 'No se pudo cargar el ranking.'; });
 }
 function send() {
@@ -65,7 +65,7 @@ function send() {
   if (!n) { msg.textContent = 'Poné un apodo (hasta 12 letras).'; inp.focus(); return; }
   if (sent || !last) { return; }
   setNick(n); sent = true; $('rk-send').disabled = true; msg.textContent = 'Subiendo…';
-  call({ a: 'add', g: game, n: n, s: last.score, c: last.coins || 0, t: Math.round(last.secs) })
+  call({ op: 'anotar', juego: game, apodo: n, metros: last.score, fichas: last.coins || 0, seg: Math.round(last.secs) })
     .then(function (j) { list(box.querySelector('ol'), j.top, n); msg.textContent = 'Quedaste en el puesto ' + j.pos + '.'; })
     .catch(function (e) {
       sent = false; $('rk-send').disabled = false;
