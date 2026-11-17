@@ -5,7 +5,7 @@
 'use strict';
 var CFG = window.FAA_CONFIG || {};
 var TZ = 'America/Argentina/Buenos_Aires';
-var K = { data: 'faa26-data', state: 'faa26-state', news: 'faa26-news', theme: 'faa26-theme', sync: 'faa26-sync', inst: 'faa26-install-hidden', open: 'faa26-open' };
+var K = { data: 'faa26-data', state: 'faa26-state', news: 'faa26-news', theme: 'faa26-theme', sync: 'faa26-sync', inst: 'faa26-install-hidden', open: 'faa26-open', game: 'faa26-juego-on' };
 var DAY_VIEWS = { hoy: 1, programa: 1, turnos: 1, traslados: 1, mapa: 1, arte: 1 };
 var SUB_VIEWS = { mapa: 1, arte: 1, equipo: 1, pendientes: 1, antes: 1, ajustes: 1 };
 
@@ -225,7 +225,7 @@ function installCard() {
   return det('inst-help', 'accent-x', '<span class="sum-t">Instalá la guía en tu teléfono</span><div class="sum-m">Cómo hacerlo en tu navegador</div>', installHelp() + '<button class="btn sm" type="button" data-act="install-hide">Ya está / no mostrar más</button>');
 }
 function vHoy() {
-  var p = me(), out = installCard();
+  var p = me(), out = installCard() + secretCard();
   if (!p) {
     return out + pdfCard() + '<section class="card accent"><h2 style="font-size:21px">¿Quién sos?</h2><p>Elegí tu nombre: esta pantalla te va a mostrar tus tareas, dónde tenés que estar y qué cambió.</p>' + whoSelect() + '<p class="small muted">Se guarda solo en este teléfono. Lo podés cambiar en Más → Ajustes.</p></section>' + programaMini();
   }
@@ -540,8 +540,10 @@ function vAntesCard() {
 }
 function vAntes() { var k = 'antes'; if (!(k in X.open)) { X.open[k] = 1; } return head('Antes del festival', '') + vAntesCard(); }
 function vMas() {
-  var it = [['mapa', 'Mapa y sedes', 'Dónde queda cada lugar y el recorrido del día'], ['arte', 'Ambientación', 'Qué ambienta Arte en cada sede'], ['equipo', 'Equipo', 'Quién está en cada área'], ['pendientes', 'Pendientes y avisos', 'Lo que falta confirmar, por día'], ['antes', 'Antes del festival', 'Fechas de la previa'], ['novedades', 'Novedades', 'Historial de cambios'], ['ajustes', 'Ajustes', 'Tu nombre, tema, avisos e instalación']];
-  return head('Más', '') + '<ul class="menu">' + it.map(function (x) { return '<li><button type="button" data-go="' + x[0] + '"><b>' + x[1] + '</b><span>' + x[2] + '</span></button></li>'; }).join('') + '</ul>';
+  var it = [];
+  if (lsGet(K.game)) { it.push(['', '¡Corre, sonidista!', 'La toma secreta del FAA!']); }
+  it = it.concat([['mapa', 'Mapa y sedes', 'Dónde queda cada lugar y el recorrido del día'], ['arte', 'Ambientación', 'Qué ambienta Arte en cada sede'], ['equipo', 'Equipo', 'Quién está en cada área'], ['pendientes', 'Pendientes y avisos', 'Lo que falta confirmar, por día'], ['antes', 'Antes del festival', 'Fechas de la previa'], ['novedades', 'Novedades', 'Historial de cambios'], ['ajustes', 'Ajustes', 'Tu nombre, tema, avisos e instalación']]);
+  return head('Más', '') + '<ul class="menu">' + it.map(function (x) { return '<li><button type="button" ' + (x[0] ? 'data-go="' + x[0] + '"' : 'data-act="juego"') + '><b>' + x[1] + '</b><span>' + x[2] + '</span></button></li>'; }).join('') + '</ul>';
 }
 function vAjustes() {
   var th = lsGet(K.theme) || 'auto', perm = ('Notification' in window) ? Notification.permission : 'unsupported';
@@ -641,6 +643,8 @@ document.addEventListener('click', function (e) {
   else if (act === 'reload') { location.reload(); }
   else if (act === 'pdf') { var dl = $('pdfsheet'); getPdfFile().catch(function () {}); if (dl.showModal) { dl.showModal(); } else { window.open(PDF, '_blank'); } }
   else if (act === 'pdf-close') { $('pdfsheet').close(); }
+  else if (act === 'juego') { openGame(); }
+  else if (act === 'juego-close') { $('juegosheet').close(); }
   else if (act === 'pdf-share') { sharePdf(); }
   else if (act === 'map-mine') { S.map.mine = true; S.map.focus = ''; go('mapa'); }
   else if (act === 'map-tr') { S.map.focus = t.getAttribute('data-tr'); S.map.mine = false; S.map.trl = true; go('mapa'); }
@@ -649,6 +653,31 @@ document.addEventListener('click', function (e) {
 });
 $('sync').addEventListener('click', function () { pull(true); });
 $('pdfsheet').addEventListener('click', function (e) { if (e.target === this) { this.close(); } });
+$('juegosheet').addEventListener('click', function (e) { if (e.target === this) { this.close(); } });
+
+/* ---------- Toma secreta: 5 toques seguidos al logo, o la invitación cuando no hay señal ---------- */
+function openGame() {
+  lsSet(K.game, 1);
+  var c = $('clap'); c.hidden = false;
+  if (navigator.vibrate) { try { navigator.vibrate([12, 40, 30]); } catch (er) {} }
+  setTimeout(function () { c.hidden = true; var dl = $('juegosheet'); if (dl.showModal) { dl.showModal(); } else { location.href = 'juego/carriles/'; } if (S.view === 'mas' || S.view === 'hoy') { render(true); } }, 700);
+}
+function secretCard() {
+  if (SYNC.state === 'off' || navigator.onLine === false) {
+    return '<section class="card secret"><p><b>¿Sin señal?</b> Mientras vuelve, corré, sonidista.</p><button class="btn sm pri" type="button" data-act="juego">Jugar</button></section>';
+  }
+  if (D.hint && D.hint.on && !lsGet(K.game)) { return '<section class="card secret"><p>' + esc(D.hint.text) + '</p></section>'; }
+  return '';
+}
+(function () {
+  var brand = document.querySelector('.brand'), taps = [];
+  brand.addEventListener('click', function () {
+    var now = Date.now();
+    taps = taps.filter(function (t) { return now - t < 2000; }); taps.push(now);
+    if (taps.length >= 3) { brand.classList.remove('clack'); void brand.offsetWidth; brand.classList.add('clack'); if (navigator.vibrate) { try { navigator.vibrate(8); } catch (er) {} } }
+    if (taps.length >= 5) { taps = []; openGame(); }
+  });
+})();
 document.addEventListener('change', function (e) {
   if (e.target.id !== 'who') { return; }
   S.me = e.target.value; S.tarea = ''; saveS(); render(true);
@@ -693,6 +722,7 @@ function diff(Aa, B) {
   function vn(v, room) { var o = B.venues[v] || Aa.venues[v] || { n: v || 'A confirmar' }; return o.n + (room ? ' · ' + room : ''); }
   function push(o) { out.push(o); }
   function evAreasIn(D0, id) { var s = {}; D0.shifts.forEach(function (x) { if ((x.ev || []).indexOf(id) > -1) { s[x.area] = 1; } }); return Object.keys(s); }
+  if (B.hint && B.hint.on && !(Aa.hint && Aa.hint.on)) { push({ ref: 'hint', day: 0, view: 'hoy', mine: false, text: B.hint.text }); }
   var a = idMap(Aa.events), b = idMap(B.events);
   Object.keys(b).forEach(function (id) {
     var n = b[id], o = a[id], base = { ref: 'ev:' + id, day: n.day, view: 'programa', mine: hit(evAreasIn(B, id).concat(n.leadAreas || [])) };
@@ -833,7 +863,7 @@ function start() {
   setInterval(function () { if (document.visibilityState === 'visible') { pull(); } }, (CFG.pollMinutes || 5) * 60000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && (!SYNC.at || Date.now() - SYNC.at > 60000)) { pull(); } if (D && document.visibilityState === 'visible') { render(true); } });
   window.addEventListener('online', function () { pull(); });
-  window.addEventListener('offline', function () { SYNC.state = 'off'; renderSync(); });
+  window.addEventListener('offline', function () { SYNC.state = 'off'; renderSync(); if (S.view === 'hoy') { render(true); } });
   setInterval(function () { if (D && document.visibilityState === 'visible' && (S.view === 'hoy' || S.view === 'programa')) { render(true); } }, 60000);
 }
 function boot() {

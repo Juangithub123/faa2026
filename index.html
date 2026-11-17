@@ -30,6 +30,19 @@
 <nav class="days" id="days" aria-label="Día del festival"></nav>
 <div id="banner"></div>
 <main id="app" tabindex="-1"><p class="loading">Cargando la logística…</p></main>
+<dialog class="sheet" id="juegosheet" aria-labelledby="juegot">
+  <div class="sheet-in">
+    <p class="kicker">Toma secreta</p>
+    <h2 id="juegot">¡Corre, sonidista!</h2>
+    <p class="small muted">Esquivá lo que se cruce en el set. Funciona también sin señal.</p>
+    <div class="jg">
+      <a class="jg-o" href="juego/carriles/"><b>Modo carriles</b><span>En 3D, de espaldas: cambiá de carril, saltá y rodá.</span></a>
+      <a class="jg-o" href="juego/"><b>Modo clásico</b><span>De costado, como el dinosaurio de Chrome.</span></a>
+    </div>
+    <button class="btn sm sheet-x" type="button" data-act="juego-close">Cerrar</button>
+  </div>
+</dialog>
+<div class="clap" id="clap" hidden aria-hidden="true"><div class="clap-b"><i></i><span>¡Acción!</span></div></div>
 <dialog class="sheet" id="pdfsheet" aria-labelledby="pdft">
   <div class="sheet-in">
     <p class="kicker">PDF · 264 KB</p>
