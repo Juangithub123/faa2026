@@ -189,9 +189,40 @@ function programaMini() {
   }).join('');
   return det('mini-' + S.day, '', '<span class="sum-t">Programa del ' + esc(dlong(S.day)) + '</span><div class="sum-m">' + list.length + ' actividades · abiertas al público</div>', '<ul class="list" style="border:0;margin:0 -14px -14px">' + rows + '</ul>');
 }
+function browserInfo() {
+  var ua = navigator.userAgent, ios = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1), android = /android/i.test(ua);
+  var b = /SamsungBrowser/i.test(ua) ? 'samsung' : /FxiOS|Firefox/i.test(ua) ? 'firefox' : /EdgiOS|EdgA|Edg\//i.test(ua) ? 'edge' : /OPR|Opera|OPT\//i.test(ua) ? 'opera' : /CriOS|Chrome/i.test(ua) ? 'chrome' : /Safari/i.test(ua) ? 'safari' : 'otro';
+  return { ios: ios, android: android, b: b, standalone: window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true };
+}
+function installSteps() {
+  var i = browserInfo();
+  if (i.ios) {
+    if (i.b === 'firefox') { return ['Tocá el menú ☰ (abajo a la derecha).', 'Elegí «Compartir».', 'Elegí «Agregar a inicio» y confirmá con «Agregar».']; }
+    if (i.b === 'chrome' || i.b === 'edge') { return ['Tocá el botón Compartir (el cuadrado con la flecha, en la barra de direcciones).', 'Bajá y elegí «Agregar a inicio».', 'Confirmá con «Agregar».']; }
+    return ['Tocá el botón Compartir (el cuadrado con la flecha hacia arriba).', 'Bajá y elegí «Agregar a inicio».', 'Confirmá con «Agregar».'];
+  }
+  if (i.android) {
+    if (i.b === 'firefox') { return ['Tocá el menú ⋮ (arriba o abajo a la derecha).', 'Elegí «Instalar» o «Agregar app a la pantalla de inicio».', 'Confirmá. Si solo aparece «Agregar a la pantalla de inicio», también sirve: funciona igual, sin señal incluida.']; }
+    if (i.b === 'samsung') { return ['Tocá el ícono de instalar en la barra de direcciones (una flecha hacia abajo), si aparece.', 'Si no: menú ☰ (abajo a la derecha) → «Agregar página a» → «Pantalla de inicio».', 'Confirmá con «Agregar».']; }
+    if (i.b === 'chrome' || i.b === 'edge' || i.b === 'opera') { return ['Tocá el menú ⋮ (arriba a la derecha).', 'Elegí «Instalar app» o «Agregar a la pantalla principal».', 'Confirmá con «Instalar».']; }
+    return ['Abrí esta misma dirección en Chrome o Firefox.', 'Desde el menú del navegador, elegí «Instalar» o «Agregar a la pantalla de inicio».'];
+  }
+  if (i.b === 'chrome' || i.b === 'edge') { return ['Hacé clic en el ícono de instalar al final de la barra de direcciones.', 'Confirmá con «Instalar».']; }
+  return ['En compu se usa mejor en Chrome o Edge (ícono de instalar en la barra de direcciones). En Firefox de escritorio se puede usar como página normal.'];
+}
+function installHelp() {
+  var i = browserInfo(), names = { chrome: 'Chrome', firefox: 'Firefox', samsung: 'Samsung Internet', edge: 'Edge', opera: 'Opera', safari: 'Safari', otro: 'tu navegador' };
+  if (i.standalone) { return '<p class="small">Ya la estás usando como app.</p>'; }
+  var where = (i.ios ? 'iPhone' : i.android ? 'Android' : 'compu') + ' · ' + names[i.b];
+  return (X.canInstall ? '<button class="btn sm pri" type="button" data-act="install">Instalar la guía</button><p class="small muted">O a mano:</p>' : '') +
+    '<p class="kicker">Detectamos: ' + esc(where) + '</p><ol class="steps">' + installSteps().map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>' +
+    '<p class="small muted">Queda con el ícono de FAA!, abre al toque y funciona sin señal.</p>';
+}
 function installCard() {
-  if (!X.canInstall || lsGet(K.inst)) { return ''; }
-  return '<section class="card accent"><h3>Instalá la guía en tu teléfono</h3><p class="small">Queda como una app, abre al toque y funciona sin señal.</p><div class="row-btns"><button class="btn sm pri" type="button" data-act="install">Instalar</button><button class="btn sm" type="button" data-act="install-hide">Ahora no</button></div></section>';
+  var i = browserInfo();
+  if (i.standalone || lsGet(K.inst) || (!i.ios && !i.android && !X.canInstall)) { return ''; }
+  if (X.canInstall) { return '<section class="card accent"><h3>Instalá la guía en tu teléfono</h3><p class="small">Queda como una app, abre al toque y funciona sin señal.</p><div class="row-btns"><button class="btn sm pri" type="button" data-act="install">Instalar</button><button class="btn sm" type="button" data-act="install-hide">Ahora no</button></div></section>'; }
+  return det('inst-help', 'accent-x', '<span class="sum-t">Instalá la guía en tu teléfono</span><div class="sum-m">Cómo hacerlo en tu navegador</div>', installHelp() + '<button class="btn sm" type="button" data-act="install-hide">Ya está / no mostrar más</button>');
 }
 function vHoy() {
   var p = me(), out = installCard();
@@ -439,7 +470,7 @@ function vAjustes() {
     (perm === 'unsupported' ? '<p class="small muted">Este navegador no permite avisos del sistema.</p>' : '<button class="btn sm' + (S.notif && perm === 'granted' ? '' : ' pri') + '" type="button" data-act="notif">' + (S.notif && perm === 'granted' ? 'Desactivar avisos del sistema' : 'Activar avisos del sistema') + '</button>' + (perm === 'denied' ? '<p class="small muted">Los avisos están bloqueados en la configuración del navegador.</p>' : '')) + '</section>';
   out += '<section class="card"><h3>Datos</h3><p class="small">' + (SYNC.at ? 'Última revisión: ' + clock(SYNC.at) : 'Todavía no se revisó.') + '</p><p class="small muted">Fuente: ' + esc(D.meta && D.meta.source || 'data.json') + '</p>' + (SYNC.msg ? '<p class="small fl">' + esc(SYNC.msg) + '</p>' : '') +
     '<div class="row-btns"><button class="btn sm pri" type="button" data-act="sync">Buscar actualizaciones</button><button class="btn sm" type="button" data-act="reset">Desmarcar todas las tareas</button></div></section>';
-  out += '<section class="card"><h3>Instalar en el teléfono</h3>' + (standalone ? '<p class="small">Ya la estás usando como app.</p>' : X.canInstall ? '<button class="btn sm pri" type="button" data-act="install">Instalar la guía</button>' : ios ? '<p class="small">En Safari: tocá Compartir y después "Agregar a inicio".</p>' : '<p class="small">En Chrome: menú ⋮ → "Instalar app" o "Agregar a la pantalla principal".</p>') + '</section>';
+  out += '<section class="card"><h3>Instalar en el teléfono</h3>' + installHelp() + '</section>';
   out += '<section class="card"><h3>Cómo se usa</h3><ul class="plain small"><li><b>Mi día</b>: tus tareas, la próxima con cuánto falta y cómo llegar.</li><li>Arriba elegís el día. Tocá cualquier tarjeta para ver el detalle.</li><li>Los círculos marcan tareas y cargas hechas (se guardan en tu teléfono).</li><li>La campana muestra los cambios. <span class="badge chg">Cambió</span> marca lo que se modificó.</li><li>El punto de arriba dice si los datos están al día.</li></ul></section>';
   return out;
 }
