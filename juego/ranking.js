@@ -4,19 +4,28 @@
 'use strict';
 var URL = 'https://script.google.com/macros/s/AKfycbwxL9zxyDG1T9gg9pPqzpRNzI5wFGNc9XR6aMMdax-PdUywFKKR-ace5_Biw4nfhT_MkA/exec';
 
-var VER = '17/11 c', NICK = 'faa26-nick', game = '', last = null, sent = false;
+var VER = '17/11 d', NICK = 'faa26-nick', game = '', last = null, sent = false;
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 function clean(n) { return String(n || '').replace(/[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ _.]/g, '').replace(/^[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]+/, '').slice(0, 12); }
 function getNick() { try { return localStorage.getItem(NICK) || ''; } catch (e) { return ''; } }
 function setNick(n) { try { localStorage.setItem(NICK, n); } catch (e) {} }
 
+/* Pedido al script de Google como JSONP: se carga como <script>, así no depende de los permisos entre sitios (CORS). */
+var seq = 0;
 function call(params) {
-  var q = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
-  var ctl = window.AbortController ? new AbortController() : null, t = setTimeout(function () { if (ctl) { ctl.abort(); } }, 25000); /* el script de Google puede tardar en "despertarse" */
-  return fetch(URL + '?' + q, { cache: 'no-store', signal: ctl ? ctl.signal : undefined })
-    .then(function (r) { clearTimeout(t); return r.json(); })
-    .then(function (j) { clearTimeout(t); if (!j.ok) { throw new Error(j.err || 'error'); } return j; });
+  return new Promise(function (resolve, reject) {
+    var cb = 'faarank' + Date.now().toString(36) + (seq++), el = document.createElement('script'), done = false;
+    params.cb = cb;
+    var q = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+    function fin() { done = true; clearTimeout(to); try { delete window[cb]; } catch (e) { window[cb] = undefined; } if (el.parentNode) { el.parentNode.removeChild(el); } }
+    function fail(name) { if (done) { return; } fin(); var e = new Error(name); e.name = name; reject(e); }
+    var to = setTimeout(function () { fail('Timeout'); }, 25000); /* el script de Google puede tardar en "despertarse" */
+    window[cb] = function (j) { if (done) { return; } fin(); if (!j || !j.ok) { reject(new Error((j && j.err) || 'error')); } else { resolve(j); } };
+    el.onerror = function () { fail('NetworkError'); };
+    el.src = URL + '?' + q;
+    document.head.appendChild(el);
+  });
 }
 function list(el, rows, me, myScore) {
   if (!rows || !rows.length) { el.innerHTML = '<li class="rk-empty">Todavía no hay tomas. ¡Sé la primera!</li>'; return; }
@@ -62,7 +71,7 @@ function send() {
       sent = false; $('rk-send').disabled = false;
       msg.textContent = e.message === 'puntaje' ? 'Ese puntaje no se pudo validar.' :
         navigator.onLine === false ? 'Sin señal: probá de nuevo cuando vuelva.' :
-        e.name === 'SyntaxError' ? 'El ranking respondió algo inesperado (revisar el script).' :
+        e.name === 'Timeout' ? 'El ranking tardó demasiado en responder. Probá de nuevo.' :
         /^script: /.test(e.message) ? 'Error del ranking: ' + e.message.slice(8) :
         'No se pudo conectar con el ranking (' + (e.name || 'error') + ').';
     });
