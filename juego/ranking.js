@@ -58,7 +58,13 @@ function send() {
   setNick(n); sent = true; $('rk-send').disabled = true; msg.textContent = 'Subiendo…';
   call({ a: 'add', g: game, n: n, s: last.score, c: last.coins || 0, t: Math.round(last.secs) })
     .then(function (j) { list(box.querySelector('ol'), j.top, n); msg.textContent = 'Quedaste en el puesto ' + j.pos + '.'; })
-    .catch(function (e) { sent = false; $('rk-send').disabled = false; msg.textContent = e.message === 'puntaje' ? 'Ese puntaje no se pudo validar.' : 'No se pudo subir. Probá de nuevo con señal.'; });
+    .catch(function (e) {
+      sent = false; $('rk-send').disabled = false;
+      msg.textContent = e.message === 'puntaje' ? 'Ese puntaje no se pudo validar.' :
+        navigator.onLine === false ? 'Sin señal: probá de nuevo cuando vuelva.' :
+        e.name === 'SyntaxError' ? 'El ranking respondió algo inesperado (revisar el script).' :
+        'No se pudo conectar con el ranking (' + (e.name || 'error') + ').';
+    });
 }
 
 window.FAARank = {
