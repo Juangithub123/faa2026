@@ -23,10 +23,20 @@ var scrollFar = 0, scrollMid = 0, scrollGround = 0, mountains = [];
 function resize() {
   var r = cv.parentElement.getBoundingClientRect();
   var land = window.matchMedia('(orientation:landscape) and (max-height:520px)').matches;
-  var aw = r.width, ah = land ? r.height : Math.min(r.height, r.width * 0.85);
-  W = Math.round(Math.max(240, Math.min(440, H * aw / Math.max(ah, 1))));
+  var vert = !land && r.height > r.width * 0.9;
+  if (vert) {
+    /* vertical: el lienzo ocupa toda la zona de juego; más cielo arriba y más suelo abajo */
+    W = Math.round(Math.max(220, Math.min(300, r.width / 1.6)));
+    H = Math.round(W * r.height / Math.max(r.width, 1));
+    GROUND = H - Math.max(24, Math.round(H * 0.2));
+    cv.className = 'full'; cv.style.width = ''; cv.style.height = '';
+  } else {
+    H = 200; GROUND = H - 24; cv.className = '';
+    var aw = r.width, ah = land ? r.height : Math.min(r.height, r.width * 0.85);
+    W = Math.round(Math.max(240, Math.min(440, H * aw / Math.max(ah, 1))));
+    if (!land) { cv.style.width = '100%'; cv.style.height = 'auto'; } else { cv.style.height = '100%'; cv.style.width = 'auto'; }
+  }
   cv.width = W; cv.height = H;
-  if (!land) { cv.style.width = '100%'; cv.style.height = 'auto'; } else { cv.style.height = '100%'; cv.style.width = 'auto'; }
   ctx.imageSmoothingEnabled = false;
   buildMountains();
   draw();
@@ -55,7 +65,7 @@ function beep(f1, f2, dur, type, vol) {
 /* ---------- Partida ---------- */
 function reset() {
   p = { y: 0, vy: 0, air: false, duck: false, hold: 0, land: 0 };
-  obs = []; dist = 0; speed = 150; nextGap = 220; seed = (Date.now() & 0xffff) || 1; deadT = 0;
+  obs = []; dist = 0; speed = 115; nextGap = 220; seed = (Date.now() & 0xffff) || 1; deadT = 0;
 }
 function start() {
   reset(); st = 'play'; takes++;
@@ -106,7 +116,7 @@ var G = 1500, JV = 430, STEP = 1 / 120;
 function update(dt) {
   frameT += dt;
   if (st !== 'play') { if (st === 'over') { deadT += dt; } return; }
-  speed = Math.min(430, 150 + dist * 0.045);
+  speed = Math.min(430, 115 + dist * 0.04);
   var dx = speed * dt; dist += dx; nextGap -= dx;
   scrollFar += dx * 0.12; scrollMid += dx * 0.4; scrollGround += dx;
   if (nextGap <= 0) { spawn(); }
@@ -175,7 +185,7 @@ function draw() {
   ctx.fillStyle = '#F6EFC4'; ctx.fillRect(0, GROUND, W, 2);
   ctx.fillStyle = '#8c3e16';
   var go = Math.floor(scrollGround % 16);
-  for (x = -go; x < W; x += 16) { ctx.fillRect(x, GROUND + 6, 6, 2); ctx.fillRect(x + 9, GROUND + 13, 3, 2); }
+  for (var gy = GROUND; gy < H; gy += 14) { for (x = -go; x < W; x += 16) { ctx.fillRect(x + (gy - GROUND) % 9, gy + 6, 6, 2); ctx.fillRect(x + 9, gy + 13, 3, 2); } }
   /* obstáculos */
   obs.forEach(function (o) {
     var a = A[o.k], y = o.air ? o.y + Math.round(Math.sin(frameT * 3 + o.bob) * 2) : o.y, x0 = Math.round(o.x);
