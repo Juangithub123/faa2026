@@ -249,15 +249,8 @@ var DUCKS = ['EDUCACIÓN|PÚBLICA', 'LA UNI|SE DEFIENDE', 'NI UN PASO|ATRÁS'].m
   L.forEach(function (l, i) { var w = g.measureText(l).width, k = Math.min(1, 44 / w); g.save(); g.translate(24, 6 + i * 8); g.scale(k, 1); g.fillText(l, 0, 0); g.restore(); });
   return c;
 });
-/* ficha "26" */
-var COIN = (function () {
-  var c = canvas(96, 96), g = c.getContext('2d');
-  g.fillStyle = '#6B2A0E'; g.beginPath(); g.arc(48, 48, 46, 0, 7); g.fill();
-  g.fillStyle = '#F4C95C'; g.beginPath(); g.arc(48, 48, 40, 0, 7); g.fill();
-  g.fillStyle = '#FFE08A'; g.beginPath(); g.arc(44, 44, 30, 0, 7); g.fill();
-  g.fillStyle = '#6B2A0E'; g.font = '900 40px ' + TXT; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('26', 48, 51);
-  return c;
-}());
+/* ficha: el 26 de la identidad del festival */
+var N26 = new Image(); N26.src = '../n26.png';
 
 /* ---------- Física (paso fijo) ---------- */
 var G = 1700, JV = 455, JV2 = 760, STEP = 1 / 120, ROLL = 0.8, GRACE = 0.085, ACC = 0.0052, FLYY = 150;
@@ -383,17 +376,21 @@ function sx(x, d) { return W / 2 + (x - camX) * F / d; }
 function sy(y, d) { return HOR + (CY - y) * F / d; }
 
 /* ---------- Dibujo ---------- */
-var SKY = [
-  [[246, 239, 196], [244, 201, 120], [226, 150, 90]],
-  [[244, 201, 120], [214, 120, 70], [140, 62, 40]],
-  [[90, 60, 110], [140, 62, 70], [107, 42, 14]]
+/* Paleta del escenario: cambia cada 1000 m (Arrayán → Campanilla → Chilco) y queda en Chilco. Es solo estética. */
+var THEMES = [
+  { sky: [[246, 239, 196], [244, 201, 120], [226, 150, 90]], mt: [150, 74, 40], sideA: [113, 53, 25], sideB: [122, 58, 28], edge: [185, 138, 62], trA: [71, 32, 13], trB: [64, 26, 10], dash: [167, 143, 106] },
+  { sky: [[242, 240, 205], [216, 222, 150], [158, 168, 92]], mt: [92, 98, 48], sideA: [82, 86, 32], sideB: [92, 96, 38], edge: [214, 202, 112], trA: [50, 52, 22], trB: [44, 46, 18], dash: [196, 190, 136] },
+  { sky: [[64, 28, 86], [150, 52, 122], [224, 92, 140]], mt: [96, 30, 82], sideA: [88, 28, 70], sideB: [99, 34, 79], edge: [226, 128, 176], trA: [44, 14, 40], trB: [38, 11, 34], dash: [206, 156, 196] }
 ];
 function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
 function mix(a, b, t) { return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]; }
 function rgb(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
-function skyAt(m) {
-  var c = (m / 600) % SKY.length, i = Math.floor(c), t = Math.min(1, (c - i) * 3), a = SKY[i], b = SKY[(i + 1) % SKY.length];
-  return a.map(function (col, k) { return mix(col, b[k], t); });
+function themeAt(m) {
+  /* el cambio se hace de a poco en los últimos 80 m antes de cada mil */
+  var k = Math.min(THEMES.length - 1, m / 1000), i = Math.floor(k), f = k - i, t = Math.max(0, Math.min(1, (f - 0.92) / 0.08));
+  var A = THEMES[i], B = THEMES[Math.min(THEMES.length - 1, i + 1)], o = {};
+  Object.keys(A).forEach(function (key) { o[key] = key === 'sky' ? A.sky.map(function (c, j) { return mix(c, B.sky[j], t); }) : mix(A[key], B[key], t); });
+  return o;
 }
 function box3(x0, x1, y0, y1, d, col) {
   /* rectángulo de frente (plano) a profundidad d */
@@ -529,8 +526,9 @@ function drawHud() {
 function drawCoin(c) {
   var d = c.z + D; if (d < 30) { return; }
   var y = c.y + Math.sin(frameT * 4 + c.ph) * 3, s = Math.abs(Math.cos(frameT * 3 + c.ph));
-  var sc = F / d, w = 20 * sc, X = sx(c.x == null ? c.lane * LW : c.x, d), Y = sy(y, d) - w, ww = w * Math.max(0.15, s);
-  ctx.drawImage(COIN, X - ww / 2, Y, ww, w);
+  if (!N26.complete || !N26.naturalWidth) { return; }
+  var sc = F / d, w = 23 * sc, h = w * N26.naturalHeight / N26.naturalWidth, X = sx(c.x == null ? c.lane * LW : c.x, d), ww = w * Math.max(0.15, s);
+  ctx.drawImage(N26, X - ww / 2, sy(y, d) - h, ww, h);
 }
 function drawPlayer() {
   var fr, flip = false, lean = p.lane * LW - p.x;
@@ -569,7 +567,7 @@ function bands(period, dA, dB, on, fn) {
 function draw() {
   if (!chr.complete || !p) { return; }
   ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = true;
-  var m = dist / PXM, sky = skyAt(m), i;
+  var m = dist / PXM, TH = themeAt(m), sky = TH.sky, i;
   var ox = shake > 0 ? (Math.random() - 0.5) * 6 * shake / 0.35 : 0, oy = shake > 0 ? (Math.random() - 0.5) * 4 * shake / 0.35 : 0;
   ctx.save(); ctx.translate(ox, oy);
   /* cielo */
@@ -578,7 +576,7 @@ function draw() {
   ctx.fillStyle = sg; ctx.fillRect(-6, -6, W + 12, HOR + 7);
   /* cordillera (se corre apenas con la cámara) */
   var off = camX * 0.15;
-  ctx.fillStyle = rgb(mix(sky[2], [58, 22, 6], 0.35)); ctx.beginPath(); ctx.moveTo(-6, HOR + 1);
+  ctx.fillStyle = rgb(TH.mt); ctx.beginPath(); ctx.moveTo(-6, HOR + 1);
   for (var x = -6; x <= W + 6; x += 3) {
     var u = (x + off) / 9, i0 = Math.floor(u), fr = u - i0;
     var h0 = mountains[((i0 % 64) + 64) % 64], h1 = mountains[(((i0 + 1) % 64) + 64) % 64];
@@ -586,15 +584,16 @@ function draw() {
   }
   ctx.lineTo(W + 6, HOR + 1); ctx.closePath(); ctx.fill();
   /* suelo con polígonos en perspectiva */
-  var fog = rgb(mix(sky[2], [107, 42, 14], 0.4));
+  var fog = rgb(mix(sky[2], TH.sideA, 0.45));
   ctx.fillStyle = fog; ctx.fillRect(-6, HOR, W + 12, H - HOR + 8);
   var y0 = HOR + CY * F / DMAX, dN = CY * F / (H + 8 - HOR);
-  ctx.fillStyle = '#713519'; ctx.fillRect(-6, y0, W + 12, H - y0 + 8);
-  bands(90, dN, DMAX, 1, function (d0, d1) { ctx.fillStyle = '#7a3a1c'; ctx.fillRect(-6, sy(0, d1), W + 12, sy(0, d0) - sy(0, d1)); });
-  trap(-1.5 * LW - 7, 1.5 * LW + 7, dN, DMAX, '#b98a3e');
-  trap(-1.5 * LW, 1.5 * LW, dN, DMAX, '#47200d');
-  bands(46, dN, DMAX, 1, function (d0, d1) { trap(-1.5 * LW, 1.5 * LW, d0, d1, '#401a0a'); });
-  bands(60, dN, DMAX, 0, function (d0, d1) { trap(-LW / 2 - 1.5, -LW / 2 + 1.5, d0, d1, '#a78f6a'); trap(LW / 2 - 1.5, LW / 2 + 1.5, d0, d1, '#a78f6a'); });
+  ctx.fillStyle = rgb(TH.sideA); ctx.fillRect(-6, y0, W + 12, H - y0 + 8);
+  bands(90, dN, DMAX, 1, function (d0, d1) { ctx.fillStyle = rgb(TH.sideB); ctx.fillRect(-6, sy(0, d1), W + 12, sy(0, d0) - sy(0, d1)); });
+  var cEdge = rgb(TH.edge), cTrB = rgb(TH.trB), cDash = rgb(TH.dash);
+  trap(-1.5 * LW - 7, 1.5 * LW + 7, dN, DMAX, cEdge);
+  trap(-1.5 * LW, 1.5 * LW, dN, DMAX, rgb(TH.trA));
+  bands(46, dN, DMAX, 1, function (d0, d1) { trap(-1.5 * LW, 1.5 * LW, d0, d1, cTrB); });
+  bands(60, dN, DMAX, 0, function (d0, d1) { trap(-LW / 2 - 1.5, -LW / 2 + 1.5, d0, d1, cDash); trap(LW / 2 - 1.5, LW / 2 + 1.5, d0, d1, cDash); });
   /* niebla en el horizonte */
   var gr = ctx.createLinearGradient(0, HOR, 0, y0 + 26);
   gr.addColorStop(0, fog); gr.addColorStop(1, 'rgba(0,0,0,0)');
