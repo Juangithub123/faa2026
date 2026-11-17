@@ -117,7 +117,10 @@ function makeRow(z) {
     if (placed >= 2 || rnd() > (o.t === 'stack' ? 0.4 : 0.7)) { return; }
     var c, mid = o.z + o.len / 2, after = o.z + o.len + 26;
     if (o.t === 'low') {
-      for (c = -2; c <= 2; c++) { var u = c / 2.4; coins.push({ lane: o.lane, z: mid + c * 26, y: 16 + 40 * (1 - u * u), ph: c * 0.6 }); }
+      /* el arco sigue la curva real del salto a la velocidad que habrá al llegar: más rápido = fichas más separadas */
+      var v = Math.min(920, speed + z * 0.0105), ta = JV / G;
+      for (c = -2; c <= 2; c++) { var t = ta + c * 0.085; coins.push({ lane: o.lane, z: mid + v * (t - ta), y: 16 + JV * t - G * t * t / 2, ph: c * 0.6 }); }
+      after = mid + v * (2 * ta - ta) + 30;
     } else if (o.t === 'duck') {
       for (c = 0; c < 3; c++) { coins.push({ lane: o.lane, z: o.z - 6 + c * 19, y: 9, ph: c * 0.6 }); }
     } else if (o.t !== 'stack') { return; }
@@ -268,7 +271,7 @@ function update(dt) {
   /* fichas */
   for (i = coins.length - 1; i >= 0; i--) {
     var c = coins[i];
-    if (Math.abs(c.z) < 20 && Math.abs(p.x - c.lane * LW) < 26 && Math.abs(c.y - 16 - p.y) < 30) {
+    if (Math.abs(c.z) < 20 && Math.abs(p.x - c.lane * LW) < 26 && Math.abs(c.y - 16 - p.y) < 34) {
       coins.splice(i, 1); nCoins++; $('coins').textContent = nCoins;
       beep(880 + (nCoins % 5) * 60, 1320, 0.07, 'square', 0.03);
     }
