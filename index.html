@@ -22,6 +22,7 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2.5h8l4.5 4.5v13A1.5 1.5 0 0 1 17 21.5H6A1.5 1.5 0 0 1 4.5 20V4A1.5 1.5 0 0 1 6 2.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M13.5 2.5V7.5h5M8 13h8M8 16.5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Cronograma</span>
   </button>
   <button class="sync" id="sync" type="button" aria-live="polite">…</button>
+  <button class="helpbtn" id="helpbtn" type="button" data-act="help" aria-label="Ayuda: cómo usar la guía">?</button>
   <button class="bell" id="bell" type="button" data-go="novedades" aria-label="Novedades">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6v3.6L4.3 15.4A1 1 0 0 0 5.2 17h13.6a1 1 0 0 0 .9-1.6L18 12.6V9a6 6 0 0 0-6-6Zm-2.4 15.5a2.5 2.5 0 0 0 4.8 0Z" fill="currentColor"/></svg>
     <span class="dot" id="bellcount" hidden></span>
@@ -30,6 +31,7 @@
 <nav class="days" id="days" aria-label="Día del festival"></nav>
 <div id="banner"></div>
 <main id="app" tabindex="-1"><p class="loading">Cargando la logística…</p></main>
+<dialog class="sheet help" id="helpsheet" aria-labelledby="helpt"><div class="sheet-in" id="helpin"></div></dialog>
 <dialog class="sheet" id="juegosheet" aria-labelledby="juegot">
   <div class="sheet-in">
     <p class="kicker">Toma secreta</p>

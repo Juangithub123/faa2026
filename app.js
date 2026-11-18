@@ -5,7 +5,7 @@
 'use strict';
 var CFG = window.FAA_CONFIG || {};
 var TZ = 'America/Argentina/Buenos_Aires';
-var K = { data: 'faa26-data', state: 'faa26-state', news: 'faa26-news', theme: 'faa26-theme', sync: 'faa26-sync', inst: 'faa26-install-hidden', open: 'faa26-open', game: 'faa26-juego-on' };
+var K = { data: 'faa26-data', state: 'faa26-state', news: 'faa26-news', theme: 'faa26-theme', sync: 'faa26-sync', inst: 'faa26-install-hidden', open: 'faa26-open', game: 'faa26-juego-on', help: 'faa26-ayuda-vista' };
 var DAY_VIEWS = { hoy: 1, programa: 1, turnos: 1, traslados: 1, mapa: 1, arte: 1 };
 var SUB_VIEWS = { mapa: 1, arte: 1, equipo: 1, pendientes: 1, antes: 1, ajustes: 1 };
 
@@ -542,8 +542,9 @@ function vAntes() { var k = 'antes'; if (!(k in X.open)) { X.open[k] = 1; } retu
 function vMas() {
   var it = [];
   if (lsGet(K.game)) { it.push(['', '¡Corre, sonidista!', 'La toma secreta del FAA!']); }
+  it.push(['?', 'Ayuda', 'Cómo usar la guía y qué significa cada cosa']);
   it = it.concat([['mapa', 'Mapa y sedes', 'Dónde queda cada lugar y el recorrido del día'], ['arte', 'Ambientación', 'Qué ambienta Arte en cada sede'], ['equipo', 'Equipo', 'Quién está en cada área'], ['pendientes', 'Pendientes y avisos', 'Lo que falta confirmar, por día'], ['antes', 'Antes del festival', 'Fechas de la previa'], ['novedades', 'Novedades', 'Historial de cambios'], ['ajustes', 'Ajustes', 'Tu nombre, tema, avisos e instalación']]);
-  return head('Más', '') + '<ul class="menu">' + it.map(function (x) { return '<li><button type="button" ' + (x[0] ? 'data-go="' + x[0] + '"' : 'data-act="juego"') + '><b>' + x[1] + '</b><span>' + x[2] + '</span></button></li>'; }).join('') + '</ul>';
+  return head('Más', '') + '<ul class="menu">' + it.map(function (x) { return '<li><button type="button" ' + (x[0] === '?' ? 'data-act="help"' : x[0] ? 'data-go="' + x[0] + '"' : 'data-act="juego"') + '><b>' + x[1] + '</b><span>' + x[2] + '</span></button></li>'; }).join('') + '</ul>';
 }
 function vAjustes() {
   var th = lsGet(K.theme) || 'auto', perm = ('Notification' in window) ? Notification.permission : 'unsupported';
@@ -619,7 +620,7 @@ window.addEventListener('popstate', function () { if (D && readHash()) { X.readB
 document.addEventListener('click', function (e) {
   var t = e.target.closest('[data-go],[data-day],[data-done],[data-tarea],[data-mine],[data-layer],[data-maptab],[data-theme],[data-act]');
   if (!t) { return; }
-  if (!D && !/^pdf/.test(t.getAttribute('data-act') || '')) { return; }
+  if (!D && !/^(pdf|help)/.test(t.getAttribute('data-act') || '')) { return; }
   if (t.hasAttribute('data-go')) { go(t.getAttribute('data-go')); return; }
   if (t.hasAttribute('data-day')) { S.day = +t.getAttribute('data-day'); setHash(); render(); return; }
   if (t.hasAttribute('data-done')) {
@@ -643,6 +644,9 @@ document.addEventListener('click', function (e) {
   else if (act === 'reload') { location.reload(); }
   else if (act === 'pdf') { var dl = $('pdfsheet'); getPdfFile().catch(function () {}); if (dl.showModal) { dl.showModal(); } else { window.open(PDF, '_blank'); } }
   else if (act === 'pdf-close') { $('pdfsheet').close(); }
+  else if (act === 'help') { openHelp(false); }
+  else if (act === 'help-close') { $('helpsheet').close(); }
+  else if (act === 'help-go') { $('helpsheet').close(); go(t.getAttribute('data-to')); }
   else if (act === 'juego') { openGame(); }
   else if (act === 'juego-close') { $('juegosheet').close(); }
   else if (act === 'pdf-share') { sharePdf(); }
@@ -654,6 +658,57 @@ document.addEventListener('click', function (e) {
 $('sync').addEventListener('click', function () { pull(true); });
 $('pdfsheet').addEventListener('click', function (e) { if (e.target === this) { this.close(); } });
 $('juegosheet').addEventListener('click', function (e) { if (e.target === this) { this.close(); } });
+
+/* ---------- Ayuda: aparece sola la primera vez y queda en el botón "?" de arriba y en Más ---------- */
+function go2(to, txt) { return '<button class="btn sm" type="button" data-act="help-go" data-to="' + to + '">' + txt + '</button>'; }
+var HELP = [
+  ['Primeros pasos', 'empezar inicio nombre instalar', '<p>1. Elegí tu nombre en <b>Más → Ajustes → Quién sos</b>: así la guía marca tus turnos y arma tu día.</p><p>2. Instalala en el teléfono: abre al toque y funciona sin señal.</p><p>3. Activá los avisos para enterarte si cambia algo.</p><p>' + go2('ajustes', 'Ir a Ajustes') + '</p>'],
+  ['¿Qué muestra "Mi día"?', 'hoy inicio mis turnos ahora', '<p>Lo tuyo del día elegido: qué estás haciendo <b>ahora</b>, tus próximos turnos y traslados, tu recorrido entre sedes, las comidas y un resumen de la programación.</p><p>Si todavía no elegiste tu nombre, muestra el día completo.</p>'],
+  ['¿Cómo cambio de día?', 'dia fecha miercoles jueves viernes sabado domingo', '<p>Con la barra de días de arriba. La guía arranca sola en el día de hoy durante el festival.</p>'],
+  ['¿Dónde está toda la programación?', 'programa cronograma actividades peliculas proyecciones horario', '<p>En <b>Programa</b>: cada actividad del día con horario, sede, sala y quién está a cargo. En las proyecciones podés ver las películas de cada bloque con sus afiches.</p>'],
+  ['¿Qué son los Turnos?', 'turnos areas tareas responsables', '<p>Las tareas de cada área, con horario, lugar y quiénes van. Arriba podés filtrar por área. Lo de tu área aparece marcado como <b>Tu área</b>.</p>'],
+  ['¿Qué es una "Sugerencia"?', 'sugerencia sugerencias propuesta apoyo opcional', '<p>Tareas de apoyo propuestas que <b>no</b> están en el cronograma oficial. Aparecen en recuadros desplegables para no mezclarse con lo oficial. Si un área necesita apoyo, lo pide por los canales de siempre.</p>'],
+  ['¿Qué significan las etiquetas?', 'etiquetas colores ahora cambio confirmar badge', '<p><b>Ahora</b>: está pasando en este momento.</p><p><b>Cambió</b>: se modificó hace poco (mirá el detalle en Novedades).</p><p><b>A confirmar</b>: falta definir algún dato.</p><p><b>Tu área</b>: le toca a tu área.</p><p><b>Sugerencia</b>: apoyo propuesto, no oficial.</p>'],
+  ['¿Qué es un "relevo"?', 'relevo almuerzo merienda turnarse', '<p>Turnarse con otra persona del área para almorzar o merendar sin dejar la tarea sola.</p>'],
+  ['¿Cómo veo los traslados?', 'traslados equipos camioneta auto llevar cargar', '<p>En <b>Traslados</b>: qué se lleva, desde dónde, hacia dónde, a qué hora y quién. Cada traslado tiene <b>Ver en el mapa de la guía</b> y <b>Ruta en Google Maps</b>.</p>'],
+  ['¿Dónde queda cada lugar?', 'mapa sedes lugares direccion ubicacion recorrido caminar', '<p>En <b>Más → Mapa y sedes</b>: todas las sedes en el mapa, tu recorrido del día con el tiempo a pie entre una y otra, y el botón <b>Mi ubicación</b>. Algunos lugares no figuran en el mapa a propósito.</p><p>' + go2('mapa', 'Abrir el mapa') + '</p>'],
+  ['¿Cómo comparto o descargo el cronograma?', 'pdf cronograma compartir descargar whatsapp', '<p>Con el botón <b>Cronograma</b> de arriba: lo podés compartir (por ejemplo por WhatsApp), descargar o ver.</p>'],
+  ['¿Cómo me entero si cambia algo?', 'avisos novedades notificaciones cambios campanita', '<p>Cuando se publica un cambio, la guía muestra un mensaje y lo suma a <b>Novedades</b> (la campanita de arriba, con un numerito). En <b>Ajustes</b> podés activar los avisos del teléfono.</p><p>' + go2('novedades', 'Ver Novedades') + '</p>'],
+  ['¿Funciona sin señal?', 'sin señal internet offline conexion datos actualizar', '<p>Sí: después de abrirla una vez con internet, queda guardada en el teléfono. El indicador de arriba dice si está <b>Al día</b> o <b>Sin conexión</b>; tocalo para buscar cambios. Cuando vuelve la señal, se actualiza sola.</p>'],
+  ['¿Cómo la instalo en el teléfono?', 'instalar app pantalla de inicio acceso directo chrome firefox iphone samsung', '<p>En <b>Ajustes</b> están los pasos según tu navegador (Chrome, Samsung, Firefox, iPhone…). Queda como una app más.</p><p>' + go2('ajustes', 'Ver cómo instalarla') + '</p>'],
+  ['¿Qué falta confirmar?', 'pendientes avisos confirmar falta', '<p>En <b>Más → Pendientes y avisos</b>, ordenado por día.</p>'],
+  ['¿Quién está en cada área?', 'equipo staff personas areas contacto', '<p>En <b>Más → Equipo</b>.</p>'],
+  ['¿Qué ambienta Arte en cada sede?', 'arte ambientacion decoracion sedes', '<p>En <b>Más → Ambientación</b>.</p>'],
+  ['¿Qué pasa antes del festival?', 'antes previa ensayo armado reunion', '<p>En <b>Más → Antes del festival</b> están las fechas de la previa.</p>'],
+  ['¿Puedo marcar tareas como hechas?', 'tildar marcar hecho check tareas', '<p>Sí: tocá el círculo al lado de cada tarea. Se guarda solo en tu teléfono.</p>'],
+  ['¿Hay modo oscuro?', 'tema oscuro claro noche colores', '<p>En <b>Ajustes → Tema</b>.</p>'],
+  ['Algo está mal o no lo encuentro', 'error mal problema contacto ayuda coordinacion', '<p>Avisá a Coordinación por el grupo del staff: la guía se corrige y te llega el aviso del cambio.</p>']
+];
+function norm(t) { return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/<[^>]+>/g, ' '); }
+function openHelp(first) {
+  var box = $('helpin');
+  box.innerHTML = '<p class="kicker">Ayuda</p><h2 id="helpt">Cómo usar la guía</h2>' +
+    (first ? '<div class="help-first"><b>¡Hola, staff del FAA!</b><ol><li>Elegí tu nombre: así ves tus turnos.</li><li>Instalala en el teléfono: anda sin señal.</li><li>Esta ayuda queda siempre en el botón <b>?</b> de arriba.</li></ol><div class="row-btns">' + go2('ajustes', 'Elegir mi nombre') + '<button class="btn sm pri" type="button" data-act="help-close">Entendido</button></div></div>' : '') +
+    '<input class="help-search" id="helpq" type="search" placeholder="Buscá: traslado, turno, mapa, PDF…" aria-label="Buscar en la ayuda" autocomplete="off">' +
+    '<div class="help-list" id="helplist">' + HELP.map(function (h, i) { return '<details data-i="' + i + '"><summary>' + h[0] + '</summary><div class="ans">' + h[2] + '</div></details>'; }).join('') + '</div>' +
+    '<p class="help-none" id="helpnone" hidden>No encontré nada con eso. Probá con otra palabra o avisá a Coordinación.</p>' +
+    '<button class="btn sm sheet-x" type="button" data-act="help-close">Cerrar</button>';
+  $('helpq').addEventListener('input', function () {
+    var q = norm(this.value).trim(), words = q.split(/\s+/).filter(Boolean), shown = 0;
+    box.querySelectorAll('#helplist details').forEach(function (d) {
+      var h = HELP[+d.getAttribute('data-i')], txt = norm(h[0] + ' ' + h[1] + ' ' + h[2]);
+      var ok = words.every(function (w) { return txt.indexOf(w) > -1; });
+      d.hidden = !ok; if (ok) { shown++; }
+      d.open = ok && words.length > 0 && shown <= 2;
+    });
+    $('helpnone').hidden = shown > 0;
+  });
+  var dl = $('helpsheet');
+  if (dl.showModal) { if (!dl.open) { dl.showModal(); } } else { dl.setAttribute('open', ''); }
+  box.scrollTop = 0;
+}
+$('helpsheet').addEventListener('click', function (e) { if (e.target === this) { this.close(); } });
+$('helpsheet').addEventListener('close', function () { lsSet(K.help, 1); });
 
 /* ---------- Toma secreta: 5 toques seguidos al logo, o la invitación cuando no hay señal ---------- */
 function openGame() {
@@ -872,6 +927,8 @@ function boot() {
   var ti = todayIdx(); S.day = ti > -1 ? ti : 0;
   if (!readHash()) { S.view = 'hoy'; history.replaceState(null, '', '#hoy-' + D.days[S.day].k); }
   render();
+  /* la primera vez que se abre la guía, aparece la ayuda */
+  if (!lsGet(K.help)) { setTimeout(function () { openHelp(true); }, 500); }
 }
 start();
 })();
