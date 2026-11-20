@@ -1,0 +1,391 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FAA! 2026//Guia de logistica//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:FAA! 2026 · Mis turnos (Maia)
+X-WR-TIMEZONE:America/Argentina/Buenos_Aires
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+X-WR-CALDESC:Turnos oficiales del staff del FAA! 2026
+BEGIN:VEVENT
+UID:faa2026-s140-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261125T160000Z
+DTEND:20261125T190000Z
+SUMMARY:Turno FAA!: Coordinar los traslados de escenario\, sillas y equipos
+  hacia el Gimnasio
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nSalidas: 13:00 escenario\, 13:30 silla
+ s\, 14:00 estructuras y mesa de streaming\, 15:00 equipamiento.\nGuía del
+  staff: https://juangithub123.github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-25
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Coordinar los traslados de escenario\, sillas y equ
+ ipos hacia el Gimnasio
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s150-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261125T170000Z
+DTEND:20261125T190000Z
+SUMMARY:Turno FAA!: Estructuras y mesa de streaming (14:00) y equipamiento 
+ de Streaming (15:00) al Gimnasio
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Streaming.\nTabla y dos atriles (o dos mesas) viajan c
+ on el escenario.\nGuía del staff: https://juangithub123.github.io/faa2026
+ /
+URL:https://juangithub123.github.io/faa2026/#turnos-25
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Estructuras y mesa de streaming (14:00) y equipamie
+ nto de Streaming (15:00) al Gimnasio
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s174-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261125T170000Z
+DTEND:20261125T182000Z
+SUMMARY:Turno FAA!: A cargo: Taller “Ficciones para sobrevivir: autoficci
+ ón\, política y deseo”
+LOCATION:Virtual
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-25
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: A cargo: Taller “Ficciones para sobrevivir: autof
+ icción\, política y deseo”
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s9-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261125T220000Z
+DTEND:20261126T013000Z
+SUMMARY:Turno FAA!: Transmisión de la Ceremonia de Apertura
+LOCATION:Gimnasio Municipal\, Perito Moreno 2490 · Gimnasio Prof. Américo
+  Torres\, El Bolsón
+DESCRIPTION:Turno de Streaming.\nGuía del staff: https://juangithub123.git
+ hub.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-25
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Transmisión de la Ceremonia de Apertura
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s175-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261125T220000Z
+DTEND:20261125T234000Z
+SUMMARY:Turno FAA!: A cargo: Sunset FAA! de la Ceremonia de Apertura
+LOCATION:Gimnasio Municipal\, Perito Moreno 2490 · Gimnasio Prof. Américo
+  Torres\, El Bolsón
+DESCRIPTION:Turno de Streaming.\nGuía del staff: https://juangithub123.git
+ hub.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-25
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: A cargo: Sunset FAA! de la Ceremonia de Apertura
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s141-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261126T023000Z
+DTEND:20261126T031000Z
+SUMMARY:Turno FAA!: Enlace del regreso de sillas\, estructuras y equipos a 
+ la Uni
+LOCATION:Gimnasio Municipal\, Perito Moreno 2490 · Gimnasio Prof. Américo
+  Torres\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nA las 00:00 todo tiene que quedar en l
+ a Uni.\nGuía del staff: https://juangithub123.github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-25
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Enlace del regreso de sillas\, estructuras y equipo
+ s a la Uni
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s142-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261126T130000Z
+DTEND:20261126T140000Z
+SUMMARY:Turno FAA!: Coordinar la devolución del escenario y las sillas al 
+ Bicentenario
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Coordinar la devolución del escenario y las sillas
+  al Bicentenario
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s176-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261126T170000Z
+DTEND:20261126T190000Z
+SUMMARY:Turno FAA!: A cargo: Taller de Foley
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: A cargo: Taller de Foley
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s177-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T023000Z
+DTEND:20261127T033000Z
+SUMMARY:Turno FAA!: A cargo: Karaoke de Películas
+LOCATION:Entre Amigos\, Perito Moreno 2931\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: A cargo: Karaoke de Películas
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s37-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T133000Z
+DTEND:20261127T153000Z
+SUMMARY:Turno FAA!: Enlace del seminario
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-27
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Enlace del seminario
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s178-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T170000Z
+DTEND:20261127T180000Z
+SUMMARY:Turno FAA!: A cargo: Conversatorio con Patricio Vega
+LOCATION:Moreno 1975
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-27
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: A cargo: Conversatorio con Patricio Vega
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s152-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T190000Z
+DTEND:20261127T200000Z
+SUMMARY:Turno FAA!: Llevar Streaming\, sus equipos y la pantalla redonda al
+  Bicentenario (16:00)
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Streaming.\nStreaming había pedido la tabla y los atr
+ iles en el Bicentenario a las 14:00: confirmar.\nGuía del staff: https://
+ juangithub123.github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-27
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Llevar Streaming\, sus equipos y la pantalla redond
+ a al Bicentenario (16:00)
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s179-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T190000Z
+DTEND:20261127T201500Z
+SUMMARY:Turno FAA!: A cargo: Seminario “Lo eclipsado: una revisión hist
+ órica sobre la participación de las mujeres en el cine mudo”
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-27
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: A cargo: Seminario “Lo eclipsado: una revisión h
+ istórica sobre la participación de las mujeres en el cine mudo”
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s62-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T133000Z
+DTEND:20261128T160000Z
+SUMMARY:Turno FAA!: Enlace del workshop de fotografía
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Enlace del workshop de fotografía
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s63-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T170000Z
+DTEND:20261128T223000Z
+SUMMARY:Turno FAA!: Cronometraje del Sunset Jam y la Competencia global
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Cronometraje del Sunset Jam y la Competencia global
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s78-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T220000Z
+DTEND:20261128T223000Z
+SUMMARY:Turno FAA!: Llevar la pantalla redonda y el equipo de Streaming al 
+ Bicentenario (19:00)
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Streaming.\nGuía del staff: https://juangithub123.git
+ hub.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Llevar la pantalla redonda y el equipo de Streaming
+  al Bicentenario (19:00)
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s64-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T223000Z
+DTEND:20261129T013000Z
+SUMMARY:Turno FAA!: Cronometraje de la Ceremonia de Cierre
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Cronometraje de la Ceremonia de Cierre
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s80-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T230000Z
+DTEND:20261129T020000Z
+SUMMARY:Turno FAA!: Transmisión de la Ceremonia de Cierre
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Turno de Streaming.\nGuía del staff: https://juangithub123.git
+ hub.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Transmisión de la Ceremonia de Cierre
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s65-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261129T013000Z
+DTEND:20261129T023000Z
+SUMMARY:Turno FAA!: Enlace del traslado de todo a la Casa de Merlin (23:00)
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Enlace del traslado de todo a la Casa de Merlin (23
+ :00)
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s87-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261129T143000Z
+DTEND:20261129T170000Z
+SUMMARY:Turno FAA!: Coordinar el traslado de todo desde la Casa de Merlin a
+  la Uni (12:00)
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-29
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Coordinar el traslado de todo desde la Casa de Merl
+ in a la Uni (12:00)
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s88-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261129T183000Z
+DTEND:20261129T203000Z
+SUMMARY:Turno FAA!: Cronometraje de la proyección de ganadores
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Coordinación.\nGuía del staff: https://juangithub123
+ .github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-29
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Cronometraje de la proyección de ganadores
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s94-p6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261129T183000Z
+DTEND:20261129T203000Z
+SUMMARY:Turno FAA!: Transmisión de la proyección de ganadores
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Streaming.\nGuía del staff: https://juangithub123.git
+ hub.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-29
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Transmisión de la proyección de ganadores
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

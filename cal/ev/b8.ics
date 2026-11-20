@@ -1,0 +1,31 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FAA! 2026//Guia de logistica//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Proyección de Competencia de Animación · FAA! 2026
+X-WR-TIMEZONE:America/Argentina/Buenos_Aires
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+BEGIN:VEVENT
+UID:faa2026-b8@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T011000Z
+DTEND:20261127T015200Z
+SUMMARY:Proyección de Competencia de Animación · FAA! 2026
+LOCATION:Entre Amigos\, Perito Moreno 2931\, El Bolsón
+DESCRIPTION:Programa:\n· Requiescat — Juan Camardella\n· Lo leí en Wat
+ tpad — Franco Dingevan\n· Bajo el sol del norte — Renata Di Florio\, 
+ Constanza Gonzalez\, Valeria Rowinski\n· Algo para recordar — Estanisla
+ o Cortada\n· Yellow — Pablo Flores\n· ¡Florecerán! — Claudia Ruiz\
+ n· COSMOS — Catriel Sanchez C.\n· EROS (morir en el otro) — Manuel P
+ olleri\n· Miss Mix — Vir Zone\n· Microcosmos — María Lorenzo\nFAA! 
+ 2026 · Festival Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Proyección de Competencia de Animación · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

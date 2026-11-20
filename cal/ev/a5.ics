@@ -1,0 +1,27 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FAA! 2026//Guia de logistica//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Sunset FAA! de la Ceremonia de Apertura · FAA! 2026
+X-WR-TIMEZONE:America/Argentina/Buenos_Aires
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+BEGIN:VEVENT
+UID:faa2026-a5@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261125T220000Z
+DTEND:20261125T234000Z
+SUMMARY:Sunset FAA! de la Ceremonia de Apertura · FAA! 2026
+LOCATION:Gimnasio Municipal\, Perito Moreno 2490 · Gimnasio Prof. Américo
+  Torres\, El Bolsón
+DESCRIPTION:Orquesta Ayün Hueney y videomapping\, música en vivo\nFAA! 20
+ 26 · Festival Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-25
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Sunset FAA! de la Ceremonia de Apertura · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

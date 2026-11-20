@@ -1,0 +1,32 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FAA! 2026//Guia de logistica//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Proyección de Cortos Patagónicos · FAA! 2026
+X-WR-TIMEZONE:America/Argentina/Buenos_Aires
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+BEGIN:VEVENT
+UID:faa2026-b4@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261126T205000Z
+DTEND:20261126T221000Z
+SUMMARY:Proyección de Cortos Patagónicos · FAA! 2026
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Programa:\n· A los que se han apagado — Alma Terzibachian\n
+ · Inchegen Awka Liwen — Yvana Juárez\n· Origen Anunn — Jesús Sarro
+ cco\n· Como dos extraños — Damián Martínez\n· Casi — Andrés Octa
+ vio Quintana\n· La fragilidad de un cuervo solitario — Emanuel Nazareno
+  Fernandez\n· Lo rojo no cae — Antú Cancio\n· El esquilador — Palom
+ a Zaremba\, Martín López Abad\nFAA! 2026 · Festival Artístico Audiovis
+ ual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Proyección de Cortos Patagónicos · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

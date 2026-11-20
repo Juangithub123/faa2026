@@ -1,0 +1,301 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FAA! 2026//Guia de logistica//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:FAA! 2026 · Proyecciones
+X-WR-TIMEZONE:America/Argentina/Buenos_Aires
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+X-WR-CALDESC:Festival Artístico Audiovisual FAA! 2026 · El Bolsón · 25 
+ al 29 de noviembre
+BEGIN:VEVENT
+UID:faa2026-a3@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261125T190000Z
+DTEND:20261125T210000Z
+SUMMARY:Proyección de Muestra Documentales Patagónicos · FAA! 2026
+LOCATION:UNRN · Aula 2\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Programa:\n· El vacío de un puente — Nicolás Stefanazzi\n
+ · Ser Consciente — Alejandro Arca\n· De 10 para arriba — Devi Molina
+ \nFAA! 2026 · Festival Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-25
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Proyección de Muestra Documentales Patagónicos · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-a4@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261125T213000Z
+DTEND:20261125T223000Z
+SUMMARY:Proyección del Festival invitado FAN (Festival Audiovisual Neuqué
+ n) · FAA! 2026
+LOCATION:UNRN · Aula 2\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:FAA! 2026 · Festival Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-25
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Proyección del Festival invitado FAN (Festival Audiovisual Neu
+ quén) · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-b3@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261126T183000Z
+DTEND:20261126T203000Z
+SUMMARY:Película invitada: Nuestra Tierra\, de Lucrecia Martel · FAA! 202
+ 6
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Programa:\n· Nuestra Tierra — Lucrecia Martel\nFAA! 2026 · 
+ Festival Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Película invitada: Nuestra Tierra\, de Lucrecia Martel · FAA!
+  2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-b4@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261126T205000Z
+DTEND:20261126T221000Z
+SUMMARY:Proyección de Cortos Patagónicos · FAA! 2026
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Programa:\n· A los que se han apagado — Alma Terzibachian\n
+ · Inchegen Awka Liwen — Yvana Juárez\n· Origen Anunn — Jesús Sarro
+ cco\n· Como dos extraños — Damián Martínez\n· Casi — Andrés Octa
+ vio Quintana\n· La fragilidad de un cuervo solitario — Emanuel Nazareno
+  Fernandez\n· Lo rojo no cae — Antú Cancio\n· El esquilador — Palom
+ a Zaremba\, Martín López Abad\nFAA! 2026 · Festival Artístico Audiovis
+ ual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Proyección de Cortos Patagónicos · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-b5@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261126T223000Z
+DTEND:20261127T000000Z
+SUMMARY:Película invitada: Iberah\, de Alejo Estrabou · FAA! 2026
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Programa:\n· Iberah — Alejo Estrabou\nFAA! 2026 · Festival 
+ Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Película invitada: Iberah\, de Alejo Estrabou · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-b7@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T002000Z
+DTEND:20261127T010700Z
+SUMMARY:Proyección de la Muestra de Cortometrajes Estudiantiles · FAA! 20
+ 26
+LOCATION:Entre Amigos\, Perito Moreno 2931\, El Bolsón
+DESCRIPTION:Programa:\n· Adiós por ahora — Valentín Caso Rosendi\n· E
+ l último anzuelo — Gonzalo Sebastián Solari\n· El último compás —
+  Catherina Anna Lapini\n· Si pudiese mataría a la nostalgia — Diego Va
+ lverde León\n· Crónicas del baño — Eloísa Poppe\n· Sobre la casa 
+ — Victoria López\n· La carretilla — Prof. Prusky y Lozano\nFAA! 2026
+  · Festival Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Proyección de la Muestra de Cortometrajes Estudiantiles · FAA
+ ! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-b8@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T011000Z
+DTEND:20261127T015200Z
+SUMMARY:Proyección de Competencia de Animación · FAA! 2026
+LOCATION:Entre Amigos\, Perito Moreno 2931\, El Bolsón
+DESCRIPTION:Programa:\n· Requiescat — Juan Camardella\n· Lo leí en Wat
+ tpad — Franco Dingevan\n· Bajo el sol del norte — Renata Di Florio\, 
+ Constanza Gonzalez\, Valeria Rowinski\n· Algo para recordar — Estanisla
+ o Cortada\n· Yellow — Pablo Flores\n· ¡Florecerán! — Claudia Ruiz\
+ n· COSMOS — Catriel Sanchez C.\n· EROS (morir en el otro) — Manuel P
+ olleri\n· Miss Mix — Vir Zone\n· Microcosmos — María Lorenzo\nFAA! 
+ 2026 · Festival Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Proyección de Competencia de Animación · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-b9@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T023000Z
+DTEND:20261127T043000Z
+SUMMARY:Karaoke de Películas · FAA! 2026
+LOCATION:Entre Amigos\, Perito Moreno 2931\, El Bolsón
+DESCRIPTION:Hasta que cierre la noche\nA confirmar: Necesita el equipo de s
+ onido en Entre Amigos: el traslado de las 23:30 a la Casa de Merlin tiene 
+ que esperar a que cierre la noche.\nFAA! 2026 · Festival Artístico Audio
+ visual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Karaoke de Películas · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-c5@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T213000Z
+DTEND:20261127T223000Z
+SUMMARY:Cortometraje LDAA en Foco: Fuera de Combate\, de Cinthia Infante ·
+  FAA! 2026
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Horario aproximado\nPrograma:\n· Fuera de Combate — Cinthia 
+ Infante\nFAA! 2026 · Festival Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-27
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Cortometraje LDAA en Foco: Fuera de Combate\, de Cinthia Infant
+ e · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-c6@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T223000Z
+DTEND:20261128T003000Z
+SUMMARY:Competencia de Cortos LDAA · FAA! 2026
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Horario aproximado.\nPrograma:\n· Donde arde el silencio — C
+ arola Martina Zárate\n· Píxeles rotos — Mateo Coronel\n· Puede salir
+  bien — Ignacia Paz Cano Carcamo\n· El peso de la verdad — Luz Morena
+  Gimenez\n· Chango — Ramiro Pirogovsky\n· Enroque — Florencia Rubio\
+ n· Dos pañuelos rojos — Gustavo Marangoni\n· El monasterio del Huayra
+  Muyoj — Gustavo Marangoni\n· El umbral — Franco Rojas\n· Ritual —
+  Micaela Rosales\n· Rizoma\, las redes de Mallín Ahogado tras el incendi
+ o — Juana Fernandez\, Lucía Álvarez\nFAA! 2026 · Festival Artístico 
+ Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-27
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Competencia de Cortos LDAA · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-c7@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T010000Z
+DTEND:20261128T030000Z
+SUMMARY:Noche FAA!: Competencia de videoclips y videodanza · FAA! 2026
+LOCATION:Patio Merino · Patio Merino · con lluvia: Entre Amigos\, Perito 
+ Moreno 2938\, El Bolsón
+DESCRIPTION:Incluye la previa: de 22:00 a 00:00.\nPrograma:\n· Quizás nun
+ ca — Loana Pagani\n· ARDER — Camila Khon\n· Refugiar el gesto — Ad
+ rián Villa-Dávila y Andrés Prado\n· Mírame · Ailín — Eliana Felip
+ pini\n· Bronca · Larrouyet\, Aka QK — Eliana Felippini\n· Supe · Mag
+ dalena Vitale — Francisco Berón\n· Blanco de Titanio · Bárbara Grabi
+ nski — Loana Pagani\n· SAUNA · Astier — Chiara Siliquini\n· Hoy com
+ ienza mi vida · Unydos Banda — Camila Ibaceta Godoy y Facundo Acosta\n
+ · Estática · Esteban Rosales — Facundo Acosta\n· Para siempre · Ger
+ o Paredes — Ignacio Bueno Sabatté\n· El tiempo que pasó · Rosa Luxem
+ burgo — Eduardo “Koko” Elli\n· Libre · Denis y los Sheites — Max
+ imiliano Lipihual\n· NIKA · Bufa 23 — Lautaro Córdoba\n· Nicole Barb
+ er · Miles de Tragedias — Rosario Audisio\n· Individualmente · Telexx
+  — Leandro Ezequiel Cerdá\n· Vine a verte · Crucero Galáctico — B
+ árbara Soto Pricolo\nFAA! 2026 · Festival Artístico Audiovisual · El B
+ olsón
+URL:https://juangithub123.github.io/faa2026/#programa-27
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Noche FAA!: Competencia de videoclips y videodanza · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-d2@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T170000Z
+DTEND:20261128T181500Z
+SUMMARY:Proyección de repaso: Competencia de Cortometrajes LDAA · FAA! 20
+ 26
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Programa:\n· Donde arde el silencio — Carola Martina Zárate
+ \n· Píxeles rotos — Mateo Coronel\n· Puede salir bien — Ignacia Paz
+  Cano Carcamo\n· El peso de la verdad — Luz Morena Gimenez\n· Chango 
+ — Ramiro Pirogovsky\n· Enroque — Florencia Rubio\n· Dos pañuelos ro
+ jos — Gustavo Marangoni\n· El monasterio del Huayra Muyoj — Gustavo M
+ arangoni\n· El umbral — Franco Rojas\n· Ritual — Micaela Rosales\n·
+  Rizoma\, las redes de Mallín Ahogado tras el incendio — Juana Fernande
+ z\, Lucía Álvarez\nFAA! 2026 · Festival Artístico Audiovisual · El Bo
+ lsón
+URL:https://juangithub123.github.io/faa2026/#programa-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Proyección de repaso: Competencia de Cortometrajes LDAA · FAA
+ ! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-d4@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T203000Z
+DTEND:20261128T222000Z
+SUMMARY:Proyección de Competencia global de Estudiantes · FAA! 2026
+LOCATION:UNRN · Aula 2\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Programa:\n· Las que sostienen — Agustina Lazarte\n· El son
+ ido de las estrellas — Tali Maizel\n· Impenetrable — Benjamín Such\n
+ · La cara de mi madre — Berenice Zapiola y Anabel Villalba\n· Luz mala
+  — Martina Ocampo y Carmen Lanzi Giannoni\n· Operación 29 — Malena C
+ aset y Matías Becerrica\n· Plan Hormiga — Efrem Velasco\n· Mirala —
+  Carlos Ignacio Trioni Bellone\n· Amor y cine — Julián Camilo Lloves\n
+ · Misiones\, 1756 — Leonel Benitez\n· Scroll — Lucas González\nFAA!
+  2026 · Festival Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Proyección de Competencia global de Estudiantes · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-e1@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261129T190000Z
+DTEND:20261129T210000Z
+SUMMARY:Proyección de ganadores · FAA! 2026
+LOCATION:UNRN · Aula 2\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:FAA! 2026 · Festival Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-29
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Proyección de ganadores · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

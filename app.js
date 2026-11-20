@@ -233,7 +233,7 @@ function vHoy() {
   var list = all.filter(function (x) { return !x.sug; }), sugs = all.filter(function (x) { return x.sug; });
   var trs = D.transfers.filter(function (t) { return t.day === S.day && hasMine(t.areas); });
   out += head('Hola, ' + shortName(p.n), esc(p.a.map(function (a) { return A(a).n; }).join(' · ')));
-  out += myNewsCard() + statusCard() + pdfCard();
+  out += myNewsCard() + statusCard() + myCalBtn() + pdfCard();
   out += '<div class="h" style="margin-top:4px"><p class="kicker">Tus tareas · ' + esc(D.days[S.day].name + ' ' + D.days[S.day].k) + '</p><span class="sub">' + list.length + '</span></div>';
   out += list.length ? '<ul class="list">' + list.map(function (x) { return shiftRow(x, { area: p.a.length > 1 }); }).join('') + '</ul>' : '<p class="card muted small">No tenés tareas asignadas este día.</p>';
   out += myRouteCard();
@@ -264,13 +264,14 @@ function evRow(e) {
     (dir.length ? kv('Dirección', esc(dir.join(' · '))) : '') + (coo.length ? kv('Coordinación', esc(coo.join(' · '))) : '') +
     (sdir.length ? kv('Sugerencia · Dirección', '<span class="muted">' + esc(sdir.join(' · ')) + '</span>') : '') +
     (ar.length ? '<div class="tags">' + ar.map(areaTag).join('') + '</div>' : '') +
-    '<div class="mt">' + venueLink(e.v, e.room) + ' ' + relevo(e.s, e.e) + '</div>';
+    '<div class="mt">' + venueLink(e.v, e.room) + ' ' + relevo(e.s, e.e) + '</div>' +
+    (e.tag !== 'Equipo' ? '<div class="row-btns"><button class="btn sm" type="button" data-act="cal-ev" data-id="' + e.id + '">' + CALI + 'Agendar</button></div>' : '');
   return det('ev-' + e.id, 'ev' + (now ? ' now' : ''), sum, inner);
 }
 function vPrograma() {
   var list = D.events.filter(function (e) { return e.day === S.day; }).sort(by('s'));
   if (S.mineOnly && S.me) { list = list.filter(mineEv); }
-  var out = dayHead('Programa') + pdfCard();
+  var out = dayHead('Programa') + pdfCard() + calCard();
   if (S.me) { out += '<div class="chips"><button class="chip" type="button" data-mine="0" aria-pressed="' + !S.mineOnly + '">Todo el programa</button><button class="chip" type="button" data-mine="1" aria-pressed="' + S.mineOnly + '">Solo donde está mi área</button></div>'; }
   out += list.length ? '<div class="evlist">' + list.map(evRow).join('') + '</div>' : '<p class="card muted">Nada para mostrar con este filtro.</p>';
   var dl0 = legs(stops('day')).filter(function (l) { return l.tight; });
@@ -313,7 +314,7 @@ function vTurnos() {
   if (sel === 'mine' && !mine.length) { sel = 'all'; }
   var chips = (mine.length ? [['mine', 'Mi área']] : []).concat([['all', 'Todas']]).concat(X.ak.map(function (a) { return [a, A(a).n]; }));
   var out = dayHead('Turnos') + '<div class="chips">' + chips.map(function (c) { return '<button class="chip" type="button" data-tarea="' + c[0] + '" aria-pressed="' + (sel === c[0]) + '">' + (X.ak.indexOf(c[0]) > -1 ? ad(c[0]) : '') + esc(c[1]) + '</button>'; }).join('') + '</div>';
-  out += mealsLine();
+  out += myCalBtn() + mealsLine();
   var areas = sel === 'mine' ? mine : sel === 'all' ? X.ak : [sel];
   out += '<div class="cols">' + areas.map(function (a) { return areaCard(a, sel !== 'all'); }).join('') + '</div>';
   out += projPanel();
@@ -644,6 +645,11 @@ document.addEventListener('click', function (e) {
   else if (act === 'reload') { location.reload(); }
   else if (act === 'pdf') { var dl = $('pdfsheet'); getPdfFile().catch(function () {}); if (dl.showModal) { dl.showModal(); } else { window.open(PDF, '_blank'); } }
   else if (act === 'pdf-close') { $('pdfsheet').close(); }
+  else if (act === 'cal-ev') { openCal('ev', t.getAttribute('data-id')); }
+  else if (act === 'cal-grp') { openCal('grp', t.getAttribute('data-g')); }
+  else if (act === 'cal-me') { openCal('me'); }
+  else if (act === 'cal-share') { shareCal(); }
+  else if (act === 'cal-close') { $('calsheet').close(); }
   else if (act === 'help') { openHelp(false); }
   else if (act === 'help-close') { $('helpsheet').close(); }
   else if (act === 'help-go') { $('helpsheet').close(); go(t.getAttribute('data-to')); }
@@ -672,6 +678,9 @@ var HELP = [
   ['¿Qué es un "relevo"?', 'relevo almuerzo merienda turnarse', '<p>Turnarse con otra persona del área para almorzar o merendar sin dejar la tarea sola.</p>'],
   ['¿Cómo veo los traslados?', 'traslados equipos camioneta auto llevar cargar', '<p>En <b>Traslados</b>: qué se lleva, desde dónde, hacia dónde, a qué hora y quién. Cada traslado tiene <b>Ver en el mapa de la guía</b> y <b>Ruta en Google Maps</b>.</p>'],
   ['¿Dónde queda cada lugar?', 'mapa sedes lugares direccion ubicacion recorrido caminar', '<p>En <b>Más → Mapa y sedes</b>: todas las sedes en el mapa, tu recorrido del día con el tiempo a pie entre una y otra, y el botón <b>Mi ubicación</b>. Algunos lugares no figuran en el mapa a propósito.</p><p>' + go2('mapa', 'Abrir el mapa') + '</p>'],
+  ['¿Cómo agendo actividades en mi calendario?', 'calendario agendar google iphone samsung outlook aviso recordatorio alarma suscribir', '<p>Cada actividad del <b>Programa</b> tiene un botón <b>Agendar</b>: elegís Google Calendar u otro calendario (iPhone, Samsung, Outlook). Trae un aviso 1 hora antes; Google Calendar usa en cambio tu aviso por defecto, que podés cambiar en el evento.</p><p>Arriba del Programa podés agendar <b>grupos</b>: proyecciones, talleres y charlas, noches y fiestas, o todo el festival. Si te <b>suscribís</b>, el calendario se actualiza solo cuando cambia algo.</p><p>' + go2('programa', 'Ir al Programa') + '</p>'],
+  ['¿Cómo agendo mis turnos?', 'mis turnos calendario agendar staff recordatorio', '<p>Con tu nombre elegido, en <b>Mi día</b> y en <b>Turnos</b> está el botón <b>Agendar mis turnos en el calendario</b>. Si te suscribís, los cambios de turno te llegan solos.</p>'],
+  ['¿Cómo comparto una actividad para que otra persona la agende?', 'compartir whatsapp invitar agendar calendario amigos publico', '<p>En la ventana de <b>Agendar</b> está el botón <b>Compartir</b>: manda por WhatsApp (o donde quieras) el archivo del calendario y los links para agregarlo a Google Calendar. Funciona para una actividad o para un grupo entero.</p>'],
   ['¿Cómo comparto o descargo el cronograma?', 'pdf cronograma compartir descargar whatsapp', '<p>Con el botón <b>Cronograma</b> de arriba: lo podés compartir (por ejemplo por WhatsApp), descargar o ver.</p>'],
   ['¿Cómo me entero si cambia algo?', 'avisos novedades notificaciones cambios campanita', '<p>Cuando se publica un cambio, la guía muestra un mensaje y lo suma a <b>Novedades</b> (la campanita de arriba, con un numerito). En <b>Ajustes</b> podés activar los avisos del teléfono.</p><p>' + go2('novedades', 'Ver Novedades') + '</p>'],
   ['¿Funciona sin señal?', 'sin señal internet offline conexion datos actualizar', '<p>Sí: después de abrirla una vez con internet, queda guardada en el teléfono. El indicador de arriba dice si está <b>Al día</b> o <b>Sin conexión</b>; tocalo para buscar cambios. Cuando vuelve la señal, se actualiza sola.</p>'],
@@ -684,7 +693,7 @@ var HELP = [
   ['¿Hay modo oscuro?', 'tema oscuro claro noche colores', '<p>En <b>Ajustes → Tema</b>.</p>'],
   ['Algo está mal o no lo encuentro', 'error mal problema contacto ayuda coordinacion', '<p>Avisá a Coordinación por el grupo del staff: la guía se corrige y te llega el aviso del cambio.</p>']
 ];
-function norm(t) { return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/<[^>]+>/g, ' '); }
+function hnorm(t) { return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/<[^>]+>/g, ' '); }
 function openHelp(first) {
   var box = $('helpin');
   box.innerHTML = '<p class="kicker">Ayuda</p><h2 id="helpt">Cómo usar la guía</h2>' +
@@ -694,9 +703,9 @@ function openHelp(first) {
     '<p class="help-none" id="helpnone" hidden>No encontré nada con eso. Probá con otra palabra o avisá a Coordinación.</p>' +
     '<button class="btn sm sheet-x" type="button" data-act="help-close">Cerrar</button>';
   $('helpq').addEventListener('input', function () {
-    var q = norm(this.value).trim(), words = q.split(/\s+/).filter(Boolean), shown = 0;
+    var q = hnorm(this.value).trim(), words = q.split(/\s+/).filter(Boolean), shown = 0;
     box.querySelectorAll('#helplist details').forEach(function (d) {
-      var h = HELP[+d.getAttribute('data-i')], txt = norm(h[0] + ' ' + h[1] + ' ' + h[2]);
+      var h = HELP[+d.getAttribute('data-i')], txt = hnorm(h[0] + ' ' + h[1] + ' ' + h[2]);
       var ok = words.every(function (w) { return txt.indexOf(w) > -1; });
       d.hidden = !ok; if (ok) { shown++; }
       d.open = ok && words.length > 0 && shown <= 2;
@@ -708,6 +717,71 @@ function openHelp(first) {
   box.scrollTop = 0;
 }
 $('helpsheet').addEventListener('click', function (e) { if (e.target === this) { this.close(); } });
+/* ---------- Agendar en el calendario (Google, iPhone, Samsung, Outlook…) y compartir ----------
+   Los archivos .ics los arma tools/build_cal.py en cal/: una actividad, grupos y los turnos de cada persona.
+   Todos traen aviso 1 hora antes (Google Calendar usa en cambio el aviso por defecto de cada persona). */
+var CALI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2.5v3M17 2.5v3M3.5 9h17M5 4.5h14A1.5 1.5 0 0 1 20.5 6v13.5A1.5 1.5 0 0 1 19 21H5a1.5 1.5 0 0 1-1.5-1.5V6A1.5 1.5 0 0 1 5 4.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 12.5v5M9.5 15h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+var SHAREI = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.6" fill="currentColor"/><circle cx="6" cy="12" r="2.6" fill="currentColor"/><circle cx="18" cy="19" r="2.6" fill="currentColor"/><path d="M8.3 10.8l7.4-4.4M8.3 13.2l7.4 4.4" stroke="currentColor" stroke-width="2"/></svg>';
+function calCard() {
+  return '<section class="card calcard"><h3>' + CALI + 'Agendá en tu calendario</h3><p class="small muted">Google, iPhone, Samsung u Outlook, con aviso antes. También se puede compartir.</p><div class="chips calchips">' +
+    Object.keys(CALG).map(function (k) { return '<button class="chip" type="button" data-act="cal-grp" data-g="' + k + '">' + CALG[k] + '</button>'; }).join('') + '</div></section>';
+}
+function myCalBtn() { return S.me ? '<div class="row-btns" style="margin:4px 0 10px"><button class="btn sm" type="button" data-act="cal-me">' + CALI + 'Agendar mis turnos en el calendario</button></div>' : ''; }
+var CALG = { proyecciones: 'Proyecciones', talleres: 'Talleres y charlas', noches: 'Noches, ceremonias y fiestas', todo: 'Todo el festival' };
+function calUrl(rel) { return new URL('cal/' + rel, location.href).href; }
+function utc(di, min) { return new Date(absT(di, min)).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); }
+function calPlace(v, room) { var o = V(v); if (!o || o.nomap || v === 'tbc') { return room || ''; } return o.n + (room ? ' · ' + room : '') + (o.addr ? ', ' + o.addr + ', El Bolsón' : ''); }
+function gcalEv(e) {
+  var det = (e.d ? e.d + '\n' : '') + (e.films && e.films.length ? 'Programa: ' + e.films.map(function (x) { return x.t; }).join(' · ') + '\n' : '') + 'FAA! 2026 · Festival Artístico Audiovisual';
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(e.t + ' · FAA! 2026') +
+    '&dates=' + utc(e.day, e.s) + '/' + utc(e.day, e.e != null ? e.e : e.s + 120) + '&details=' + encodeURIComponent(det) +
+    '&location=' + encodeURIComponent(calPlace(e.v, e.room)) + '&ctz=America/Argentina/Buenos_Aires';
+}
+function gcalSub(rel) { return 'https://calendar.google.com/calendar/render?cid=' + encodeURIComponent(calUrl(rel).replace(/^https:/, 'webcal:')); }
+function webcal(rel) { return calUrl(rel).replace(/^https?:/, 'webcal:'); }
+var CALNOW = null;
+function openCal(kind, key) {
+  var box = $('calin'), h = '';
+  if (kind === 'ev') {
+    var e = D.events.filter(function (x) { return x.id === key; })[0]; if (!e) { return; }
+    var dd = D.days[e.day];
+    CALNOW = { rel: 'ev/' + e.id + '.ics', name: e.t, text: e.t + ' · FAA! 2026\n' + dd.name + ' ' + dd.k + ' · ' + f(e.s) + (e.e != null ? ' a ' + f(e.e) : '') + ' · ' + vtxt(e.v, e.room) + '\nAgregalo a Google Calendar: ' + gcalEv(e) + '\nO a otro calendario: ' + calUrl('ev/' + e.id + '.ics') };
+    h = '<p class="kicker">Agendar</p><h2 id="calt">' + esc(e.t) + '</h2><p class="small muted">' + esc(dd.name + ' ' + dd.k + ' · ' + f(e.s) + (e.e != null ? ' a ' + f(e.e) : '') + ' · ' + vtxt(e.v, e.room)) + '</p>' +
+      '<div class="cal-btns"><a class="btn pri" href="' + gcalEv(e) + '" target="_blank" rel="noopener">' + CALI + 'Google Calendar</a>' +
+      '<a class="btn" href="' + calUrl('ev/' + e.id + '.ics') + '">' + CALI + 'Otro calendario (iPhone, Samsung, Outlook…)</a>' +
+      '<button class="btn" type="button" data-act="cal-share">' + SHAREI + 'Compartir</button></div>';
+  } else {
+    var rel = kind === 'me' ? 'staff/' + S.me + '.ics' : key + '.ics', name = kind === 'me' ? 'Mis turnos' : CALG[key];
+    CALNOW = { rel: rel, name: name, text: 'Calendario del FAA! 2026 · ' + name + '\nSuscribite y se actualiza solo: ' + calUrl(rel) + '\nEn Google Calendar: ' + gcalSub(rel) };
+    h = '<p class="kicker">Agendar' + (kind === 'me' ? ' · ' + esc((me() || {}).n || '') : '') + '</p><h2 id="calt">' + esc(name) + '</h2>' +
+      '<p class="small">' + (kind === 'me' ? 'Tus turnos oficiales de todo el festival (sin las sugerencias).' : 'Todas las actividades de este grupo, los cinco días.') + '</p>' +
+      '<p class="cal-sub">Suscribirme · si cambia el cronograma, se actualiza solo</p>' +
+      '<div class="cal-btns"><a class="btn pri" href="' + gcalSub(rel) + '" target="_blank" rel="noopener">' + CALI + 'En Google Calendar</a>' +
+      '<a class="btn" href="' + webcal(rel) + '">' + CALI + 'En iPhone, Samsung u otro</a></div>' +
+      '<p class="cal-sub">Solo una vez (no se actualiza)</p>' +
+      '<div class="cal-btns"><a class="btn" href="' + calUrl(rel) + '">' + CALI + 'Descargar el calendario</a>' +
+      '<button class="btn" type="button" data-act="cal-share">' + SHAREI + 'Compartir</button></div>';
+  }
+  h += '<p class="small muted">Trae un aviso 1 hora antes. Google Calendar usa en cambio el aviso que tengas por defecto: lo podés cambiar en el evento.</p>' +
+    '<button class="btn sm sheet-x" type="button" data-act="cal-close">Cerrar</button>';
+  box.innerHTML = h;
+  var dl = $('calsheet'); if (dl.showModal) { if (!dl.open) { dl.showModal(); } } else { location.href = calUrl(CALNOW.rel); }
+}
+function shareCal() {
+  if (!CALNOW) { return; }
+  var c = CALNOW, title = c.name + ' · FAA! 2026';
+  fetch(calUrl(c.rel), { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error('ics'); } return r.blob(); }).then(function (b) {
+    var file = new File([b], 'FAA2026 - ' + c.name.replace(/[\\/:*?"<>|]/g, '').slice(0, 60) + '.ics', { type: 'text/calendar' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { return navigator.share({ files: [file], title: title, text: c.text }); }
+    throw new Error('nofile');
+  }).catch(function (err) {
+    if (err && err.name === 'AbortError') { return; }
+    if (navigator.share) { return navigator.share({ title: title, text: c.text }).catch(function () {}); }
+    try { navigator.clipboard.writeText(c.text); toast('Copié el mensaje con los links para compartir.'); } catch (e2) { toast('No se pudo compartir desde este navegador.'); }
+  });
+}
+$('calsheet').addEventListener('click', function (e) { if (e.target === this) { this.close(); } });
+
 $('helpsheet').addEventListener('close', function () { lsSet(K.help, 1); });
 
 /* ---------- Toma secreta: 5 toques seguidos al logo, o la invitación cuando no hay señal ---------- */

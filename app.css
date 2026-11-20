@@ -277,3 +277,11 @@ details.accent-x{background:var(--accent-soft);border-color:transparent}
 .help-first .btn.pri{background:#93CC6E;border-color:#93CC6E;color:#10130D}
 .brand img{object-fit:contain;object-position:left center}
 @media (max-width:370px){.sync{font-size:0;padding:5px 8px}.top{gap:6px}}
+
+/* Agendar */
+.btn svg{width:16px;height:16px;flex:none}
+.cal-btns{display:grid;gap:8px}
+.cal-btns .btn{justify-self:stretch;justify-content:center}
+.cal-sub{font-size:12.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin:6px 0 -2px}
+.calcard h3{display:flex;align-items:center;gap:8px}.calcard h3 svg{width:20px;height:20px;color:var(--accent)}
+.calchips{flex-wrap:wrap;overflow:visible;margin:0;padding:0}

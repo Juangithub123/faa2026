@@ -1,0 +1,41 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FAA! 2026//Guia de logistica//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Noche FAA!: Competencia de videoclips y videodanza · FAA! 202
+ 6
+X-WR-TIMEZONE:America/Argentina/Buenos_Aires
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+BEGIN:VEVENT
+UID:faa2026-c7@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T010000Z
+DTEND:20261128T030000Z
+SUMMARY:Noche FAA!: Competencia de videoclips y videodanza · FAA! 2026
+LOCATION:Patio Merino · Patio Merino · con lluvia: Entre Amigos\, Perito 
+ Moreno 2938\, El Bolsón
+DESCRIPTION:Incluye la previa: de 22:00 a 00:00.\nPrograma:\n· Quizás nun
+ ca — Loana Pagani\n· ARDER — Camila Khon\n· Refugiar el gesto — Ad
+ rián Villa-Dávila y Andrés Prado\n· Mírame · Ailín — Eliana Felip
+ pini\n· Bronca · Larrouyet\, Aka QK — Eliana Felippini\n· Supe · Mag
+ dalena Vitale — Francisco Berón\n· Blanco de Titanio · Bárbara Grabi
+ nski — Loana Pagani\n· SAUNA · Astier — Chiara Siliquini\n· Hoy com
+ ienza mi vida · Unydos Banda — Camila Ibaceta Godoy y Facundo Acosta\n
+ · Estática · Esteban Rosales — Facundo Acosta\n· Para siempre · Ger
+ o Paredes — Ignacio Bueno Sabatté\n· El tiempo que pasó · Rosa Luxem
+ burgo — Eduardo “Koko” Elli\n· Libre · Denis y los Sheites — Max
+ imiliano Lipihual\n· NIKA · Bufa 23 — Lautaro Córdoba\n· Nicole Barb
+ er · Miles de Tragedias — Rosario Audisio\n· Individualmente · Telexx
+  — Leandro Ezequiel Cerdá\n· Vine a verte · Crucero Galáctico — B
+ árbara Soto Pricolo\nFAA! 2026 · Festival Artístico Audiovisual · El B
+ olsón
+URL:https://juangithub123.github.io/faa2026/#programa-27
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Noche FAA!: Competencia de videoclips y videodanza · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

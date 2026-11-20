@@ -1,0 +1,79 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FAA! 2026//Guia de logistica//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:FAA! 2026 · Mis turnos (Ignacia)
+X-WR-TIMEZONE:America/Argentina/Buenos_Aires
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+X-WR-CALDESC:Turnos oficiales del staff del FAA! 2026
+BEGIN:VEVENT
+UID:faa2026-s173-p25@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261127T183000Z
+DTEND:20261127T213000Z
+SUMMARY:Turno FAA!: Presencia en el Sunset Jam de El Obrador\, junto a Gabr
+ iela Aloras
+LOCATION:El Obrador\, Azcona 3228\, El Bolsón
+DESCRIPTION:Turno de Dirección.\nCon: Merlin Scarone\, Ignacia Cano Carcam
+ o\nGuía del staff: https://juangithub123.github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-27
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Presencia en el Sunset Jam de El Obrador\, junto a 
+ Gabriela Aloras
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s114-p25@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T010000Z
+DTEND:20261128T030000Z
+SUMMARY:Turno FAA!: Anfitrionía de la Noche FAA!
+LOCATION:Patio Merino\, Perito Moreno 2938\, El Bolsón
+DESCRIPTION:Turno de Dirección.\nCon: Ignacia Cano Carcamo\, Mateo Vargas\
+ nGuía del staff: https://juangithub123.github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-27
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Anfitrionía de la Noche FAA!
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s119-p25@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T223000Z
+DTEND:20261129T020000Z
+SUMMARY:Turno FAA!: Ceremonia de Cierre: palabras y entrega de premios
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Turno de Dirección.\nCon: Merlin Scarone\, Juan Schor\, Mateo 
+ Vargas\, Ignacia Cano Carcamo\nGuía del staff: https://juangithub123.gith
+ ub.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Ceremonia de Cierre: palabras y entrega de premios
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s121-p25@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261129T183000Z
+DTEND:20261129T203000Z
+SUMMARY:Turno FAA!: Proyección de ganadores y cierre del festival
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Dirección.\nCon: Merlin Scarone\, Juan Schor\, Ignaci
+ a Cano Carcamo\nGuía del staff: https://juangithub123.github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-29
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Proyección de ganadores y cierre del festival
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

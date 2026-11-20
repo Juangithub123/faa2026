@@ -1,0 +1,43 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FAA! 2026//Guia de logistica//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:FAA! 2026 · Mis turnos (Estefania)
+X-WR-TIMEZONE:America/Argentina/Buenos_Aires
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+X-WR-CALDESC:Turnos oficiales del staff del FAA! 2026
+BEGIN:VEVENT
+UID:faa2026-s15-p26@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261126T023000Z
+DTEND:20261126T040000Z
+SUMMARY:Turno FAA!: Redes: Noche FAA!
+LOCATION:Awka Store\, Dorrego 553\, El Bolsón
+DESCRIPTION:Turno de Gráfica y Redes.\nCon: Redes: Estefania Sutija · Jua
+ na Fernandez\nGuía del staff: https://juangithub123.github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-25
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Redes: Noche FAA!
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s97-p26@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261129T183000Z
+DTEND:20261129T203000Z
+SUMMARY:Turno FAA!: Redes: ganadores y agradecimientos
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Gráfica y Redes.\nCon: Redes: Estefania Sutija · Jua
+ na Fernandez\nGuía del staff: https://juangithub123.github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-29
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Redes: ganadores y agradecimientos
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

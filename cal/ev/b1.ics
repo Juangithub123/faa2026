@@ -1,0 +1,28 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FAA! 2026//Guia de logistica//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Taller de Videoinstalación: Lxs Científicxs Locos · FAA! 20
+ 26
+X-WR-TIMEZONE:America/Argentina/Buenos_Aires
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+BEGIN:VEVENT
+UID:faa2026-b1@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261126T140000Z
+DTEND:20261126T153000Z
+SUMMARY:Taller de Videoinstalación: Lxs Científicxs Locos · FAA! 2026
+LOCATION:UNRN · Pasillo\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Tallerista: Juan Schor\nFAA! 2026 · Festival Artístico Audiov
+ isual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Taller de Videoinstalación: Lxs Científicxs Locos · FAA! 202
+ 6
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

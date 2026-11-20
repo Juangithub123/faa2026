@@ -1,0 +1,30 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FAA! 2026//Guia de logistica//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Taller “Ficciones para sobrevivir: autoficción\, política 
+ y deseo” · FAA! 2026
+X-WR-TIMEZONE:America/Argentina/Buenos_Aires
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+BEGIN:VEVENT
+UID:faa2026-a1@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261125T170000Z
+DTEND:20261125T182000Z
+SUMMARY:Taller “Ficciones para sobrevivir: autoficción\, política y des
+ eo” · FAA! 2026
+LOCATION:Virtual
+DESCRIPTION:Dictado por Ximena Rojas Valdiviezo. Hay 6 cupos para trabajar 
+ los escritos con la docente y 20 cupos para escuchar.\nFAA! 2026 · Festiv
+ al Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-25
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Taller “Ficciones para sobrevivir: autoficción\, política y
+  deseo” · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

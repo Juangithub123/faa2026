@@ -1,0 +1,32 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//FAA! 2026//Guia de logistica//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Proyección de Competencia global de Estudiantes · FAA! 2026
+X-WR-TIMEZONE:America/Argentina/Buenos_Aires
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+BEGIN:VEVENT
+UID:faa2026-d4@juangithub123.github.io
+DTSTAMP:20261120T223449Z
+DTSTART:20261128T203000Z
+DTEND:20261128T222000Z
+SUMMARY:Proyección de Competencia global de Estudiantes · FAA! 2026
+LOCATION:UNRN · Aula 2\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Programa:\n· Las que sostienen — Agustina Lazarte\n· El son
+ ido de las estrellas — Tali Maizel\n· Impenetrable — Benjamín Such\n
+ · La cara de mi madre — Berenice Zapiola y Anabel Villalba\n· Luz mala
+  — Martina Ocampo y Carmen Lanzi Giannoni\n· Operación 29 — Malena C
+ aset y Matías Becerrica\n· Plan Hormiga — Efrem Velasco\n· Mirala —
+  Carlos Ignacio Trioni Bellone\n· Amor y cine — Julián Camilo Lloves\n
+ · Misiones\, 1756 — Leonel Benitez\n· Scroll — Lucas González\nFAA!
+  2026 · Festival Artístico Audiovisual · El Bolsón
+URL:https://juangithub123.github.io/faa2026/#programa-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Proyección de Competencia global de Estudiantes · FAA! 2026
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR
