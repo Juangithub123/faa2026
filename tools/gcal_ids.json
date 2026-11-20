@@ -1,0 +1,67 @@
+{
+ "calendars": {
+  "todo": "bf7c518f1cb0407316594c2e8a82936ef5c837d0e50bccba4f51a7b7c9dbcb22@group.calendar.google.com",
+  "proyecciones": "b5f528aa63f5cf43562c6d2cf2ca83a63e66caddfe671c19a8ed42688963110f@group.calendar.google.com",
+  "talleres": "87ef3a05d74d5394b0cae34de5d559e9423036516091b9db8575eec1c3f8186b@group.calendar.google.com"
+ },
+ "events": {
+  "talleres": {
+   "a1": "7jsn8k8hs2hgvloqcv80unls04",
+   "a2": "7k5jqgf0t91fm74eoeq7ph5ud4",
+   "b1": "del66rjpqbgqc4vjkdl6sr17h4",
+   "b2": "2qqv4c0b8icub9pvpe56jj0d1c",
+   "c1": "kdh49kp2urvdapc8112q49e49s",
+   "c2": "88mtav8fn63q63tkvdj5rn7trc",
+   "c3": "k3v1076q0i8emqce7nh2b9ksvs",
+   "d1": "h35la4dtuf5f376r3j4n9f9ao8"
+  },
+  "proyecciones": {
+   "a3": "6elu0au4lfpg2l9emgk9g33mhg",
+   "a4": "ftul0besgh14j59fs6r8to3f3c",
+   "b3": "r6emcia6mha70t3cnjsd2nclj8",
+   "b4": "kir6fbu0aigkrmtdkcb7eh7al0",
+   "b5": "hosj8lkrii99ii09m06slne1i8",
+   "b7": "meb9td7p1g6lpkh0vhuam6k2h8",
+   "b8": "vv9vv2svujtrp232jdhbd81t7g",
+   "c5": "k412iq3onav2imffljaqm3fsn8",
+   "c6": "40e8abkbbko81eb48femse46t4",
+   "c7": "2hudnj9bi0dontgf7gr418e97c",
+   "d2": "09qrri7pu325a55q4ojfv6uh8s",
+   "d4": "im37nvc6vabndk7j3lvvkcsos0",
+   "e1": "m7ivgdrrjsai6g5bi8n0h6hp2o"
+  },
+  "todo": {
+   "a1": "3rmu7qgbedpakk9f8iv2h915u0",
+   "a2": "inafamnu32ui8oi4d92da99lms",
+   "a3": "aaoo4om8blp3hpicdnlof8sl4o",
+   "a4": "dpe0ut53k3hqvp0mu02b6r2pk0",
+   "a5": "4oju76j7kh4d1tsrvffr7q25dc",
+   "a6": "e87ocl5pkd17tbr62b5gfqjtos",
+   "a7": "4qd7lhtql2us5jd61tcv2vtsds",
+   "b1": "shf4brdepmoku6ng79usqvvgog",
+   "b2": "jhdn4i273arcvhb584ivhcm94g",
+   "b3": "7ni2a2okt62i6cbrdfub9tngh0",
+   "b4": "ikjdr2o139e5m1d9cun2n0rfa4",
+   "b5": "hd9lbffkbviev8umgqbqku43fg",
+   "b6": "nq7n65am3qf97rktj0iuvufcvc",
+   "b7": "45iofv2c1hvom6qvapp082ofgg",
+   "b8": "rf0n0ehkqkesdq031d4801gmts",
+   "b9": "ig0o48slikcdapr19guhhn4grk",
+   "c1": "mtqj1jch8h0tt3rh0tg4unrkk0",
+   "c2": "9ejdqhbmufecrdj9h9g141p41o",
+   "c8": "2v38i87t43cte6sldvank7ap28",
+   "c3": "vt1fqig8q8sk092vpjs9ee9lmc",
+   "c4": "rj5gofvfq14m9ehdht2es0e774",
+   "c5": "eq44jl6j2f8v830alv1vf8qsq0",
+   "c6": "e7j3rt2ciev1pmknkiucdci294",
+   "c7": "8fulsuhib4othvtp3ses40rkok",
+   "d1": "8b5al6med0vqinqjf43jkr77r8",
+   "d2": "js3kb8rq6uta4tuhp8d03d994s",
+   "d3": "ad0d2iopg1u5ovf645ppgt4fjs",
+   "d4": "kdus3efvg3c64der7lbqkoj4b4",
+   "d5": "9r7mhfnmqu2eecutg1plrdq3c0",
+   "d6": "nkidgqp81eaqeo72a5jv834cf4",
+   "e1": "bpcldcvc4tgdi0hnlhqe0klcus"
+  }
+ }
+}

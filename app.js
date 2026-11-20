@@ -678,8 +678,8 @@ var HELP = [
   ['¿Qué es un "relevo"?', 'relevo almuerzo merienda turnarse', '<p>Turnarse con otra persona del área para almorzar o merendar sin dejar la tarea sola.</p>'],
   ['¿Cómo veo los traslados?', 'traslados equipos camioneta auto llevar cargar', '<p>En <b>Traslados</b>: qué se lleva, desde dónde, hacia dónde, a qué hora y quién. Cada traslado tiene <b>Ver en el mapa de la guía</b> y <b>Ruta en Google Maps</b>.</p>'],
   ['¿Dónde queda cada lugar?', 'mapa sedes lugares direccion ubicacion recorrido caminar', '<p>En <b>Más → Mapa y sedes</b>: todas las sedes en el mapa, tu recorrido del día con el tiempo a pie entre una y otra, y el botón <b>Mi ubicación</b>. Algunos lugares no figuran en el mapa a propósito.</p><p>' + go2('mapa', 'Abrir el mapa') + '</p>'],
-  ['¿Cómo agendo actividades en mi calendario?', 'calendario agendar google iphone samsung outlook aviso recordatorio alarma suscribir', '<p>Cada actividad del <b>Programa</b> tiene un botón <b>Agendar</b>: elegís Google Calendar u otro calendario (iPhone, Samsung, Outlook). Trae un aviso 1 hora antes; Google Calendar usa en cambio tu aviso por defecto, que podés cambiar en el evento.</p><p>Arriba del Programa podés agendar <b>grupos</b>: proyecciones, talleres y charlas, noches y fiestas, o todo el festival. Si te <b>suscribís</b>, el calendario se actualiza solo cuando cambia algo.</p><p>' + go2('programa', 'Ir al Programa') + '</p>'],
-  ['¿Cómo agendo mis turnos?', 'mis turnos calendario agendar staff recordatorio', '<p>Con tu nombre elegido, en <b>Mi día</b> y en <b>Turnos</b> está el botón <b>Agendar mis turnos en el calendario</b>. Si te suscribís, los cambios de turno te llegan solos.</p>'],
+  ['¿Cómo agendo actividades en mi calendario?', 'calendario agendar google iphone samsung outlook aviso recordatorio alarma suscribir', '<p>Cada actividad del <b>Programa</b> tiene un botón <b>Agendar</b>: elegís Google Calendar u otro calendario (iPhone, Samsung, Outlook). Trae un aviso 1 hora antes; Google Calendar usa en cambio tu aviso por defecto, que podés cambiar en el evento.</p><p>Arriba del Programa podés sumar <b>grupos enteros</b>: todo el festival, proyecciones o talleres y charlas. Con <b>Agregar a Google Calendar</b> se suman todas las actividades de un toque, y si cambia algo del cronograma se actualiza solo.</p><p>' + go2('programa', 'Ir al Programa') + '</p>'],
+  ['¿Cómo agendo mis turnos?', 'mis turnos calendario agendar staff recordatorio', '<p>Con tu nombre elegido, en <b>Mi día</b> y en <b>Turnos</b> está el botón <b>Agendar mis turnos en el calendario</b>. En iPhone se suscribe con un toque y los cambios llegan solos. En Android con Google Calendar hay que hacerlo una vez desde una compu (la ventana explica cómo), o agendar cada turno desde el Programa.</p>'],
   ['¿Cómo comparto una actividad para que otra persona la agende?', 'compartir whatsapp invitar agendar calendario amigos publico', '<p>En la ventana de <b>Agendar</b> está el botón <b>Compartir</b>: manda por WhatsApp (o donde quieras) el archivo del calendario y los links para agregarlo a Google Calendar. Funciona para una actividad o para un grupo entero.</p>'],
   ['¿Cómo comparto o descargo el cronograma?', 'pdf cronograma compartir descargar whatsapp', '<p>Con el botón <b>Cronograma</b> de arriba: lo podés compartir (por ejemplo por WhatsApp), descargar o ver.</p>'],
   ['¿Cómo me entero si cambia algo?', 'avisos novedades notificaciones cambios campanita', '<p>Cuando se publica un cambio, la guía muestra un mensaje y lo suma a <b>Novedades</b> (la campanita de arriba, con un numerito). En <b>Ajustes</b> podés activar los avisos del teléfono.</p><p>' + go2('novedades', 'Ver Novedades') + '</p>'],
@@ -727,12 +727,14 @@ function calCard() {
     Object.keys(CALG).map(function (k) { return '<button class="chip" type="button" data-act="cal-grp" data-g="' + k + '">' + CALG[k] + '</button>'; }).join('') + '</div></section>';
 }
 function myCalBtn() { return S.me ? '<div class="row-btns" style="margin:4px 0 10px"><button class="btn sm" type="button" data-act="cal-me">' + CALI + 'Agendar mis turnos en el calendario</button></div>' : ''; }
-var CALG = { proyecciones: 'Proyecciones', talleres: 'Talleres y charlas', noches: 'Noches, ceremonias y fiestas', todo: 'Todo el festival' };
+var CALG = { todo: 'Todo el festival', proyecciones: 'Proyecciones', talleres: 'Talleres y charlas' };
+/* calendarios públicos de Google (los mantiene Claude con la conexión de Google Calendar; ids en tools/gcal_ids.json) */
+var GCAL = {"todo": "https://calendar.google.com/calendar/u/0?cid=YmY3YzUxOGYxY2IwNDA3MzE2NTk0YzJlOGE4MjkzNmVmNWM4MzdkMGU1MGJjY2JhNGY1MWE3YjdjOWRiY2IyMkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t", "proyecciones": "https://calendar.google.com/calendar/u/0?cid=YjVmNTI4YWE2M2Y1Y2Y0MzU2MmM2ZDJjZjJjYTgzYTYzZTY2Y2FkZGZlNjcxYzE5YThlZDQyNjg4OTYzMTEwZkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t", "talleres": "https://calendar.google.com/calendar/u/0?cid=ODdlZjNhMDVkNzRkNTM5NGIwY2FlMzRkZTVkNTU5ZTk0MjMwMzY1MTYwOTFiOWRiODU3NWVlYzFjM2Y4MTg2YkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t"};
 function calUrl(rel) { return new URL('cal/' + rel, location.href).href; }
 function utc(di, min) { return new Date(absT(di, min)).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); }
 function calPlace(v, room) { var o = V(v); if (!o || o.nomap || v === 'tbc') { return room || ''; } return o.n + (room ? ' · ' + room : '') + (o.addr ? ', ' + o.addr + ', El Bolsón' : ''); }
 function gcalEv(e) {
-  var det = (e.d ? e.d + '\n' : '') + (e.films && e.films.length ? 'Programa: ' + e.films.map(function (x) { return x.t; }).join(' · ') + '\n' : '') + 'FAA! 2026 · Festival Artístico Audiovisual';
+  var pd = 'pd' in e ? e.pd : e.d, det = (pd ? pd + '\n' : '') + (e.films && e.films.length ? 'Programa: ' + e.films.map(function (x) { return x.t; }).join(' · ') + '\n' : '') + 'FAA! 2026 · Festival Artístico Audiovisual';
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(e.t + ' · FAA! 2026') +
     '&dates=' + utc(e.day, e.s) + '/' + utc(e.day, e.e != null ? e.e : e.s + 120) + '&details=' + encodeURIComponent(det) +
     '&location=' + encodeURIComponent(calPlace(e.v, e.room)) + '&ctz=America/Argentina/Buenos_Aires';
@@ -751,18 +753,16 @@ function openCal(kind, key) {
       '<a class="btn" href="' + calUrl('ev/' + e.id + '.ics') + '">' + CALI + 'Otro calendario (iPhone, Samsung, Outlook…)</a>' +
       '<button class="btn" type="button" data-act="cal-share">' + SHAREI + 'Compartir</button></div>';
   } else {
-    var rel = kind === 'me' ? 'staff/' + S.me + '.ics' : key + '.ics', name = kind === 'me' ? 'Mis turnos' : CALG[key];
-    CALNOW = { rel: rel, name: name, text: 'Calendario del FAA! 2026 · ' + name + '\nSuscribite y se actualiza solo: ' + calUrl(rel) + '\nEn Google Calendar: ' + gcalSub(rel) };
+    var rel = kind === 'me' ? 'staff/' + S.me + '.ics' : key + '.ics', name = kind === 'me' ? 'Mis turnos' : CALG[key], g = kind === 'me' ? '' : GCAL[key];
+    CALNOW = { rel: rel, name: name, text: 'Calendario del FAA! 2026 · ' + name + (g ? '\nAgregalo a Google Calendar (un toque y se suma todo): ' + g + '\nEn iPhone u otro calendario: ' + webcal(rel) : '\nSuscribite y se actualiza solo: ' + calUrl(rel)) };
     h = '<p class="kicker">Agendar' + (kind === 'me' ? ' · ' + esc((me() || {}).n || '') : '') + '</p><h2 id="calt">' + esc(name) + '</h2>' +
-      '<p class="small">' + (kind === 'me' ? 'Tus turnos oficiales de todo el festival (sin las sugerencias).' : 'Todas las actividades de este grupo, los cinco días.') + '</p>' +
-      '<p class="cal-sub">Suscribirme · si cambia el cronograma, se actualiza solo</p>' +
-      '<div class="cal-btns"><a class="btn pri" href="' + gcalSub(rel) + '" target="_blank" rel="noopener">' + CALI + 'En Google Calendar</a>' +
-      '<a class="btn" href="' + webcal(rel) + '">' + CALI + 'En iPhone, Samsung u otro</a></div>' +
-      '<p class="cal-sub">Solo una vez (no se actualiza)</p>' +
-      '<div class="cal-btns"><a class="btn" href="' + calUrl(rel) + '">' + CALI + 'Descargar el calendario</a>' +
-      '<button class="btn" type="button" data-act="cal-share">' + SHAREI + 'Compartir</button></div>';
+      '<p class="small">' + (kind === 'me' ? 'Tus turnos oficiales de todo el festival (sin las sugerencias).' : 'Todas las actividades de este grupo, los cinco días. Si cambia algo del cronograma, se actualiza solo.') + '</p>' +
+      '<div class="cal-btns">' + (g ? '<a class="btn pri" href="' + g + '" target="_blank" rel="noopener">' + CALI + 'Agregar a Google Calendar</a>' : '') +
+      '<a class="btn' + (g ? '' : ' pri') + '" href="' + webcal(rel) + '">' + CALI + 'En iPhone u otro calendario</a>' +
+      '<button class="btn" type="button" data-act="cal-share">' + SHAREI + 'Compartir</button></div>' +
+      (g ? '' : '<p class="small muted">En Android con Google Calendar, suscribirse a este calendario solo se puede desde una compu: en calendar.google.com → Otros calendarios → + → Desde URL, pegando <b>' + esc(calUrl(rel)) + '</b>. Si no, agendá cada turno desde el Programa.</p>');
   }
-  h += '<p class="small muted">Trae un aviso 1 hora antes. Google Calendar usa en cambio el aviso que tengas por defecto: lo podés cambiar en el evento.</p>' +
+  h += '<p class="small muted">' + (kind === 'ev' ? 'Trae un aviso 1 hora antes en iPhone y otros calendarios. Google Calendar usa el aviso que tengas por defecto: lo podés cambiar en el evento.' : 'Al suscribirte, los avisos dependen de tu app: en Google Calendar podés activarlos en la configuración de ese calendario.') + '</p>' +
     '<button class="btn sm sheet-x" type="button" data-act="cal-close">Cerrar</button>';
   box.innerHTML = h;
   var dl = $('calsheet'); if (dl.showModal) { if (!dl.open) { dl.showModal(); } } else { location.href = calUrl(CALNOW.rel); }

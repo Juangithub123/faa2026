@@ -11,7 +11,7 @@ X-WR-CALDESC:Festival Artístico Audiovisual FAA! 2026 · El Bolsón · 25
  al 29 de noviembre
 BEGIN:VEVENT
 UID:faa2026-a5@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261125T220000Z
 DTEND:20261125T234000Z
 SUMMARY:Sunset FAA! de la Ceremonia de Apertura · FAA! 2026
@@ -28,7 +28,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-a6@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261126T000000Z
 DTEND:20261126T013000Z
 SUMMARY:Ceremonia de Apertura: Primavera Rebelde · FAA! 2026
@@ -44,13 +44,12 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-a7@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261126T023000Z
 DTEND:20261126T043000Z
 SUMMARY:Noche FAA! · FAA! 2026
 LOCATION:Awka Store\, Dorrego 553\, El Bolsón
-DESCRIPTION:Sin escenario ni equipos: quedan en la Uni\nFAA! 2026 · Festiv
- al Artístico Audiovisual · El Bolsón
+DESCRIPTION:FAA! 2026 · Festival Artístico Audiovisual · El Bolsón
 URL:https://juangithub123.github.io/faa2026/#programa-25
 BEGIN:VALARM
 ACTION:DISPLAY
@@ -60,7 +59,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-b6@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261127T000000Z
 DTEND:20261127T001500Z
 SUMMARY:Ensamble Juvenil del ISFDA n°814 · FAA! 2026
@@ -76,7 +75,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-b7@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261127T002000Z
 DTEND:20261127T010700Z
 SUMMARY:Proyección de la Muestra de Cortometrajes Estudiantiles · FAA! 20
@@ -98,7 +97,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-b8@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261127T011000Z
 DTEND:20261127T015200Z
 SUMMARY:Proyección de Competencia de Animación · FAA! 2026
@@ -119,15 +118,13 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-b9@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261127T023000Z
 DTEND:20261127T043000Z
 SUMMARY:Karaoke de Películas · FAA! 2026
 LOCATION:Entre Amigos\, Perito Moreno 2931\, El Bolsón
-DESCRIPTION:Hasta que cierre la noche\nA confirmar: Necesita el equipo de s
- onido en Entre Amigos: el traslado de las 23:30 a la Casa de Merlin tiene 
- que esperar a que cierre la noche.\nFAA! 2026 · Festival Artístico Audio
- visual · El Bolsón
+DESCRIPTION:Hasta que cierre la noche\nFAA! 2026 · Festival Artístico Aud
+ iovisual · El Bolsón
 URL:https://juangithub123.github.io/faa2026/#programa-26
 BEGIN:VALARM
 ACTION:DISPLAY
@@ -137,7 +134,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-c8@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261127T183000Z
 DTEND:20261127T213000Z
 SUMMARY:Sunset Jam de pintura y fotografía · FAA! 2026
@@ -153,7 +150,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-c4@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261127T200000Z
 DTEND:20261127T203000Z
 SUMMARY:Desfile de la Diplomatura en Diseño de Indumentaria-UNRN · FAA! 2
@@ -171,12 +168,12 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-c7@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261128T010000Z
 DTEND:20261128T030000Z
 SUMMARY:Noche FAA!: Competencia de videoclips y videodanza · FAA! 2026
-LOCATION:Patio Merino · Patio Merino · con lluvia: Entre Amigos\, Perito 
- Moreno 2938\, El Bolsón
+LOCATION:Patio Merino · con lluvia: Entre Amigos\, Perito Moreno 2938\, El
+  Bolsón
 DESCRIPTION:Incluye la previa: de 22:00 a 00:00.\nPrograma:\n· Quizás nun
  ca — Loana Pagani\n· ARDER — Camila Khon\n· Refugiar el gesto — Ad
  rián Villa-Dávila y Andrés Prado\n· Mírame · Ailín — Eliana Felip
@@ -201,7 +198,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-d3@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261128T183000Z
 DTEND:20261128T213000Z
 SUMMARY:Sunset Jam de pintura y fotografía · FAA! 2026
@@ -218,7 +215,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-d5@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261128T230000Z
 DTEND:20261129T020000Z
 SUMMARY:Ceremonia de Cierre · FAA! 2026
@@ -236,14 +233,14 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:faa2026-d6@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232611Z
 DTSTART:20261129T023000Z
 DTEND:20261129T070000Z
 SUMMARY:RAVE FAA! · FAA! 2026
 LOCATION:La Esquina\, Sobre Perito Moreno\, a metros de Entre Amigos\, El B
  olsón
-DESCRIPTION:Line up con DJs · de 23:30 a 04:00 · noche libre: el staff no
-  tiene tareas\nFAA! 2026 · Festival Artístico Audiovisual · El Bolsón
+DESCRIPTION:Line up con DJs · de 23:30 a 04:00\nFAA! 2026 · Festival Art
+ ístico Audiovisual · El Bolsón
 URL:https://juangithub123.github.io/faa2026/#programa-28
 BEGIN:VALARM
 ACTION:DISPLAY

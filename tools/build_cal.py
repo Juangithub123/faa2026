@@ -57,12 +57,13 @@ def place(v, room=''):
     x = VEN.get(v) or {}
     if not x or v == 'tbc':
         return 'A confirmar'
+    if v == 'merl':
+        return ''  # no publicar la ubicación de la casa
     if x.get('nomap'):
-        name = x.get('n', '')
-        return name if v != 'merl' else ''
+        return room or x.get('n', '')
     s = x.get('n', '')
     if room:
-        s += ' · ' + room
+        s = room if room.lower().startswith(s.lower()) else s + ' · ' + room
     if x.get('addr'):
         s += ', ' + x['addr'] + ', El Bolsón'
     return s
@@ -94,14 +95,13 @@ def calendar(name, events, desc=''):
 
 def ev_desc(e):
     out = []
-    if e.get('d'):
-        out.append(e['d'])
+    desc = e['pd'] if 'pd' in e else e.get('d')  # pd: descripción pública (sin notas internas del staff)
+    if desc:
+        out.append(desc)
     if e.get('films'):
         out.append('Programa:')
         for f in e['films']:
             out.append('· ' + f['t'] + (' — ' + f['by'] if f.get('by') else ''))
-    if e.get('flag'):
-        out.append('A confirmar: ' + e['flag'])
     out.append('FAA! 2026 · Festival Artístico Audiovisual · El Bolsón')
     return '\n'.join(out)
 
@@ -114,7 +114,7 @@ def ev_block(e):
 def group(e):
     t, tag = e['t'].lower(), e.get('tag', '')
     g = set()
-    if tag in ('Proyección', 'Estreno') or 'proyección' in t or 'competencia' in t or 'película' in t:
+    if (tag in ('Proyección', 'Estreno') or 'proyección' in t or 'competencia' in t or 'película' in t) and 'karaoke' not in t:
         g.add('proyecciones')
     if tag in ('Taller', 'Workshop', 'Seminario', 'Charla') or 'conversatorio' in t:
         g.add('talleres')

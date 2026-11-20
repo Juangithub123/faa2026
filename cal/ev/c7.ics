@@ -10,12 +10,12 @@ REFRESH-INTERVAL;VALUE=DURATION:PT6H
 X-PUBLISHED-TTL:PT6H
 BEGIN:VEVENT
 UID:faa2026-c7@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232556Z
 DTSTART:20261128T010000Z
 DTEND:20261128T030000Z
 SUMMARY:Noche FAA!: Competencia de videoclips y videodanza · FAA! 2026
-LOCATION:Patio Merino · Patio Merino · con lluvia: Entre Amigos\, Perito 
- Moreno 2938\, El Bolsón
+LOCATION:Patio Merino · con lluvia: Entre Amigos\, Perito Moreno 2938\, El
+  Bolsón
 DESCRIPTION:Incluye la previa: de 22:00 a 00:00.\nPrograma:\n· Quizás nun
  ca — Loana Pagani\n· ARDER — Camila Khon\n· Refugiar el gesto — Ad
  rián Villa-Dávila y Andrés Prado\n· Mírame · Ailín — Eliana Felip

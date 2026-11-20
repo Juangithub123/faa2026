@@ -9,11 +9,11 @@ REFRESH-INTERVAL;VALUE=DURATION:PT6H
 X-PUBLISHED-TTL:PT6H
 BEGIN:VEVENT
 UID:faa2026-c2@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261120T232556Z
 DTSTART:20261127T170000Z
 DTEND:20261127T180000Z
 SUMMARY:Conversatorio con Patricio Vega · FAA! 2026
-LOCATION:Moreno 1975
+LOCATION:Moreno 1975 · virtual
 DESCRIPTION:Su proceso de escritura en Hermanos y Detectives\, Los Simulado
  res y más\nFAA! 2026 · Festival Artístico Audiovisual · El Bolsón
 URL:https://juangithub123.github.io/faa2026/#programa-27
