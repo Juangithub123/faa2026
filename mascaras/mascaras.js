@@ -19,16 +19,19 @@ var det = document.createElement('canvas'), dctx = det.getContext('2d');
 var lastDet = 0;
 
 /* Calidad automática: arranca en el nivel más alto y baja si el video cae de ~24 cuadros por segundo;
-   si después sobra, vuelve a subir de a un nivel. Cada nivel define el ancho de la copia que mira el detector,
-   cada cuánto detecta (0 = en cada cuadro) y cuántas caras busca. */
+   si después sobra, vuelve a subir de a un nivel. Cada nivel define el lado mayor de la vista previa (view),
+   el ancho de la copia que mira el detector (w) y cada cuánto detecta (every, 0 = en cada cuadro).
+   Las fotos no dependen del nivel: se arman aparte, a la resolución completa de la cámara. */
 var LEVELS = [
-  { w: 320, every: 0 },
-  { w: 256, every: 33 },
-  { w: 192, every: 50 },
-  { w: 160, every: 80 },
-  { w: 128, every: 125 }
+  { view: 1280, w: 320, every: 0 },
+  { view: 960, w: 256, every: 33 },
+  { view: 800, w: 192, every: 50 },
+  { view: 640, w: 160, every: 80 },
+  { view: 480, w: 128, every: 125 }
 ];
-var level = 0, stats = { frames: 0, dets: 0, ms: 0, t: 0, good: 0, wait: 0, fps: 0, tps: 0, dms: 0 };
+/* resolución que se le pide a la cámara: la más alta que dé; si aun en el último nivel no alcanza, se baja */
+var CAMS = [{ w: 1920, h: 1080 }, { w: 1280, h: 720 }, { w: 640, h: 480 }], cam = 0;
+var level = 0, recording = false, stats = { frames: 0, dets: 0, ms: 0, t: 0, good: 0, wait: 0, low: 0, fps: 0, tps: 0, dms: 0 };
 
 function setLevel(n) {
   n = Math.max(0, Math.min(LEVELS.length - 1, n));
@@ -43,8 +46,12 @@ function tune(now) {
   stats.fps = stats.frames * 1000 / dt; stats.tps = stats.dets * 1000 / dt; stats.dms = stats.dets ? stats.ms / stats.dets : 0;
   stats.frames = stats.dets = stats.ms = 0; stats.t = now;
   if (!detector) { showStats(); return; }
+  if (recording) { showStats(); return; } /* mientras se graba no se cambia nada */
   if (stats.wait > 0) { stats.wait--; }
   else if (stats.fps < 24 && level < LEVELS.length - 1) { setLevel(level + 1); stats.good = 0; stats.wait = 1; }
+  else if (stats.fps < 20 && cam < CAMS.length - 1) {
+    if (++stats.low >= 2) { cam++; stats.low = 0; stats.wait = 2; tracks = []; startCamera(); }
+  }
   else if (stats.fps > 45 && level > 0) { if (++stats.good >= 3) { setLevel(level - 1); stats.good = 0; stats.wait = 2; } }
   else { stats.good = 0; }
   showStats();
@@ -52,7 +59,7 @@ function tune(now) {
 
 function showStats() {
   var el = $('stats'); if (!el || el.hidden) { return; }
-  el.textContent = 'Video ' + Math.round(stats.fps) + ' fps · Trackeo ' + Math.round(stats.tps) + '/s · ' + Math.round(stats.dms) + ' ms · N' + (level + 1) + ' · ' + faces.length + (faces.length === 1 ? ' cara' : ' caras') + (delegate ? ' · ' + delegate : '');
+  el.textContent = 'Video ' + Math.round(stats.fps) + ' fps · Trackeo ' + Math.round(stats.tps) + '/s · ' + Math.round(stats.dms) + ' ms · N' + (level + 1) + ' · ' + faces.length + (faces.length === 1 ? ' cara' : ' caras') + (delegate ? ' · ' + delegate : '') + ' · ' + (vid.videoWidth || 0) + '×' + (vid.videoHeight || 0);
 }
 var logo = new Image(); logo.src = '../logo.webp';
 
@@ -376,7 +383,8 @@ function loop() {
   if (!running) { return; }
   requestAnimationFrame(loop);
   if (vid.readyState < 2 || !vid.videoWidth) { return; }
-  if (cv.width !== vid.videoWidth || cv.height !== vid.videoHeight) { cv.width = vid.videoWidth; cv.height = vid.videoHeight; }
+  var k = Math.min(1, LEVELS[level].view / Math.max(vid.videoWidth, vid.videoHeight)), pw = Math.round(vid.videoWidth * k), ph = Math.round(vid.videoHeight * k);
+  if (!recording && (cv.width !== pw || cv.height !== ph)) { cv.width = pw; cv.height = ph; tracks = []; }
   var now = performance.now();
   stats.frames++; tune(now);
   if (detector && now - lastDet >= LEVELS[level].every) {
@@ -387,10 +395,11 @@ function loop() {
   render(now);
 }
 
-function render(now) {
-  var W = cv.width, H = cv.height;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  if (facing === 'user') { ctx.setTransform(-1, 0, 0, 1, W, 0); }
+/* s: escala de salida (1 para la vista previa; mayor para la foto a resolución completa) */
+function render(now, s) {
+  var W = cv.width, H = cv.height; s = s || 1;
+  ctx.setTransform(s, 0, 0, s, 0, 0);
+  if (facing === 'user') { ctx.setTransform(-s, 0, 0, s, W * s, 0); }
   ctx.drawImage(vid, 0, 0, W, H);
   var m = MASKS.filter(function (x) { return x.id === mask; })[0];
   if (!m || !m.fn) { return; }
@@ -411,7 +420,7 @@ function render(now) {
 /* ---------- Cámara y carga ---------- */
 function startCamera() {
   if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); }
-  return navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } } }).then(function (s) {
+  return navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: facing, width: { ideal: CAMS[cam].w }, height: { ideal: CAMS[cam].h } } }).then(function (s) {
     stream = s; vid.srcObject = s; return vid.play();
   });
 }
@@ -474,6 +483,7 @@ $('start').addEventListener('click', function () {
 
 $('flip').addEventListener('click', function () {
   if (!running) { return; }
+  if (recording) { return; }
   facing = facing === 'user' ? 'environment' : 'user'; faces = []; tracks = [];
   startCamera().catch(function () { facing = 'user'; startCamera(); });
 });
@@ -488,32 +498,96 @@ $('chips').addEventListener('click', function (e) {
   [].forEach.call(this.children, function (c) { c.setAttribute('aria-pressed', String(c === b)); });
 });
 
-/* ---------- Foto con marco del FAA! ---------- */
-$('shot').addEventListener('click', function () {
+/* ---------- Guardar ---------- */
+var IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function stamp() { var d = new Date(), z = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes()) + z(d.getSeconds()); }
+/* En Android se descarga directo. En iPhone el navegador no deja guardar sin preguntar: se abre el menú para «Guardar». */
+function save(blob, name) {
+  var file = new File([blob], name, { type: blob.type });
+  if (IOS && navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: 'FAA! 2026' }).catch(function () {});
+    return;
+  }
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 10000);
+  say('Guardado en Descargas', 2500);
+}
+
+/* ---------- Foto: se vuelve a dibujar el cuadro a la resolución completa de la cámara ---------- */
+function photo() {
   if (!running || !cv.width) { return; }
-  var W = cv.width, H = cv.height, band = Math.round(W * 0.14);
+  var s = Math.max(1, vid.videoWidth / cv.width), W = Math.round(cv.width * s), H = Math.round(cv.height * s), band = Math.round(W * 0.12);
   var out = document.createElement('canvas'); out.width = W; out.height = H + band;
-  var o = out.getContext('2d');
-  o.drawImage(cv, 0, 0);
+  var o = out.getContext('2d'), keep = ctx;
+  ctx = o;
+  try { faces = tracks.filter(function (tr) { return tr.pts; }); render(performance.now(), s); } finally { ctx = keep; }
+  o.setTransform(1, 0, 0, 1, 0, 0);
   o.fillStyle = '#1F3A12'; o.fillRect(0, H, W, band);
   var pad = band * 0.2;
   if (logo.complete && logo.naturalWidth) { var lh = band * 0.56, lw = lh * logo.naturalWidth / logo.naturalHeight; o.drawImage(logo, pad, H + (band - lh) / 2, lw, lh); }
   o.fillStyle = '#F4F7D9'; o.font = '700 ' + Math.round(band * 0.26) + 'px system-ui,sans-serif'; o.textAlign = 'right'; o.textBaseline = 'middle';
   o.fillText('equipo FAA! 2026', W - pad, H + band / 2);
   var fl = $('flash'); fl.classList.add('on'); setTimeout(function () { fl.classList.remove('on'); }, 60);
-  out.toBlob(function (blob) {
-    if (!blob) { return; }
-    var file = new File([blob], 'faa2026-mascara.jpg', { type: 'image/jpeg' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: 'FAA! 2026' }).catch(function () {});
-    } else {
-      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name;
-      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
-    }
-  }, 'image/jpeg', 0.9);
+  out.toBlob(function (blob) { if (blob) { save(blob, 'faa2026-' + stamp() + '.jpg'); } }, 'image/jpeg', 0.95);
+}
+
+/* ---------- Video: graba la vista previa con las máscaras, y el micrófono si dan permiso ---------- */
+var mode = 'foto', rec = null, recChunks = [], recT0 = 0, recTimer = 0, micStream = null, MAX_REC = 60;
+function recType() {
+  var opts = ['video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  if (!window.MediaRecorder) { return null; }
+  for (var i = 0; i < opts.length; i++) { if (MediaRecorder.isTypeSupported(opts[i])) { return opts[i]; } }
+  return '';
+}
+function startRec() {
+  var type = recType();
+  if (type === null || !cv.captureStream) { say('Este navegador no puede grabar video', 4000); return; }
+  var mic = micStream ? Promise.resolve(micStream) : navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function (m) { micStream = m; return m; }).catch(function () { return null; });
+  mic.then(function (m) {
+    var st = cv.captureStream(30);
+    if (m) { m.getAudioTracks().forEach(function (t) { st.addTrack(t); }); }
+    recChunks = [];
+    try { rec = new MediaRecorder(st, type ? { mimeType: type, videoBitsPerSecond: 8000000 } : { videoBitsPerSecond: 8000000 }); } catch (e) { rec = new MediaRecorder(st); }
+    rec.ondataavailable = function (e) { if (e.data && e.data.size) { recChunks.push(e.data); } };
+    rec.onstop = function () {
+      var t = rec.mimeType || type || 'video/webm', blob = new Blob(recChunks, { type: t.split(';')[0] });
+      save(blob, 'faa2026-' + stamp() + (t.indexOf('mp4') > -1 ? '.mp4' : '.webm'));
+      rec = null;
+    };
+    rec.start(1000);
+    recording = true; recT0 = performance.now();
+    $('shot').classList.add('rec'); $('rec').hidden = false; tickRec();
+  });
+}
+function tickRec() {
+  if (!recording) { return; }
+  var sec = Math.floor((performance.now() - recT0) / 1000);
+  $('rec').textContent = '● ' + Math.floor(sec / 60) + ':' + (sec % 60 < 10 ? '0' : '') + (sec % 60);
+  if (sec >= MAX_REC) { stopRec(); return; }
+  recTimer = setTimeout(tickRec, 250);
+}
+function stopRec() {
+  if (!recording) { return; }
+  recording = false; clearTimeout(recTimer);
+  $('shot').classList.remove('rec'); $('rec').hidden = true;
+  if (rec && rec.state !== 'inactive') { rec.stop(); }
+}
+
+$('shot').addEventListener('click', function () {
+  if (mode === 'foto') { photo(); }
+  else if (recording) { stopRec(); }
+  else if (running) { startRec(); }
+});
+$('mode').addEventListener('click', function () {
+  if (recording) { return; }
+  mode = mode === 'foto' ? 'video' : 'foto';
+  this.textContent = mode === 'foto' ? 'Video' : 'Foto';
+  this.setAttribute('aria-label', mode === 'foto' ? 'Pasar a video' : 'Pasar a foto');
+  $('shot').classList.toggle('vid', mode === 'video');
+  $('shot').setAttribute('aria-label', mode === 'foto' ? 'Sacar foto' : 'Grabar video');
 });
 
 document.addEventListener('visibilitychange', function () {
-  if (document.hidden && stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; running = false; }
+  if (document.hidden && stream) { stopRec(); stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; running = false; }
   else if (!document.hidden && !running && $('ov').hidden) { startCamera().then(function () { running = true; loop(); }); }
 });

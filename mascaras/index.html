@@ -39,6 +39,11 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .meter svg{width:min(60vw,240px);height:auto;overflow:visible}
 .stats{position:absolute;left:8px;top:8px;white-space:nowrap;background:rgba(16,19,13,.75);color:#ECEEE5;padding:4px 8px;border-radius:8px;font:600 11.5px ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;pointer-events:none}
 .stats[hidden]{display:none}
+.shot.vid{background:#E5393A}
+.shot.rec{background:#E5393A;border-radius:18px;transform:scale(.86)}
+.small.mode{width:auto;min-width:46px;padding:0 12px;border-radius:999px;font:700 14px system-ui}
+.recbadge{position:absolute;right:8px;top:8px;background:rgba(229,57,58,.9);color:#fff;padding:4px 10px;border-radius:999px;font:700 13px ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.recbadge[hidden]{display:none}
 .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
 .flash.on{opacity:.8;transition:none}
 </style>
@@ -50,6 +55,7 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
   <video id="vid" playsinline muted></video>
   <div class="flash" id="flash"></div>
   <div class="msg" id="msg" hidden></div>
+  <div class="recbadge" id="rec" hidden>● 0:00</div>
   <div class="stats" id="stats">Video – fps · Trackeo –/s</div>
   <div class="ov" id="ov">
     <div class="box">
@@ -71,8 +77,8 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 <div class="act">
   <button class="small" id="flip" type="button" aria-label="Cambiar de cámara">⟲</button>
   <button class="shot" id="shot" type="button" aria-label="Sacar foto"></button>
-  <span style="width:46px"></span>
+  <button class="small mode" id="mode" type="button" aria-label="Pasar a video">Video</button>
 </div>
-<script type="module" src="mascaras.js?v=10"></script>
+<script type="module" src="mascaras.js?v=11"></script>
 </body>
 </html>
