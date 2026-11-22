@@ -14,8 +14,46 @@ var detector = null, stream = null, facing = 'user', mask = 'anteojos';
 var faces = [], lastTs = -1, running = false;
 /* el detector mira una copia chica del video y corre unas pocas veces por segundo; entre detección y detección
    se predice el movimiento, así la máscara se dibuja fluida a la velocidad de la pantalla */
-var DET_W = 256, det = document.createElement('canvas'), dctx = det.getContext('2d');
-var snap = { prev: null, cur: null }, lastDet = 0, every = 90;
+var det = document.createElement('canvas'), dctx = det.getContext('2d');
+var snap = { prev: null, cur: null }, lastDet = 0;
+
+/* Calidad automática: arranca en el nivel más alto y baja si el video cae de ~24 cuadros por segundo;
+   si después sobra, vuelve a subir de a un nivel. Cada nivel define el ancho de la copia que mira el detector,
+   cada cuánto detecta (0 = en cada cuadro) y cuántas caras busca. */
+var LEVELS = [
+  { w: 480, every: 0, faces: 4 },
+  { w: 384, every: 33, faces: 4 },
+  { w: 320, every: 50, faces: 3 },
+  { w: 256, every: 80, faces: 2 },
+  { w: 192, every: 125, faces: 1 }
+];
+var level = 0, stats = { frames: 0, dets: 0, ms: 0, t: 0, good: 0, wait: 0, fps: 0, tps: 0, dms: 0 };
+
+function setLevel(n) {
+  n = Math.max(0, Math.min(LEVELS.length - 1, n));
+  if (n === level) { return; }
+  var before = LEVELS[level].faces; level = n;
+  if (detector && LEVELS[n].faces !== before) { detector.setOptions({ numFaces: LEVELS[n].faces }).catch(function () {}); }
+}
+
+/* cada 1,5 s: medir y decidir */
+function tune(now) {
+  if (!stats.t) { stats.t = now; return; }
+  var dt = now - stats.t; if (dt < 1500) { return; }
+  stats.fps = stats.frames * 1000 / dt; stats.tps = stats.dets * 1000 / dt; stats.dms = stats.dets ? stats.ms / stats.dets : 0;
+  stats.frames = stats.dets = stats.ms = 0; stats.t = now;
+  if (!detector) { showStats(); return; }
+  if (stats.wait > 0) { stats.wait--; }
+  else if (stats.fps < 24 && level < LEVELS.length - 1) { setLevel(level + 1); stats.good = 0; stats.wait = 1; }
+  else if (stats.fps > 45 && level > 0) { if (++stats.good >= 3) { setLevel(level - 1); stats.good = 0; stats.wait = 2; } }
+  else { stats.good = 0; }
+  showStats();
+}
+
+function showStats() {
+  var el = $('stats'); if (!el || el.hidden) { return; }
+  el.textContent = 'Video ' + Math.round(stats.fps) + ' fps · Trackeo ' + Math.round(stats.tps) + '/s · ' + Math.round(stats.dms) + ' ms · nivel ' + (level + 1) + '/' + LEVELS.length + ' · ' + LEVELS[level].faces + (LEVELS[level].faces > 1 ? ' caras' : ' cara');
+}
 var logo = new Image(); logo.src = '../logo.webp';
 
 var VERDE = [45, 106, 31, 1], CLARO = [147, 204, 110, 1], NEGRO = [27, 30, 24, 1], CAFE = [122, 82, 50, 1];
@@ -258,13 +296,12 @@ function predict(now) {
 }
 
 function detect(now) {
-  var vw = vid.videoWidth, vh = vid.videoHeight, h = Math.round(DET_W * vh / vw);
-  if (det.width !== DET_W || det.height !== h) { det.width = DET_W; det.height = h; }
-  dctx.drawImage(vid, 0, 0, DET_W, h);
+  var vw = vid.videoWidth, vh = vid.videoHeight, W = Math.min(LEVELS[level].w, vw), h = Math.round(W * vh / vw);
+  if (det.width !== W || det.height !== h) { det.width = W; det.height = h; }
+  dctx.drawImage(vid, 0, 0, W, h);
   var ts = now; if (ts <= lastTs) { ts = lastTs + 1; } lastTs = ts;
   var t0 = performance.now(), res = detector.detectForVideo(det, ts), took = performance.now() - t0;
-  /* cada cuánto detectar: entre 15 y 5 veces por segundo, según lo que tarde este teléfono */
-  every = Math.max(66, Math.min(200, every * 0.8 + took * 3 * 0.2));
+  stats.dets++; stats.ms += took;
   snap.prev = snap.cur;
   snap.cur = { t: now, faces: (res.faceLandmarks || []).map(toPx) };
 }
@@ -275,7 +312,8 @@ function loop() {
   if (vid.readyState < 2 || !vid.videoWidth) { return; }
   if (cv.width !== vid.videoWidth || cv.height !== vid.videoHeight) { cv.width = vid.videoWidth; cv.height = vid.videoHeight; }
   var now = performance.now();
-  if (detector && now - lastDet >= every) {
+  stats.frames++; tune(now);
+  if (detector && now - lastDet >= LEVELS[level].every) {
     lastDet = now;
     try { detect(now); } catch (e) { /* un cuadro fallido no corta el loop */ }
   }
@@ -301,7 +339,7 @@ function render() {
 /* ---------- Cámara y carga ---------- */
 function startCamera() {
   if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); }
-  return navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: facing, width: { ideal: 480 }, height: { ideal: 360 } } }).then(function (s) {
+  return navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } } }).then(function (s) {
     stream = s; vid.srcObject = s; return vid.play();
   });
 }
@@ -338,7 +376,7 @@ function loadDetector() {
     var mp = r[0], wasmUrl = URL.createObjectURL(new Blob([r[1]], { type: 'application/wasm' })), model = r[2];
     return mp.FilesetResolver.forVisionTasks('./mp').then(function (files) {
       files.wasmBinaryPath = wasmUrl;
-      var opts = function (delegate) { return { baseOptions: { modelAssetBuffer: new Uint8Array(model), delegate: delegate }, runningMode: 'VIDEO', numFaces: 2 }; };
+      var opts = function (delegate) { return { baseOptions: { modelAssetBuffer: new Uint8Array(model), delegate: delegate }, runningMode: 'VIDEO', numFaces: LEVELS[level].faces }; };
       return mp.FaceLandmarker.createFromOptions(files, opts('GPU')).catch(function () { return mp.FaceLandmarker.createFromOptions(files, opts('CPU')); });
     });
   });
@@ -367,6 +405,8 @@ $('flip').addEventListener('click', function () {
   facing = facing === 'user' ? 'environment' : 'user'; faces = []; snap = { prev: null, cur: null };
   startCamera().catch(function () { facing = 'user'; startCamera(); });
 });
+
+$('ttl').addEventListener('click', function () { var el = $('stats'); el.hidden = !el.hidden; showStats(); });
 
 /* ---------- Selector ---------- */
 $('chips').innerHTML = MASKS.map(function (m) { return '<button class="chip" type="button" data-m="' + m.id + '" aria-pressed="' + (m.id === mask) + '">' + m.name + '</button>'; }).join('');

@@ -37,17 +37,20 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .meter{display:grid;place-items:center;padding:4px 0}
 .meter[hidden]{display:none}
 .meter svg{width:min(60vw,240px);height:auto;overflow:visible}
+.stats{position:absolute;left:8px;top:8px;background:rgba(16,19,13,.75);color:#ECEEE5;padding:4px 8px;border-radius:8px;font:600 11.5px ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;pointer-events:none}
+.stats[hidden]{display:none}
 .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
 .flash.on{opacity:.8;transition:none}
 </style>
 </head>
 <body>
-<div class="bar"><a href="../">← Guía</a><h1>Máscaras</h1><span style="width:70px"></span></div>
+<div class="bar"><a href="../">← Guía</a><h1 id="ttl">Máscaras</h1><span style="width:70px"></span></div>
 <div class="stage" id="stage">
   <canvas id="cv"></canvas>
   <video id="vid" playsinline muted></video>
   <div class="flash" id="flash"></div>
   <div class="msg" id="msg" hidden></div>
+  <div class="stats" id="stats">Video – fps · Trackeo –/s</div>
   <div class="ov" id="ov">
     <div class="box">
       <h2>Máscaras del FAA!</h2>
@@ -70,6 +73,6 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
   <button class="shot" id="shot" type="button" aria-label="Sacar foto"></button>
   <span style="width:46px"></span>
 </div>
-<script type="module" src="mascaras.js?v=3"></script>
+<script type="module" src="mascaras.js?v=4"></script>
 </body>
 </html>
