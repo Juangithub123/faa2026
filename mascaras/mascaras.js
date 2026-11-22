@@ -11,7 +11,7 @@ var WASM = './mp/vision_wasm_internal.wasm';
 var WASM_BYTES = 14665716, MODEL_BYTES = 230000; /* tamaños reales, por si el servidor no los informa */
 var $ = function (id) { return document.getElementById(id); };
 var cv = $('cv'), ctx = cv.getContext('2d'), vid = $('vid');
-var detector = null, stream = null, facing = 'user', mask = 'tera-rosa';
+var delegate = '', detector = null, stream = null, facing = 'user', mask = 'tera-rosa';
 var faces = [], lastTs = -1, running = false;
 /* el detector mira una copia chica del video y corre unas pocas veces por segundo; entre detección y detección
    se predice el movimiento, así la máscara se dibuja fluida a la velocidad de la pantalla */
@@ -52,7 +52,7 @@ function tune(now) {
 
 function showStats() {
   var el = $('stats'); if (!el || el.hidden) { return; }
-  el.textContent = 'Video ' + Math.round(stats.fps) + ' fps · Trackeo ' + Math.round(stats.tps) + '/s · ' + Math.round(stats.dms) + ' ms · N' + (level + 1) + ' · ' + faces.length + (faces.length === 1 ? ' cara' : ' caras');
+  el.textContent = 'Video ' + Math.round(stats.fps) + ' fps · Trackeo ' + Math.round(stats.tps) + '/s · ' + Math.round(stats.dms) + ' ms · N' + (level + 1) + ' · ' + faces.length + (faces.length === 1 ? ' cara' : ' caras') + (delegate ? ' · ' + delegate : '');
 }
 var logo = new Image(); logo.src = '../logo.webp';
 
@@ -129,7 +129,31 @@ function headFrame(P, tr, now) {
   });
   F.backZ = F.world([0, ANCH.earY, ANCH.earZ])[2] + 0.15 * s;
   F.roll = Math.atan2(X[1], X[0]);
+  /* cabeza invisible: un elipsoide que sigue la cabeza; su contorno sirve para tapar lo que queda detrás */
+  var hp = [];
+  for (var hu = 0; hu < 16; hu++) {
+    for (var hv = -4; hv <= 4; hv++) {
+      var a = hu / 16 * Math.PI * 2, b = hv / 4 * Math.PI / 2;
+      var q = F.proj([HEAD.c[0] + HEAD.r[0] * Math.cos(b) * Math.cos(a), HEAD.c[1] + HEAD.r[1] * Math.sin(b), HEAD.c[2] + HEAD.r[2] * Math.cos(b) * Math.sin(a)]);
+      hp.push([q.x, q.y]);
+    }
+  }
+  F.head = hull(hp);
+  F.headZ = F.world(HEAD.c)[2];
   return F;
+}
+
+/* tamaño de la cabeza invisible, en unidades de 9,5 cm: centro un poco detrás de las orejas */
+var HEAD = { c: [0, -0.08, 0.62], r: [0.8, 1.2, 0.95] };
+
+/* envolvente convexa (cadena monótona de Andrew) */
+function hull(pts) {
+  pts = pts.slice().sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+  var cr = function (o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); };
+  var lo = [], up = [], i;
+  for (i = 0; i < pts.length; i++) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], pts[i]) <= 0) { lo.pop(); } lo.push(pts[i]); }
+  for (i = pts.length - 1; i >= 0; i--) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], pts[i]) <= 0) { up.pop(); } up.push(pts[i]); }
+  lo.pop(); up.pop(); return lo.concat(up);
 }
 
 function inside(pt, poly) {
@@ -144,15 +168,18 @@ function inside(pt, poly) {
 /* ---------- Piezas 3D: se juntan, se ordenan por profundidad y se dibujan ---------- */
 var items, F;
 function rgba(c, sh) { sh = sh === undefined ? 1 : sh; return 'rgba(' + Math.round(c[0] * sh) + ',' + Math.round(c[1] * sh) + ',' + Math.round(c[2] * sh) + ',' + c[3] + ')'; }
-function hidden(p) { return p.z > F.backZ && inside([p.x, p.y], F.occ); }
+/* lo que queda detrás de la cabeza ya no se esconde pieza por pieza: lo tapa la cabeza invisible (ver render) */
+function hidden() { return false; }
+/* piezas que van siempre por encima de la cabeza (por ejemplo la vincha, que se apoya arriba) */
+function front(z, keep) { return keep ? Math.min(z, F.headZ - 0.02 * F.s) : z; }
 
-function poly(pts, fill) {
+function poly(pts, fill, keep) {
   var q = pts.map(F.proj), z = 0, x = 0, y = 0;
   q.forEach(function (p) { z += p.z; x += p.x; y += p.y; });
   var c = { x: x / q.length, y: y / q.length, z: z / q.length };
   if (hidden(c)) { return; }
   var w = pts.map(F.world), n = norm(cross(sub(w[1], w[0]), sub(w[2], w[0]))), sh = 0.62 + 0.38 * Math.abs(n[2]);
-  items.push({ z: c.z, draw: function () {
+  items.push({ z: front(c.z, keep), draw: function () {
     ctx.beginPath(); q.forEach(function (p, i) { if (i) { ctx.lineTo(p.x, p.y); } else { ctx.moveTo(p.x, p.y); } }); ctx.closePath();
     ctx.fillStyle = rgba(fill, sh); ctx.fill();
   } });
@@ -164,7 +191,7 @@ function strip(pts, color, lw, bias, keep) {
     (function (a, b) {
       var c = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 - (bias || 0) * F.s };
       if (!keep && hidden(c)) { return; }
-      items.push({ z: c.z, draw: function () {
+      items.push({ z: front(c.z, keep), draw: function () {
         ctx.strokeStyle = rgba(color); ctx.lineCap = 'round'; ctx.lineWidth = lw * F.s * (a.k + b.k) / 2;
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       } });
@@ -295,28 +322,52 @@ function tera(col) {
   poly([tr, mid, br], c.visor);
   strip([tl, bl, mid, tl], c.borde, 0.025, 0.02);
   strip([tr, br, mid, tr], c.borde, 0.025, 0.02);
-  /* pico: una pirámide desde la nariz hacia adelante y abajo */
-  var top = [0, 0.22, -0.38], bot = [0, 0.58, -0.32], l = [-0.18, 0.4, -0.33], r = [0.18, 0.4, -0.33], tip = [0, 0.98, -1.0];
-  poly([top, l, tip], PICO); poly([top, tip, r], PICO); poly([l, bot, tip], PICO); poly([bot, r, tip], PICO);
-  [-1, 1].forEach(function (sg) { strip([[sg * 0.13, 0.45, -0.37], lerp([sg * 0.13, 0.45, -0.37], tip, 0.62)], [110, 40, 120, 1], 0.03, 0.01); });
-  /* auriculares grises */
-  var R = A.hw + 0.14, band = [], light = [];
-  for (var i = 0; i <= 18; i++) {
-    var t = i / 18 * Math.PI, h = A.earY - A.top[1] + 0.45;
-    band.push([-R * Math.cos(t), A.earY - h * Math.sin(t), A.earZ + 0.1]);
-    light.push([-(R - 0.01) * Math.cos(t), A.earY - (h + 0.03) * Math.sin(t), A.earZ + 0.08]);
+  /* pico: nace en el cruce de la X, con el lomo curvo como en el dibujo (una curva que sale hacia adelante y baja) */
+  var B = [0, 0.12, -0.42], C = [0, 0.16, -1.0], T = [0, 0.9, -1.1], N = 8, sec = [];
+  for (var i = 0; i <= N; i++) {
+    var u = i / N, p = add(add(mul(B, (1 - u) * (1 - u)), mul(C, 2 * u * (1 - u))), mul(T, u * u));
+    var tg = norm(add(mul(sub(C, B), 2 * (1 - u)), mul(sub(T, C), 2 * u))), up = norm(cross(tg, EX));
+    var w = 0.24 * Math.pow(1 - u, 0.85), hu = 0.11 * (1 - u), hd = 0.06 * (1 - u);
+    sec.push({ ridge: add(p, mul(up, hu)), l: add(p, mul(EX, -w)), r: add(p, mul(EX, w)), under: add(p, mul(up, -hd)) });
   }
-  strip(band, GRIS_OSC, 0.16, 0, true);
-  strip(light.slice(2, 17), GRIS, 0.08, 0.01, true);
+  var PICO_B = [190, 96, 200, 1];
+  for (i = 0; i < N; i++) {
+    var a0 = sec[i], a1 = sec[i + 1];
+    poly([a0.ridge, a0.l, a1.l, a1.ridge], PICO); poly([a0.ridge, a1.ridge, a1.r, a0.r], PICO);
+    poly([a0.l, a0.under, a1.under, a1.l], PICO_B); poly([a0.under, a0.r, a1.r, a1.under], PICO_B);
+  }
+  /* la línea de la boca, a los dos lados */
+  strip(sec.slice(0, 6).map(function (q) { return q.l; }), [110, 40, 120, 1], 0.03, 0.01);
+  strip(sec.slice(0, 6).map(function (q) { return q.r; }), [110, 40, 120, 1], 0.03, 0.01);
+  /* auriculares grises, más toscos: copas como cajas redondeadas y vincha plana y ancha */
+  var R = A.hw + 0.12, cupH = 0.38, cupD = 0.32, cupT = 0.17, yTop = A.earY - cupH + 0.04, h = yTop - A.top[1] + 0.45, Zb = A.earZ + 0.05;
+  for (i = 0; i < 18; i++) {
+    var t0 = i / 18 * Math.PI, t1 = (i + 1) / 18 * Math.PI;
+    var p0 = [-(R + cupT / 2) * Math.cos(t0), yTop - h * Math.sin(t0), Zb], p1 = [-(R + cupT / 2) * Math.cos(t1), yTop - h * Math.sin(t1), Zb];
+    poly([add(p0, [0, 0, -0.11]), add(p0, [0, 0, 0.11]), add(p1, [0, 0, 0.11]), add(p1, [0, 0, -0.11])], GRIS_OSC, true);
+    /* el canto de adelante de la vincha, para que de frente se vea gruesa */
+    var q0 = [-(R + cupT / 2 + 0.12) * Math.cos(t0), yTop - (h + 0.12) * Math.sin(t0), Zb - 0.11], q1 = [-(R + cupT / 2 + 0.12) * Math.cos(t1), yTop - (h + 0.12) * Math.sin(t1), Zb - 0.11];
+    poly([add(p0, [0, 0, -0.11]), add(p1, [0, 0, -0.11]), q1, q0], GRIS, true);
+  }
+  var mid = [];
+  for (i = 2; i <= 16; i++) { var tt = i / 18 * Math.PI; mid.push([-(R + cupT / 2 + 0.06) * Math.cos(tt), yTop - (h + 0.06) * Math.sin(tt), Zb - 0.12]); }
+  strip(mid, GRIS_CLARO, 0.035, 0.01, true);
   [-1, 1].forEach(function (sg) {
-    var cc = [sg * (R + 0.02), A.earY, A.earZ], v = norm([-sg * 0.45, 0, 1]), out = norm(cross(EY, v));
+    var cc = [sg * R, A.earY, A.earZ], v = norm([-sg * 0.3, 0, 1]), out = norm(cross(EY, v));
     if (out[0] * sg < 0) { out = mul(out, -1); }
-    poly(ring(cc, EY, v, 0.36, 0.32, 22), GRIS_OSC);
-    poly(ring(add(cc, mul(out, 0.1)), EY, v, 0.36, 0.32, 22), GRIS);
-    poly(ring(add(cc, mul(out, 0.11)), EY, v, 0.22, 0.2, 20), GRIS_CLARO);
+    var rr = function (c0, a, b, r) {
+      var o = [], k, corners = [[a - r, b - r, 0], [-(a - r), b - r, Math.PI / 2], [-(a - r), -(b - r), Math.PI], [a - r, -(b - r), Math.PI * 1.5]];
+      corners.forEach(function (q) { for (k = 0; k <= 3; k++) { var an = q[2] + k / 3 * Math.PI / 2; o.push(add(c0, add(mul(EY, q[0] + r * Math.cos(an)), mul(v, q[1] + r * Math.sin(an))))); } });
+      return o;
+    };
+    var inner = rr(cc, cupH, cupD, 0.13), outer = rr(add(cc, mul(out, cupT)), cupH, cupD, 0.13);
+    poly(inner, GRIS_OSC);
+    for (var j = 0; j < inner.length; j++) { var j2 = (j + 1) % inner.length; poly([inner[j], inner[j2], outer[j2], outer[j]], GRIS_OSC); }
+    poly(outer, GRIS);
+    poly(rr(add(cc, mul(out, cupT + 0.005)), cupH * 0.62, cupD * 0.6, 0.08), GRIS_CLARO);
   });
   /* cable que cuelga del auricular derecho de la imagen */
-  var c0 = [R + 0.1, A.earY + 0.3, A.earZ + 0.05];
+  var c0 = [R + cupT / 2, A.earY + cupH - 0.05, A.earZ + 0.05];
   strip([c0, [R + 0.18, A.earY + 0.8, A.earZ - 0.05], [R + 0.08, A.earY + 1.35, A.earZ - 0.25], [R - 0.05, A.earY + 1.9, A.earZ - 0.3]], NEGRO, 0.025);
   /* copete: plumitas finas desde arriba y atrás de la cabeza, hacia arriba y atrás */
   var base = [0.08, A.top[1] - 0.12, A.earZ + 0.15];
@@ -435,6 +486,13 @@ function render(now) {
   faces.forEach(function (tr) {
     F = headFrame(predicted(tr, now), tr, now); items = [];
     m.fn();
+    /* la cabeza invisible: vuelve a dibujar el video real dentro del contorno de la cabeza, a la profundidad del centro
+       de la cabeza; lo que se dibujó antes (lo que está detrás) queda tapado por la cabeza de verdad */
+    var head = F.head;
+    items.push({ z: F.headZ, draw: function () {
+      ctx.save(); ctx.beginPath(); head.forEach(function (p, i) { if (i) { ctx.lineTo(p[0], p[1]); } else { ctx.moveTo(p[0], p[1]); } });
+      ctx.closePath(); ctx.clip(); ctx.drawImage(vid, 0, 0, W, H); ctx.restore();
+    } });
     items.sort(function (a, b) { return b.z - a.z; }).forEach(function (it) { it.draw(); });
   });
 }
@@ -480,7 +538,7 @@ function loadDetector() {
     return mp.FilesetResolver.forVisionTasks('./mp').then(function (files) {
       files.wasmBinaryPath = wasmUrl;
       var opts = function (delegate) { return { baseOptions: { modelAssetBuffer: new Uint8Array(model), delegate: delegate }, runningMode: 'VIDEO', minDetectionConfidence: 0.5 }; };
-      return mp.FaceDetector.createFromOptions(files, opts('GPU')).catch(function () { return mp.FaceDetector.createFromOptions(files, opts('CPU')); });
+      return mp.FaceDetector.createFromOptions(files, opts('GPU')).then(function (d) { delegate = 'GPU'; return d; }).catch(function () { delegate = 'CPU'; return mp.FaceDetector.createFromOptions(files, opts('CPU')); });
     });
   });
 }
