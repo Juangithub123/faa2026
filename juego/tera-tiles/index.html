@@ -616,7 +616,7 @@ async function openSong(meta) {
     $('songTitle').textContent = meta.title;
     $('songInfo').textContent = (meta.artist ? meta.artist + ' · ' : '') + Math.round(m.duration / 60) + ' min · ' + Math.round(m.bpm) + ' bpm';
     const main = ['melody', 'bass', 'drums', 'harmony'].filter(k => m.parts[k]);
-    if (!m.parts[partKey]) partKey = main[0];
+    partKey = m.parts.melody ? 'melody' : main[0]; // cada tema arranca en su melodía
     const mk = (k, box) => {
       const p = m.parts[k];
       const n = K.buildChart(m, k, 'normal').length;
