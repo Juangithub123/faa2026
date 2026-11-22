@@ -15,6 +15,11 @@
     "artist": "Queen"
   },
   {
+    "file": "cancion-para-mi-muerte.mid",
+    "title": "Canción para mi muerte",
+    "artist": "Sui Generis"
+  },
+  {
     "file": "careless-whisper.mid",
     "title": "Careless Whisper",
     "artist": "George Michael",
@@ -24,6 +29,11 @@
     "file": "clair-de-lune.mid",
     "title": "Clair de Lune",
     "artist": "Claude Debussy"
+  },
+  {
+    "file": "dale-alegria-a-mi-corazon.mid",
+    "title": "Dale alegría a mi corazón",
+    "artist": "Fito Páez"
   },
   {
     "file": "dancing-with-the-moonlit-knight.mid",
@@ -36,9 +46,56 @@
     "artist": "Genesis"
   },
   {
+    "file": "inconsciente-colectivo.mid",
+    "title": "Inconsciente colectivo",
+    "artist": "Charly García"
+  },
+  {
+    "file": "irresponsables.mid",
+    "title": "Irresponsables",
+    "artist": "Babasónicos"
+  },
+  {
+    "file": "la-ciudad-de-la-furia.mid",
+    "title": "La ciudad de la furia",
+    "artist": "Soda Stereo"
+  },
+  {
+    "file": "lunes-por-la-madrugada.mid",
+    "title": "Lunes por la madrugada",
+    "artist": "Los Fabulosos Cadillacs",
+    "melodia": "harpsichord"
+  },
+  {
+    "file": "mil-horas.mid",
+    "title": "Mil horas",
+    "artist": "Los Abuelos de la Nada"
+  },
+  {
     "file": "my-heart-will-go-on.mid",
     "title": "My Heart Will Go On",
     "artist": "Céline Dion"
+  },
+  {
+    "file": "no-me-dejan-salir.mid",
+    "title": "No me dejan salir",
+    "artist": "Charly García"
+  },
+  {
+    "file": "no-voy-en-tren.mid",
+    "title": "No voy en tren",
+    "artist": "Charly García"
+  },
+  {
+    "file": "ojo-con-los-orozco.mid",
+    "title": "Ojo con los Orozco",
+    "artist": "León Gieco"
+  },
+  {
+    "file": "rezo-por-vos.mid",
+    "title": "Rezo por vos",
+    "artist": "Charly García y Luis Alberto Spinetta",
+    "melodia": "SITAR"
   },
   {
     "file": "sandstorm.mid",
