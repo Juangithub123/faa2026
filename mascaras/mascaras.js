@@ -1,13 +1,14 @@
 /* Máscaras del FAA! 2026.
-   MediaPipe Face Landmarker da 478 puntos de la cara con profundidad. Con ellos se arma un sistema de ejes
-   de la cabeza (de qué lado mira, cuánto se inclina) y las máscaras se dibujan como objetos 3D en un canvas 2D:
-   cada pieza se proyecta con perspectiva, se ordena de atrás hacia adelante y se esconde si queda detrás de la cabeza.
-   El motor (mp/) y el modelo (~3,7 MB, de Google) se bajan recién al tocar «Activar cámara», con un 26 que se llena.
+   MediaPipe Face Detector (el detector liviano) da 6 puntos por cara: ojos, punta de la nariz, boca y orejas.
+   Con esos 6 puntos se estima la rotación de la cabeza ajustando un modelo 3D simple de cabeza (método POS:
+   pose por ortografía y escala) y las máscaras se dibujan como objetos 3D en un canvas 2D: cada pieza se
+   proyecta con perspectiva, se ordena de atrás hacia adelante y se esconde si queda detrás de la cabeza.
+   El motor (mp/) y el modelo (~230 KB, de Google) se bajan recién al tocar «Activar cámara», con un 26 que se llena.
    El service worker los guarda para usarlos sin señal. La imagen de la cámara nunca sale del teléfono. */
 
-var MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+var MODEL = 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite';
 var WASM = './mp/vision_wasm_internal.wasm';
-var WASM_BYTES = 14665716, MODEL_BYTES = 3758596; /* tamaños reales, por si el servidor no los informa */
+var WASM_BYTES = 14665716, MODEL_BYTES = 230000; /* tamaños reales, por si el servidor no los informa */
 var $ = function (id) { return document.getElementById(id); };
 var cv = $('cv'), ctx = cv.getContext('2d'), vid = $('vid');
 var detector = null, stream = null, facing = 'user', mask = 'anteojos';
@@ -21,19 +22,18 @@ var snap = { prev: null, cur: null }, lastDet = 0;
    si después sobra, vuelve a subir de a un nivel. Cada nivel define el ancho de la copia que mira el detector,
    cada cuánto detecta (0 = en cada cuadro) y cuántas caras busca. */
 var LEVELS = [
-  { w: 480, every: 0, faces: 4 },
-  { w: 384, every: 33, faces: 4 },
-  { w: 320, every: 50, faces: 3 },
-  { w: 256, every: 80, faces: 2 },
-  { w: 192, every: 125, faces: 1 }
+  { w: 320, every: 0 },
+  { w: 256, every: 33 },
+  { w: 192, every: 50 },
+  { w: 160, every: 80 },
+  { w: 128, every: 125 }
 ];
 var level = 0, stats = { frames: 0, dets: 0, ms: 0, t: 0, good: 0, wait: 0, fps: 0, tps: 0, dms: 0 };
 
 function setLevel(n) {
   n = Math.max(0, Math.min(LEVELS.length - 1, n));
   if (n === level) { return; }
-  var before = LEVELS[level].faces; level = n;
-  if (detector && LEVELS[n].faces !== before) { detector.setOptions({ numFaces: LEVELS[n].faces }).catch(function () {}); }
+  level = n;
 }
 
 /* cada 1,5 s: medir y decidir */
@@ -52,12 +52,11 @@ function tune(now) {
 
 function showStats() {
   var el = $('stats'); if (!el || el.hidden) { return; }
-  el.textContent = 'Video ' + Math.round(stats.fps) + ' fps · Trackeo ' + Math.round(stats.tps) + '/s · ' + Math.round(stats.dms) + ' ms · nivel ' + (level + 1) + '/' + LEVELS.length + ' · ' + LEVELS[level].faces + (LEVELS[level].faces > 1 ? ' caras' : ' cara');
+  el.textContent = 'Video ' + Math.round(stats.fps) + ' fps · Trackeo ' + Math.round(stats.tps) + '/s · ' + Math.round(stats.dms) + ' ms · N' + (level + 1) + ' · ' + faces.length + (faces.length === 1 ? ' cara' : ' caras');
 }
 var logo = new Image(); logo.src = '../logo.webp';
 
 var VERDE = [45, 106, 31, 1], CLARO = [147, 204, 110, 1], NEGRO = [27, 30, 24, 1], CAFE = [122, 82, 50, 1];
-var OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
 
 /* ---------- Geometría ---------- */
 function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
@@ -69,27 +68,48 @@ function len(a) { return Math.hypot(a[0], a[1], a[2]); }
 function norm(a) { return mul(a, 1 / (len(a) || 1)); }
 function lerp(a, b, t) { return add(a, mul(sub(b, a), t)); }
 
-/* Sistema de ejes de la cabeza, en unidades de «distancia entre los rabillos de los ojos».
-   X hacia la derecha de la imagen, Y hacia abajo, Z hacia atrás de la cabeza (lejos de la cámara). */
+/* Modelo 3D simple de cabeza, en cm, con el origen entre las pupilas.
+   X hacia la derecha de la imagen, Y hacia abajo, Z hacia atrás (lejos de la cámara).
+   Los 6 puntos en el orden en que los da el detector: ojo derecho, ojo izquierdo, nariz, boca, oreja derecha, oreja izquierda. */
+var CAN = [[-3.2, 0, 0], [3.2, 0, 0], [0, 4.6, -2.2], [0, 7.2, -1.0], [-7.3, 1.6, 7.8], [7.3, 1.6, 7.8]];
+var UNIT = 9.5; /* las máscaras se dibujan en unidades de 9,5 cm (más o menos el ancho de los ojos) */
+var CANM = CAN.reduce(function (m, p) { return add(m, mul(p, 1 / CAN.length)); }, [0, 0, 0]);
+var CANC = CAN.map(function (p) { return sub(p, CANM); });
+var GINV = (function () {
+  var g = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  CANC.forEach(function (p) { for (var i = 0; i < 3; i++) { for (var j = 0; j < 3; j++) { g[i][j] += p[i] * p[j]; } } });
+  var a = g, det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+  return [
+    [(a[1][1] * a[2][2] - a[1][2] * a[2][1]) / det, (a[0][2] * a[2][1] - a[0][1] * a[2][2]) / det, (a[0][1] * a[1][2] - a[0][2] * a[1][1]) / det],
+    [(a[1][2] * a[2][0] - a[1][0] * a[2][2]) / det, (a[0][0] * a[2][2] - a[0][2] * a[2][0]) / det, (a[0][2] * a[1][0] - a[0][0] * a[1][2]) / det],
+    [(a[1][0] * a[2][1] - a[1][1] * a[2][0]) / det, (a[0][1] * a[2][0] - a[0][0] * a[2][1]) / det, (a[0][0] * a[1][1] - a[0][1] * a[1][0]) / det]
+  ];
+})();
+/* contorno de la cara, para esconder lo que queda detrás de la cabeza */
+var OVALC = [];
+for (var oi = 0; oi < 32; oi++) { var ot = oi / 32 * Math.PI * 2; OVALC.push([7 * Math.sin(ot) / UNIT, (2 - 9 * Math.cos(ot)) / UNIT, (1 + 4 * Math.abs(Math.sin(ot))) / UNIT]); }
+/* puntos de referencia de la cara, en unidades de 9,5 cm */
+var ANCH = { top: [0, -0.74, 0.05], chin: [0, 1.16, 0.1], nose: [0, 0.47, -0.24], under: [0, 0.6, -0.18], lip: [0, 0.7, -0.15],
+  mr: [-0.26, 0.76, -0.02], ml: [0.26, 0.76, -0.02], er: [-0.34, 0, 0], el: [0.34, 0, 0], hw: 0.74, earY: 0.2, earZ: 0.7 };
+
+/* Pose desde los 6 puntos: se busca la matriz que mejor lleva el modelo a la imagen y se la separa en escala y rotación. */
 function headFrame(P) {
-  var O = mul(add(P[33], P[263]), 0.5), xv = sub(P[263], P[33]), s = len(xv), X = mul(xv, 1 / s);
-  var yv = sub(P[152], P[10]), Y = norm(sub(yv, mul(X, dot(yv, X)))), Z = cross(X, Y);
-  var F = { O: O, s: s, X: X, Y: Y, Z: Z, f: cv.width * 1.6 };
-  F.loc = function (i) { var v = sub(P[i], O); return [dot(v, X) / s, dot(v, Y) / s, dot(v, Z) / s]; };
+  var n = CAN.length, mx = 0, my = 0, i;
+  for (i = 0; i < n; i++) { mx += P[i][0]; my += P[i][1]; }
+  mx /= n; my /= n;
+  var bx = [0, 0, 0], by = [0, 0, 0];
+  for (i = 0; i < n; i++) { bx = add(bx, mul(CANC[i], P[i][0] - mx)); by = add(by, mul(CANC[i], P[i][1] - my)); }
+  var rx = [dot(GINV[0], bx), dot(GINV[1], bx), dot(GINV[2], bx)], ry = [dot(GINV[0], by), dot(GINV[1], by), dot(GINV[2], by)];
+  var k = (len(rx) + len(ry)) / 2, r0 = norm(rx), r1 = norm(sub(ry, mul(r0, dot(ry, r0)))), r2 = cross(r0, r1);
+  var X = [r0[0], r1[0], r2[0]], Y = [r0[1], r1[1], r2[1]], Z = [r0[2], r1[2], r2[2]];
+  var O = [mx - dot(rx, CANM), my - dot(ry, CANM), 0], s = k * UNIT;
+  var F = { O: O, s: s, X: X, Y: Y, Z: Z, f: cv.width * 1.6, A: ANCH };
   F.world = function (m) { return add(O, mul(add(add(mul(X, m[0]), mul(Y, m[1])), mul(Z, m[2])), s)); };
   F.proj = function (m) {
-    var w = F.world(m), k = F.f / (F.f + (w[2] - O[2]));
-    return { x: O[0] + (w[0] - O[0]) * k, y: O[1] + (w[1] - O[1]) * k, z: w[2], k: k };
+    var w = F.world(m), kk = F.f / (F.f + (w[2] - O[2]));
+    return { x: O[0] + (w[0] - O[0]) * kk, y: O[1] + (w[1] - O[1]) * kk, z: w[2], k: kk };
   };
-  /* puntos de referencia de la cara, en coordenadas de la cabeza */
-  var A = { top: F.loc(10), chin: F.loc(152), r: F.loc(234), l: F.loc(454), nose: F.loc(1), under: F.loc(164), lip: F.loc(0),
-    mr: F.loc(61), ml: F.loc(291), er: mul(add(F.loc(33), F.loc(133)), 0.5), el: mul(add(F.loc(263), F.loc(362)), 0.5) };
-  A.hw = (Math.abs(A.r[0]) + Math.abs(A.l[0])) / 2;
-  A.earY = (A.r[1] + A.l[1]) / 2;
-  A.earZ = (A.r[2] + A.l[2]) / 2 + 0.15;
-  F.A = A;
-  /* silueta que tapa lo que queda detrás de la cabeza: el óvalo de la cara agrandado, con lugar para el pelo */
-  var pts = OVAL.map(function (i) { return P[i]; }), cx = 0, cy = 0;
+  var pts = OVALC.map(function (m) { var q = F.proj(m); return [q.x, q.y]; }), cx = 0, cy = 0;
   pts.forEach(function (p) { cx += p[0]; cy += p[1]; }); cx /= pts.length; cy /= pts.length;
   var up = [-Y[0], -Y[1]], ul = Math.hypot(up[0], up[1]) || 1; up = [up[0] / ul, up[1] / ul];
   F.occ = pts.map(function (p) {
@@ -97,7 +117,7 @@ function headFrame(P) {
     if (vx * up[0] + vy * up[1] > 0) { q[0] += up[0] * 0.35 * s; q[1] += up[1] * 0.35 * s; }
     return q;
   });
-  F.backZ = F.world([0, A.earY, A.earZ])[2] + 0.15 * s;
+  F.backZ = F.world([0, ANCH.earY, ANCH.earZ])[2] + 0.15 * s;
   F.roll = Math.atan2(X[1], X[0]);
   return F;
 }
@@ -259,11 +279,11 @@ var MASKS = [
 
 /* ---------- Detección, predicción y suavizado ---------- */
 /* solo se usan estos puntos de los 478 */
-var USED = OVAL.concat([33, 263, 133, 362, 1, 164, 0, 61, 291]).filter(function (v, i, a) { return a.indexOf(v) === i; });
+var USED = [0, 1, 2, 3, 4, 5];
 
 function toPx(lm) {
   var W = cv.width, H = cv.height, P = [];
-  USED.forEach(function (i) { var q = lm[i]; P[i] = [q.x * W, q.y * H, q.z * W]; });
+  USED.forEach(function (i) { var q = lm[i]; P[i] = [q.x * W, q.y * H, 0]; });
   return P;
 }
 
@@ -303,7 +323,7 @@ function detect(now) {
   var t0 = performance.now(), res = detector.detectForVideo(det, ts), took = performance.now() - t0;
   stats.dets++; stats.ms += took;
   snap.prev = snap.cur;
-  snap.cur = { t: now, faces: (res.faceLandmarks || []).map(toPx) };
+  snap.cur = { t: now, faces: (res.detections || []).filter(function (d) { return d.keypoints && d.keypoints.length >= 6; }).map(function (d) { return toPx(d.keypoints); }) };
 }
 
 function loop() {
@@ -329,7 +349,7 @@ function render() {
   var m = MASKS.filter(function (x) { return x.id === mask; })[0];
   if (!m || !m.fn) { return; }
   faces.forEach(function (P) {
-    if (!P || !P[1]) { return; }
+    if (!P || !P[5]) { return; }
     F = headFrame(P); items = [];
     m.fn();
     items.sort(function (a, b) { return b.z - a.z; }).forEach(function (it) { it.draw(); });
@@ -376,8 +396,8 @@ function loadDetector() {
     var mp = r[0], wasmUrl = URL.createObjectURL(new Blob([r[1]], { type: 'application/wasm' })), model = r[2];
     return mp.FilesetResolver.forVisionTasks('./mp').then(function (files) {
       files.wasmBinaryPath = wasmUrl;
-      var opts = function (delegate) { return { baseOptions: { modelAssetBuffer: new Uint8Array(model), delegate: delegate }, runningMode: 'VIDEO', numFaces: LEVELS[level].faces }; };
-      return mp.FaceLandmarker.createFromOptions(files, opts('GPU')).catch(function () { return mp.FaceLandmarker.createFromOptions(files, opts('CPU')); });
+      var opts = function (delegate) { return { baseOptions: { modelAssetBuffer: new Uint8Array(model), delegate: delegate }, runningMode: 'VIDEO', minDetectionConfidence: 0.5 }; };
+      return mp.FaceDetector.createFromOptions(files, opts('GPU')).catch(function () { return mp.FaceDetector.createFromOptions(files, opts('CPU')); });
     });
   });
 }
