@@ -11,7 +11,11 @@ var WASM_BYTES = 14665716, MODEL_BYTES = 3758596; /* tamaños reales, por si el 
 var $ = function (id) { return document.getElementById(id); };
 var cv = $('cv'), ctx = cv.getContext('2d'), vid = $('vid');
 var detector = null, stream = null, facing = 'user', mask = 'anteojos';
-var faces = [], lastTs = -1, slow = 0, frame = 0, running = false;
+var faces = [], lastTs = -1, running = false;
+/* el detector mira una copia chica del video y corre unas pocas veces por segundo; entre detección y detección
+   se predice el movimiento, así la máscara se dibuja fluida a la velocidad de la pantalla */
+var DET_W = 256, det = document.createElement('canvas'), dctx = det.getContext('2d');
+var snap = { prev: null, cur: null }, lastDet = 0, every = 90;
 var logo = new Image(); logo.src = '../logo.webp';
 
 var VERDE = [45, 106, 31, 1], CLARO = [147, 204, 110, 1], NEGRO = [27, 30, 24, 1], CAFE = [122, 82, 50, 1];
@@ -215,17 +219,54 @@ var MASKS = [
   { id: 'nada', name: 'Sin máscara', fn: null }
 ];
 
-/* ---------- Detección y suavizado ---------- */
-function toPx(lm) { var W = cv.width, H = cv.height; return lm.map(function (q) { return [q.x * W, q.y * H, q.z * W]; }); }
+/* ---------- Detección, predicción y suavizado ---------- */
+/* solo se usan estos puntos de los 478 */
+var USED = OVAL.concat([33, 263, 133, 362, 1, 164, 0, 61, 291]).filter(function (v, i, a) { return a.indexOf(v) === i; });
 
-function smooth(list) {
-  var a = 0.5;
-  return list.map(function (P) {
-    var best = null, bd = Infinity;
-    faces.forEach(function (Q) { var d = Math.hypot(Q[1][0] - P[1][0], Q[1][1] - P[1][1]); if (d < bd) { bd = d; best = Q; } });
-    if (!best || bd > cv.width * 0.15) { return P; }
-    return P.map(function (p, i) { var q = best[i]; return [q[0] + (p[0] - q[0]) * a, q[1] + (p[1] - q[1]) * a, q[2] + (p[2] - q[2]) * a]; });
+function toPx(lm) {
+  var W = cv.width, H = cv.height, P = [];
+  USED.forEach(function (i) { var q = lm[i]; P[i] = [q.x * W, q.y * H, q.z * W]; });
+  return P;
+}
+
+function nearest(P, list) {
+  var best = null, bd = Infinity;
+  (list || []).forEach(function (Q) { var d = Math.hypot(Q[1][0] - P[1][0], Q[1][1] - P[1][1]); if (d < bd) { bd = d; best = Q; } });
+  return best && bd < cv.width * 0.2 ? best : null;
+}
+
+/* posición esperada ahora: la última detección más la velocidad entre las dos últimas, sin pasarse */
+function predict(now) {
+  var cur = snap.cur, prev = snap.prev;
+  if (!cur) { return []; }
+  var dt = prev ? cur.t - prev.t : 0, k = dt > 0 ? Math.min(1, (now - cur.t) / dt) * 0.85 : 0;
+  var next = cur.faces.map(function (P) {
+    var Q = prev && k ? nearest(P, prev.faces) : null, out = [];
+    USED.forEach(function (i) {
+      var p = P[i];
+      out[i] = Q ? [p[0] + (p[0] - Q[i][0]) * k, p[1] + (p[1] - Q[i][1]) * k, p[2] + (p[2] - Q[i][2]) * k] : p;
+    });
+    return out;
   });
+  /* un suavizado leve sobre lo que se dibuja, para que no tiemble */
+  return next.map(function (P) {
+    var S = nearest(P, faces), out = [];
+    if (!S) { return P; }
+    USED.forEach(function (i) { var p = P[i], q = S[i]; out[i] = [q[0] + (p[0] - q[0]) * 0.6, q[1] + (p[1] - q[1]) * 0.6, q[2] + (p[2] - q[2]) * 0.6]; });
+    return out;
+  });
+}
+
+function detect(now) {
+  var vw = vid.videoWidth, vh = vid.videoHeight, h = Math.round(DET_W * vh / vw);
+  if (det.width !== DET_W || det.height !== h) { det.width = DET_W; det.height = h; }
+  dctx.drawImage(vid, 0, 0, DET_W, h);
+  var ts = now; if (ts <= lastTs) { ts = lastTs + 1; } lastTs = ts;
+  var t0 = performance.now(), res = detector.detectForVideo(det, ts), took = performance.now() - t0;
+  /* cada cuánto detectar: entre 15 y 5 veces por segundo, según lo que tarde este teléfono */
+  every = Math.max(66, Math.min(200, every * 0.8 + took * 3 * 0.2));
+  snap.prev = snap.cur;
+  snap.cur = { t: now, faces: (res.faceLandmarks || []).map(toPx) };
 }
 
 function loop() {
@@ -233,16 +274,12 @@ function loop() {
   requestAnimationFrame(loop);
   if (vid.readyState < 2 || !vid.videoWidth) { return; }
   if (cv.width !== vid.videoWidth || cv.height !== vid.videoHeight) { cv.width = vid.videoWidth; cv.height = vid.videoHeight; }
-  frame++;
-  /* si el teléfono tarda, detectamos un cuadro sí y uno no */
-  if (detector && (slow < 3 || frame % 2 === 0)) {
-    var ts = performance.now(); if (ts <= lastTs) { ts = lastTs + 1; } lastTs = ts;
-    try {
-      var t0 = performance.now(), res = detector.detectForVideo(vid, ts), took = performance.now() - t0;
-      slow = took > 30 ? Math.min(6, slow + 1) : Math.max(0, slow - 1);
-      faces = smooth((res.faceLandmarks || []).map(toPx));
-    } catch (e) { /* un cuadro fallido no corta el loop */ }
+  var now = performance.now();
+  if (detector && now - lastDet >= every) {
+    lastDet = now;
+    try { detect(now); } catch (e) { /* un cuadro fallido no corta el loop */ }
   }
+  faces = predict(now);
   render();
 }
 
@@ -254,7 +291,7 @@ function render() {
   var m = MASKS.filter(function (x) { return x.id === mask; })[0];
   if (!m || !m.fn) { return; }
   faces.forEach(function (P) {
-    if (!P || P.length < 468) { return; }
+    if (!P || !P[1]) { return; }
     F = headFrame(P); items = [];
     m.fn();
     items.sort(function (a, b) { return b.z - a.z; }).forEach(function (it) { it.draw(); });
@@ -264,7 +301,7 @@ function render() {
 /* ---------- Cámara y carga ---------- */
 function startCamera() {
   if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); }
-  return navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } } }).then(function (s) {
+  return navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: facing, width: { ideal: 480 }, height: { ideal: 360 } } }).then(function (s) {
     stream = s; vid.srcObject = s; return vid.play();
   });
 }
@@ -301,7 +338,7 @@ function loadDetector() {
     var mp = r[0], wasmUrl = URL.createObjectURL(new Blob([r[1]], { type: 'application/wasm' })), model = r[2];
     return mp.FilesetResolver.forVisionTasks('./mp').then(function (files) {
       files.wasmBinaryPath = wasmUrl;
-      var opts = function (delegate) { return { baseOptions: { modelAssetBuffer: new Uint8Array(model), delegate: delegate }, runningMode: 'VIDEO', numFaces: 4 }; };
+      var opts = function (delegate) { return { baseOptions: { modelAssetBuffer: new Uint8Array(model), delegate: delegate }, runningMode: 'VIDEO', numFaces: 2 }; };
       return mp.FaceLandmarker.createFromOptions(files, opts('GPU')).catch(function () { return mp.FaceLandmarker.createFromOptions(files, opts('CPU')); });
     });
   });
@@ -327,7 +364,7 @@ $('start').addEventListener('click', function () {
 
 $('flip').addEventListener('click', function () {
   if (!running) { return; }
-  facing = facing === 'user' ? 'environment' : 'user'; faces = [];
+  facing = facing === 'user' ? 'environment' : 'user'; faces = []; snap = { prev: null, cur: null };
   startCamera().catch(function () { facing = 'user'; startCamera(); });
 });
 
