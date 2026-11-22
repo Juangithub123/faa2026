@@ -16,7 +16,7 @@ var faces = [], lastTs = -1, running = false;
 /* el detector mira una copia chica del video y corre unas pocas veces por segundo; entre detección y detección
    se predice el movimiento, así la máscara se dibuja fluida a la velocidad de la pantalla */
 var det = document.createElement('canvas'), dctx = det.getContext('2d');
-var snap = { prev: null, cur: null }, lastDet = 0;
+var lastDet = 0;
 
 /* Calidad automática: arranca en el nivel más alto y baja si el video cae de ~24 cuadros por segundo;
    si después sobra, vuelve a subir de a un nivel. Cada nivel define el ancho de la copia que mira el detector,
@@ -73,11 +73,13 @@ function lerp(a, b, t) { return add(a, mul(sub(b, a), t)); }
    Los 6 puntos en el orden en que los da el detector: ojo derecho, ojo izquierdo, nariz, boca, oreja derecha, oreja izquierda. */
 var CAN = [[-3.2, 0, 0], [3.2, 0, 0], [0, 4.6, -2.2], [0, 7.2, -1.0], [-7.3, 1.6, 7.8], [7.3, 1.6, 7.8]];
 var UNIT = 9.5; /* las máscaras se dibujan en unidades de 9,5 cm (más o menos el ancho de los ojos) */
-var CANM = CAN.reduce(function (m, p) { return add(m, mul(p, 1 / CAN.length)); }, [0, 0, 0]);
+/* peso de cada punto en el ajuste: las orejas son las menos confiables (cuando la cabeza gira, el detector las adivina) */
+var WGT = [1, 1, 1.2, 1, 0.35, 0.35], WSUM = WGT.reduce(function (a, b) { return a + b; }, 0);
+var CANM = CAN.reduce(function (m, p, i) { return add(m, mul(p, WGT[i] / WSUM)); }, [0, 0, 0]);
 var CANC = CAN.map(function (p) { return sub(p, CANM); });
 var GINV = (function () {
   var g = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-  CANC.forEach(function (p) { for (var i = 0; i < 3; i++) { for (var j = 0; j < 3; j++) { g[i][j] += p[i] * p[j]; } } });
+  CANC.forEach(function (p, n) { for (var i = 0; i < 3; i++) { for (var j = 0; j < 3; j++) { g[i][j] += WGT[n] * p[i] * p[j]; } } });
   var a = g, det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
   return [
     [(a[1][1] * a[2][2] - a[1][2] * a[2][1]) / det, (a[0][2] * a[2][1] - a[0][1] * a[2][2]) / det, (a[0][1] * a[1][2] - a[0][2] * a[1][1]) / det],
@@ -93,15 +95,23 @@ var ANCH = { top: [0, -0.74, 0.05], chin: [0, 1.16, 0.1], nose: [0, 0.47, -0.24]
   mr: [-0.26, 0.76, -0.02], ml: [0.26, 0.76, -0.02], er: [-0.34, 0, 0], el: [0.34, 0, 0], hw: 0.74, earY: 0.2, earZ: 0.7 };
 
 /* Pose desde los 6 puntos: se busca la matriz que mejor lleva el modelo a la imagen y se la separa en escala y rotación. */
-function headFrame(P) {
+function headFrame(P, tr, now) {
   var n = CAN.length, mx = 0, my = 0, i;
-  for (i = 0; i < n; i++) { mx += P[i][0]; my += P[i][1]; }
-  mx /= n; my /= n;
+  for (i = 0; i < n; i++) { mx += WGT[i] * P[i][0]; my += WGT[i] * P[i][1]; }
+  mx /= WSUM; my /= WSUM;
   var bx = [0, 0, 0], by = [0, 0, 0];
-  for (i = 0; i < n; i++) { bx = add(bx, mul(CANC[i], P[i][0] - mx)); by = add(by, mul(CANC[i], P[i][1] - my)); }
+  for (i = 0; i < n; i++) { bx = add(bx, mul(CANC[i], WGT[i] * (P[i][0] - mx))); by = add(by, mul(CANC[i], WGT[i] * (P[i][1] - my))); }
   var rx = [dot(GINV[0], bx), dot(GINV[1], bx), dot(GINV[2], bx)], ry = [dot(GINV[0], by), dot(GINV[1], by), dot(GINV[2], by)];
   var k = (len(rx) + len(ry)) / 2, r0 = norm(rx), r1 = norm(sub(ry, mul(r0, dot(ry, r0)))), r2 = cross(r0, r1);
-  var X = [r0[0], r1[0], r2[0]], Y = [r0[1], r1[1], r2[1]], Z = [r0[2], r1[2], r2[2]];
+  var X = [r0[0], r1[0], r2[0]], Y = [r0[1], r1[1], r2[1]];
+  /* la rotación y el tamaño también pasan por el filtro, y después se vuelven a escuadrar los ejes */
+  if (tr) {
+    X = X.map(function (v, j) { return tr.rot[j].filter(v, now); });
+    Y = Y.map(function (v, j) { return tr.rot[3 + j].filter(v, now); });
+    k = tr.size.filter(k, now);
+    X = norm(X); Y = norm(sub(Y, mul(X, dot(Y, X))));
+  }
+  var Z = cross(X, Y);
   var O = [mx - dot(rx, CANM), my - dot(ry, CANM), 0], s = k * UNIT;
   var F = { O: O, s: s, X: X, Y: Y, Z: Z, f: cv.width * 1.6, A: ANCH };
   F.world = function (m) { return add(O, mul(add(add(mul(X, m[0]), mul(Y, m[1])), mul(Z, m[2])), s)); };
@@ -277,53 +287,75 @@ var MASKS = [
   { id: 'nada', name: 'Sin máscara', fn: null }
 ];
 
-/* ---------- Detección, predicción y suavizado ---------- */
-/* solo se usan estos puntos de los 478 */
+/* ---------- Detección, filtro y predicción ---------- */
 var USED = [0, 1, 2, 3, 4, 5];
 
-function toPx(lm) {
-  var W = cv.width, H = cv.height, P = [];
-  USED.forEach(function (i) { var q = lm[i]; P[i] = [q.x * W, q.y * H, 0]; });
-  return P;
-}
+/* Filtro «One Euro»: suaviza mucho cuando algo está quieto y poco cuando se mueve rápido,
+   así la máscara no tiembla parada y tampoco se queda atrás al moverse. */
+function OneEuro(minCut, beta) { this.minCut = minCut; this.beta = beta; this.x = null; this.dx = 0; this.t = 0; }
+OneEuro.prototype.filter = function (v, t) {
+  if (this.x === null) { this.x = v; this.t = t; return v; }
+  var dt = (t - this.t) / 1000; if (dt <= 0) { return this.x; }
+  var a = function (cut) { var r = 2 * Math.PI * cut * dt; return r / (r + 1); };
+  this.dx += a(1) * ((v - this.x) / dt - this.dx);
+  this.x += a(this.minCut + this.beta * Math.abs(this.dx)) * (v - this.x);
+  this.t = t; return this.x;
+};
 
-function nearest(P, list) {
-  var best = null, bd = Infinity;
-  (list || []).forEach(function (Q) { var d = Math.hypot(Q[1][0] - P[1][0], Q[1][1] - P[1][1]); if (d < bd) { bd = d; best = Q; } });
-  return best && bd < cv.width * 0.2 ? best : null;
+/* cada cara que se sigue tiene sus filtros */
+var tracks = [];
+function newTrack() {
+  var tr = { kp: [], rot: [], size: new OneEuro(1.0, 0.02), seen: 0, pts: null };
+  for (var i = 0; i < 12; i++) { tr.kp.push(new OneEuro(1.0, 0.02)); }
+  for (var j = 0; j < 6; j++) { tr.rot.push(new OneEuro(1.2, 1.5)); }
+  return tr;
 }
+function center(P) { return [(P[0][0] + P[1][0] + P[3][0]) / 3, (P[0][1] + P[1][1] + P[3][1]) / 3]; }
 
-/* posición esperada ahora: la última detección más la velocidad entre las dos últimas, sin pasarse */
-function predict(now) {
-  var cur = snap.cur, prev = snap.prev;
-  if (!cur) { return []; }
-  var dt = prev ? cur.t - prev.t : 0, k = dt > 0 ? Math.min(1, (now - cur.t) / dt) * 0.85 : 0;
-  var next = cur.faces.map(function (P) {
-    var Q = prev && k ? nearest(P, prev.faces) : null, out = [];
-    USED.forEach(function (i) {
-      var p = P[i];
-      out[i] = Q ? [p[0] + (p[0] - Q[i][0]) * k, p[1] + (p[1] - Q[i][1]) * k, p[2] + (p[2] - Q[i][2]) * k] : p;
-    });
-    return out;
+function updateTracks(list, now) {
+  var free = tracks.slice(), next = [];
+  list.forEach(function (P) {
+    var c = center(P), best = null, bd = Infinity;
+    free.forEach(function (tr) { var q = center(tr.pts), d = Math.hypot(q[0] - c[0], q[1] - c[1]); if (d < bd) { bd = d; best = tr; } });
+    var eye = Math.hypot(P[1][0] - P[0][0], P[1][1] - P[0][1]);
+    var tr = best && bd < eye * 1.5 ? best : newTrack();
+    if (tr === best) { free.splice(free.indexOf(tr), 1); }
+    tr.pts = P.map(function (p, i) { return [tr.kp[i * 2].filter(p[0], now), tr.kp[i * 2 + 1].filter(p[1], now), 0]; });
+    tr.seen = now; next.push(tr);
   });
-  /* un suavizado leve sobre lo que se dibuja, para que no tiemble */
-  return next.map(function (P) {
-    var S = nearest(P, faces), out = [];
-    if (!S) { return P; }
-    USED.forEach(function (i) { var p = P[i], q = S[i]; out[i] = [q[0] + (p[0] - q[0]) * 0.6, q[1] + (p[1] - q[1]) * 0.6, q[2] + (p[2] - q[2]) * 0.6]; });
-    return out;
-  });
+  /* una cara que se pierde un instante no desaparece de golpe */
+  free.forEach(function (tr) { if (now - tr.seen < 250) { next.push(tr); } });
+  tracks = next;
 }
 
+/* entre detección y detección, se sigue el movimiento con la velocidad que da el filtro (sin pasarse) */
+function predicted(tr, now) {
+  var dt = Math.min(120, now - tr.seen) / 1000 * 0.7;
+  return tr.pts.map(function (p, i) { return [p[0] + tr.kp[i * 2].dx * dt, p[1] + tr.kp[i * 2 + 1].dx * dt, 0]; });
+}
+
+/* Si hay una sola cara, el detector mira un recorte alrededor de ella: la cara llena la imagen que analiza y
+   los puntos salen más precisos. Cada tanto mira la imagen entera para encontrar caras nuevas. */
+var lastFull = 0;
 function detect(now) {
-  var vw = vid.videoWidth, vh = vid.videoHeight, W = Math.min(LEVELS[level].w, vw), h = Math.round(W * vh / vw);
-  if (det.width !== W || det.height !== h) { det.width = W; det.height = h; }
-  dctx.drawImage(vid, 0, 0, W, h);
+  var vw = vid.videoWidth, vh = vid.videoHeight, roi = null;
+  if (tracks.length === 1 && now - tracks[0].seen < 200 && now - lastFull < 1000) {
+    var P = tracks[0].pts, c = center(P), eye = Math.hypot(P[1][0] - P[0][0], P[1][1] - P[0][1]), side = Math.min(vw, vh, eye * 5);
+    roi = { x: Math.max(0, Math.min(vw - side, c[0] - side / 2)), y: Math.max(0, Math.min(vh - side, c[1] - side * 0.45)), w: side, h: side };
+  }
+  if (!roi) { roi = { x: 0, y: 0, w: vw, h: vh }; lastFull = now; }
+  var W = Math.min(LEVELS[level].w, Math.round(roi.w)), H = Math.round(W * roi.h / roi.w);
+  if (det.width !== W || det.height !== H) { det.width = W; det.height = H; }
+  dctx.drawImage(vid, roi.x, roi.y, roi.w, roi.h, 0, 0, W, H);
   var ts = now; if (ts <= lastTs) { ts = lastTs + 1; } lastTs = ts;
   var t0 = performance.now(), res = detector.detectForVideo(det, ts), took = performance.now() - t0;
   stats.dets++; stats.ms += took;
-  snap.prev = snap.cur;
-  snap.cur = { t: now, faces: (res.detections || []).filter(function (d) { return d.keypoints && d.keypoints.length >= 6; }).map(function (d) { return toPx(d.keypoints); }) };
+  var sx = cv.width / vw, sy = cv.height / vh;
+  var list = (res.detections || []).filter(function (d) { return d.keypoints && d.keypoints.length >= 6; }).map(function (d) {
+    return USED.map(function (i) { var q = d.keypoints[i]; return [(roi.x + q.x * roi.w) * sx, (roi.y + q.y * roi.h) * sy, 0]; });
+  });
+  if (!list.length && roi.w < vw) { lastFull = 0; } /* se perdió en el recorte: la próxima mira todo */
+  updateTracks(list, now);
 }
 
 function loop() {
@@ -337,20 +369,19 @@ function loop() {
     lastDet = now;
     try { detect(now); } catch (e) { /* un cuadro fallido no corta el loop */ }
   }
-  faces = predict(now);
-  render();
+  faces = tracks.filter(function (tr) { return tr.pts; });
+  render(now);
 }
 
-function render() {
+function render(now) {
   var W = cv.width, H = cv.height;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (facing === 'user') { ctx.setTransform(-1, 0, 0, 1, W, 0); }
   ctx.drawImage(vid, 0, 0, W, H);
   var m = MASKS.filter(function (x) { return x.id === mask; })[0];
   if (!m || !m.fn) { return; }
-  faces.forEach(function (P) {
-    if (!P || !P[5]) { return; }
-    F = headFrame(P); items = [];
+  faces.forEach(function (tr) {
+    F = headFrame(predicted(tr, now), tr, now); items = [];
     m.fn();
     items.sort(function (a, b) { return b.z - a.z; }).forEach(function (it) { it.draw(); });
   });
@@ -422,7 +453,7 @@ $('start').addEventListener('click', function () {
 
 $('flip').addEventListener('click', function () {
   if (!running) { return; }
-  facing = facing === 'user' ? 'environment' : 'user'; faces = []; snap = { prev: null, cur: null };
+  facing = facing === 'user' ? 'environment' : 'user'; faces = []; tracks = [];
   startCamera().catch(function () { facing = 'user'; startCamera(); });
 });
 
