@@ -254,11 +254,11 @@ function sonidista() {
   var A = F.A, R = A.hw + 0.14, band = [], green = [];
   for (var i = 0; i <= 18; i++) {
     var t = i / 18 * Math.PI, h = A.earY - A.top[1] + 0.4;
-    band.push([-R * Math.cos(t), A.earY - h * Math.sin(t), A.earZ + 0.05]);
-    green.push([-(R - 0.01) * Math.cos(t), A.earY - (h + 0.02) * Math.sin(t), A.earZ + 0.03]);
+    band.push([-R * Math.cos(t), A.earY - h * Math.sin(t), HEAD.c[2] - 0.08]);
+    green.push([-(R - 0.01) * Math.cos(t), A.earY - (h + 0.02) * Math.sin(t), HEAD.c[2] - 0.1]);
   }
-  strip(band, NEGRO, 0.15, 0, true);
-  strip(green.slice(3, 16), VERDE, 0.05, 0.01, true);
+  strip(band, NEGRO, 0.15, 0);
+  strip(green.slice(3, 16), VERDE, 0.05, 0.01);
   [-1, 1].forEach(function (sg) {
     var c = [sg * (R + 0.02), A.earY, A.earZ], v = norm([-sg * 0.45, 0, 1]), out = norm(cross(EY, v));
     if (out[0] * sg < 0) { out = mul(out, -1); }
@@ -315,43 +315,27 @@ var TERA = {
 var GRIS = [150, 150, 150, 1], GRIS_OSC = [70, 72, 70, 1], GRIS_CLARO = [196, 196, 196, 1], PICO = [226, 128, 230, 1];
 
 function tera(col) {
-  var A = F.A, c = TERA[col];
+  var A = F.A, c = TERA[col], i;
   /* visor: dos triángulos que se tocan en el centro, apenas curvados hacia los costados */
-  var tl = [-0.6, -0.62, -0.2], bl = [-0.6, 0.5, -0.2], mid = [0, 0.12, -0.36], tr = [0.6, -0.62, -0.2], br = [0.6, 0.5, -0.2];
+  var tl = [-0.68, -0.72, -0.18], bl = [-0.68, 0.58, -0.18], mid = [0, 0.12, -0.36], tr = [0.68, -0.72, -0.18], br = [0.68, 0.58, -0.18];
   poly([tl, bl, mid], c.visor);
   poly([tr, mid, br], c.visor);
   strip([tl, bl, mid, tl], c.borde, 0.025, 0.02);
   strip([tr, br, mid, tr], c.borde, 0.025, 0.02);
-  /* pico: nace en el cruce de la X, con el lomo curvo como en el dibujo (una curva que sale hacia adelante y baja) */
-  var B = [0, 0.12, -0.42], C = [0, 0.16, -1.0], T = [0, 0.9, -1.1], N = 8, sec = [];
-  for (var i = 0; i <= N; i++) {
-    var u = i / N, p = add(add(mul(B, (1 - u) * (1 - u)), mul(C, 2 * u * (1 - u))), mul(T, u * u));
-    var tg = norm(add(mul(sub(C, B), 2 * (1 - u)), mul(sub(T, C), 2 * u))), up = norm(cross(tg, EX));
-    var w = 0.24 * Math.pow(1 - u, 0.85), hu = 0.11 * (1 - u), hd = 0.06 * (1 - u);
-    sec.push({ ridge: add(p, mul(up, hu)), l: add(p, mul(EX, -w)), r: add(p, mul(EX, w)), under: add(p, mul(up, -hd)) });
-  }
-  var PICO_B = [190, 96, 200, 1];
-  for (i = 0; i < N; i++) {
-    var a0 = sec[i], a1 = sec[i + 1];
-    poly([a0.ridge, a0.l, a1.l, a1.ridge], PICO); poly([a0.ridge, a1.ridge, a1.r, a0.r], PICO);
-    poly([a0.l, a0.under, a1.under, a1.l], PICO_B); poly([a0.under, a0.r, a1.r, a1.under], PICO_B);
-  }
-  /* la línea de la boca, a los dos lados */
-  strip(sec.slice(0, 6).map(function (q) { return q.l; }), [110, 40, 120, 1], 0.03, 0.01);
-  strip(sec.slice(0, 6).map(function (q) { return q.r; }), [110, 40, 120, 1], 0.03, 0.01);
+  picoTera(mid, bl, br);
   /* auriculares grises, más toscos: copas como cajas redondeadas y vincha plana y ancha */
-  var R = A.hw + 0.12, cupH = 0.38, cupD = 0.32, cupT = 0.17, yTop = A.earY - cupH + 0.04, h = yTop - A.top[1] + 0.45, Zb = A.earZ + 0.05;
+  var R = A.hw + 0.12, cupH = 0.38, cupD = 0.32, cupT = 0.17, yTop = A.earY - cupH + 0.04, h = yTop - A.top[1] + 0.45, Zb = HEAD.c[2] - 0.08; /* un poco delante del centro de la cabeza: al girar, la mitad de atrás queda tapada */
   for (i = 0; i < 18; i++) {
     var t0 = i / 18 * Math.PI, t1 = (i + 1) / 18 * Math.PI;
     var p0 = [-(R + cupT / 2) * Math.cos(t0), yTop - h * Math.sin(t0), Zb], p1 = [-(R + cupT / 2) * Math.cos(t1), yTop - h * Math.sin(t1), Zb];
-    poly([add(p0, [0, 0, -0.11]), add(p0, [0, 0, 0.11]), add(p1, [0, 0, 0.11]), add(p1, [0, 0, -0.11])], GRIS_OSC, true);
+    poly([add(p0, [0, 0, -0.11]), add(p0, [0, 0, 0.11]), add(p1, [0, 0, 0.11]), add(p1, [0, 0, -0.11])], GRIS_OSC);
     /* el canto de adelante de la vincha, para que de frente se vea gruesa */
     var q0 = [-(R + cupT / 2 + 0.12) * Math.cos(t0), yTop - (h + 0.12) * Math.sin(t0), Zb - 0.11], q1 = [-(R + cupT / 2 + 0.12) * Math.cos(t1), yTop - (h + 0.12) * Math.sin(t1), Zb - 0.11];
-    poly([add(p0, [0, 0, -0.11]), add(p1, [0, 0, -0.11]), q1, q0], GRIS, true);
+    poly([add(p0, [0, 0, -0.11]), add(p1, [0, 0, -0.11]), q1, q0], GRIS);
   }
   var mid = [];
   for (i = 2; i <= 16; i++) { var tt = i / 18 * Math.PI; mid.push([-(R + cupT / 2 + 0.06) * Math.cos(tt), yTop - (h + 0.06) * Math.sin(tt), Zb - 0.12]); }
-  strip(mid, GRIS_CLARO, 0.035, 0.01, true);
+  strip(mid, GRIS_CLARO, 0.035, 0.01);
   [-1, 1].forEach(function (sg) {
     var cc = [sg * R, A.earY, A.earZ], v = norm([-sg * 0.3, 0, 1]), out = norm(cross(EY, v));
     if (out[0] * sg < 0) { out = mul(out, -1); }
@@ -376,6 +360,27 @@ function tera(col) {
     for (var j = 0; j <= 8; j++) { var u = j / 8; pts.push(add(add(mul(base, (1 - u) * (1 - u)), mul(ctl, 2 * u * (1 - u))), mul(end, u * u))); }
     strip(pts, NEGRO, k === 3 ? 0.045 : 0.035);
   });
+}
+
+/* Pico de la tera: recto, nace en el ángulo de abajo donde se cruzan las placas del visor; sus bordes de arriba
+   siguen un tramo las diagonales del visor y de ahí sale hacia adelante. Cuatro variantes para elegir. */
+var PICO_OPC = 'A', PICO_B = [190, 96, 200, 1], BOCA = [110, 40, 120, 1];
+function picoTera(mid, bl, br) {
+  var o = { A: { f: 0.28, tip: [0, 0.86, -0.98], low: null },
+            B: { f: 0.4, tip: [0, 0.78, -0.86], low: null },
+            C: { f: 0.3, tip: [0, 0.96, -1.05], low: [0, 0.55, -0.34] },
+            D: { f: 0.3, tip: [0, 0.62, -1.15], low: [0, 0.5, -0.36] } }[PICO_OPC];
+  var top = add(mid, [0, 0, -0.02]), l = add(lerp(mid, bl, o.f), [0, 0, -0.02]), r = add(lerp(mid, br, o.f), [0, 0, -0.02]), tip = o.tip;
+  poly([top, l, tip], PICO); poly([top, tip, r], PICO);
+  if (o.low) {
+    var low = o.low;
+    poly([l, low, tip], PICO_B); poly([low, r, tip], PICO_B);
+  } else {
+    poly([l, r, tip], PICO_B);
+  }
+  /* la línea de la boca, desde las esquinas de abajo hacia la punta */
+  strip([l, lerp(l, tip, 0.6)], BOCA, 0.03, 0.01);
+  strip([r, lerp(r, tip, 0.6)], BOCA, 0.03, 0.01);
 }
 
 var MASKS = [
