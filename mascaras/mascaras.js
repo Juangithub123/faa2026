@@ -56,7 +56,7 @@ function showStats() {
 }
 var logo = new Image(); logo.src = '../logo.webp';
 
-var VERDE = [45, 106, 31, 1], CLARO = [147, 204, 110, 1], NEGRO = [27, 30, 24, 1], CAFE = [122, 82, 50, 1];
+var NEGRO = [27, 30, 24, 1];
 
 /* ---------- Geometría ---------- */
 function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
@@ -225,86 +225,6 @@ function bez(p0, p1, p2, p3, n, out) {
 var EX = [1, 0, 0], EY = [0, 1, 0], EZ = [0, 0, 1];
 
 /* ---------- Máscaras ---------- */
-function anteojos() {
-  var A = F.A, r = 0.27, eyes = [A.er, A.el];
-  eyes.forEach(function (e, i) {
-    var sg = i ? 1 : -1, c = [e[0], e[1] - 0.02, e[2] - 0.2], rim = ring(c, EX, EY, r, r, 28);
-    poly(rim, [244, 201, 92, 0.3]);
-    strip(rim.concat([rim[0]]), VERDE, 0.06, 0.01);
-    sprite([c[0] - 0.09, c[1] - 0.1, c[2] - 0.01], 0.06, function () { ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.ellipse(0, 0, 1, 0.55, -0.6, 0, Math.PI * 2); ctx.fill(); }, 0.02);
-    var out = [c[0] + sg * r, c[1] - 0.03, c[2]];
-    strip([out, [sg * A.hw * 0.98, A.earY - 0.12, A.earZ - 0.15], [sg * A.hw * 0.98, A.earY - 0.08, A.earZ + 0.25], [sg * A.hw * 0.9, A.earY + 0.15, A.earZ + 0.4]], VERDE, 0.05);
-  });
-  var a = [A.er[0] + r, A.er[1] - 0.04, A.er[2] - 0.2], b = [A.el[0] - r, A.el[1] - 0.04, A.el[2] - 0.2];
-  strip([a, [(a[0] + b[0]) / 2, a[1] - 0.09, a[2] - 0.06], b], VERDE, 0.05, 0.01);
-}
-
-function bigote() {
-  var A = F.A, m = lerp(A.under, A.lip, 0.5), half = [[0, -0.05]];
-  bez([0, -0.05], [0.1, -0.12], [0.27, -0.1], [0.38, 0], 6, half);
-  bez([0.38, 0], [0.43, 0.05], [0.5, 0.01], [0.51, -0.09], 5, half);
-  bez([0.51, -0.09], [0.54, 0.04], [0.44, 0.13], [0.33, 0.1], 5, half);
-  bez([0.33, 0.1], [0.22, 0.07], [0.1, 0.06], [0, 0.05], 5, half);
-  [1, -1].forEach(function (sg) {
-    poly(half.map(function (p) { var x = sg * p[0]; return [m[0] + x, m[1] + p[1], m[2] - 0.04 + 0.9 * x * x]; }), [59, 36, 18, 1]);
-  });
-}
-
-function sonidista() {
-  var A = F.A, R = A.hw + 0.14, band = [], green = [];
-  for (var i = 0; i <= 18; i++) {
-    var t = i / 18 * Math.PI, h = A.earY - A.top[1] + 0.4;
-    band.push([-R * Math.cos(t), A.earY - h * Math.sin(t), HEAD.c[2] - 0.08]);
-    green.push([-(R - 0.01) * Math.cos(t), A.earY - (h + 0.02) * Math.sin(t), HEAD.c[2] - 0.1]);
-  }
-  strip(band, NEGRO, 0.15, 0);
-  strip(green.slice(3, 16), VERDE, 0.05, 0.01);
-  [-1, 1].forEach(function (sg) {
-    var c = [sg * (R + 0.02), A.earY, A.earZ], v = norm([-sg * 0.45, 0, 1]), out = norm(cross(EY, v));
-    if (out[0] * sg < 0) { out = mul(out, -1); }
-    poly(ring(c, EY, v, 0.32, 0.28, 22), [15, 17, 13, 1]);
-    poly(ring(add(c, mul(out, 0.1)), EY, v, 0.32, 0.28, 22), NEGRO);
-    poly(ring(add(c, mul(out, 0.11)), EY, v, 0.2, 0.17, 20), CLARO);
-  });
-  var mic = [[-(R + 0.04), A.earY + 0.2, A.earZ - 0.1], [-A.hw * 0.85, A.mr[1] + 0.05, A.earZ - 0.6], [A.mr[0] - 0.08, A.mr[1] + 0.02, A.mr[2] - 0.12]];
-  strip(mic, NEGRO, 0.045);
-  sprite(mic[2], 0.08, function () { ctx.fillStyle = rgba(NEGRO); ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.fill(); }, 0.01);
-}
-
-function huemul() {
-  var A = F.A, y = A.top[1], z = A.earZ * 0.55;
-  [-1, 1].forEach(function (sg) {
-    var b = [sg * A.hw * 0.45, y + 0.08, z], j1 = [sg * A.hw * 0.75, y - 0.55, z + 0.15], j2 = [sg * A.hw * 1.05, y - 0.95, z + 0.3], tip = [sg * A.hw * 1.3, y - 1.15, z + 0.4];
-    strip([b, j1, j2, tip], CAFE, 0.1);
-    strip([j1, [sg * A.hw * 0.55, y - 1.05, z + 0.08]], CAFE, 0.08);
-    strip([j2, [sg * A.hw * 0.98, y - 1.38, z + 0.25]], CAFE, 0.07);
-    var c = [sg * (A.hw + 0.06), y + 0.4, A.earZ - 0.05], u = norm([sg * 0.6, -0.8, 0.1]), v = norm([0.8, sg * 0.6, sg * 0.45]);
-    poly(ring(c, u, v, 0.34, 0.17, 18), [156, 107, 63, 1]);
-    poly(ring(add(c, [0, 0, -0.03]), u, v, 0.22, 0.09, 16), [232, 180, 138, 1]);
-  });
-  sprite([A.nose[0], A.nose[1] - 0.02, A.nose[2] - 0.06], 0.13, function () {
-    ctx.fillStyle = rgba(NEGRO); ctx.beginPath(); ctx.ellipse(0, 0, 1, 0.7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.arc(-0.35, -0.3, 0.22, 0, Math.PI * 2); ctx.fill();
-  }, 0.02);
-}
-
-function flor() {
-  ctx.fillStyle = '#C8102E';
-  [-0.9, -0.3, 0.3, 0.9].forEach(function (a) { ctx.save(); ctx.rotate(a); ctx.beginPath(); ctx.ellipse(0, -0.5, 0.18, 0.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); });
-  ctx.fillStyle = '#6A2C91'; ctx.beginPath(); ctx.ellipse(0, 0.2, 0.3, 0.4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#C8102E'; ctx.lineWidth = 0.07; ctx.beginPath(); ctx.moveTo(-0.1, 0.5); ctx.lineTo(-0.15, 0.95); ctx.moveTo(0.1, 0.5); ctx.lineTo(0.15, 0.95); ctx.stroke();
-}
-
-function chilco() {
-  var A = F.A, rx = A.hw * 1.05, rz = A.hw * 1.15, cz = A.earZ + 0.05, y0 = A.top[1] - 0.05, n = 14;
-  function at(t) { return [rx * Math.sin(t), y0 + 0.17 - 0.6 * (1 - Math.cos(t)) / 2, cz - rz * Math.cos(t)]; }
-  for (var i = 0; i < n; i++) {
-    var t = i / n * Math.PI * 2, tl = t + Math.PI / n, p = at(tl), tan = norm(sub(at(tl + 0.05), at(tl - 0.05)));
-    poly(ring(p, tan, EY, 0.13, 0.05, 10), [62, 122, 42, 1]);
-    sprite(at(t), 0.17, flor, 0.02);
-  }
-}
-
 /* La tera, mascota del FAA!: lo que lleva en la cabeza, sin la cabeza gris (para que se vea la cara).
    Visor de dos placas triangulares translúcidas cruzadas en X, pico, auriculares grises con cable y copete. */
 var TERA = {
@@ -362,22 +282,14 @@ function tera(col) {
   });
 }
 
-/* Pico de la tera: recto, nace en el ángulo de abajo donde se cruzan las placas del visor; sus bordes de arriba
-   siguen un tramo las diagonales del visor y de ahí sale hacia adelante. Cuatro variantes para elegir. */
-var PICO_OPC = 'A', PICO_B = [190, 96, 200, 1], BOCA = [110, 40, 120, 1];
+/* Pico de la tera: recto y grueso, nace en el ángulo de abajo donde se cruzan las placas del visor; sus bordes de
+   arriba siguen un tramo las diagonales del visor y de ahí sale hacia adelante, casi horizontal, con una quilla abajo. */
+var PICO_B = [190, 96, 200, 1], BOCA = [110, 40, 120, 1];
 function picoTera(mid, bl, br) {
-  var o = { A: { f: 0.28, tip: [0, 0.86, -0.98], low: null },
-            B: { f: 0.4, tip: [0, 0.78, -0.86], low: null },
-            C: { f: 0.3, tip: [0, 0.96, -1.05], low: [0, 0.55, -0.34] },
-            D: { f: 0.3, tip: [0, 0.62, -1.15], low: [0, 0.5, -0.36] } }[PICO_OPC];
-  var top = add(mid, [0, 0, -0.02]), l = add(lerp(mid, bl, o.f), [0, 0, -0.02]), r = add(lerp(mid, br, o.f), [0, 0, -0.02]), tip = o.tip;
+  var f = 0.4, tip = [0, 0.7, -1.28], low = [0, 0.54, -0.37];
+  var top = add(mid, [0, 0, -0.02]), l = add(lerp(mid, bl, f), [0, 0, -0.02]), r = add(lerp(mid, br, f), [0, 0, -0.02]);
   poly([top, l, tip], PICO); poly([top, tip, r], PICO);
-  if (o.low) {
-    var low = o.low;
-    poly([l, low, tip], PICO_B); poly([low, r, tip], PICO_B);
-  } else {
-    poly([l, r, tip], PICO_B);
-  }
+  poly([l, low, tip], PICO_B); poly([low, r, tip], PICO_B);
   /* la línea de la boca, desde las esquinas de abajo hacia la punta */
   strip([l, lerp(l, tip, 0.6)], BOCA, 0.03, 0.01);
   strip([r, lerp(r, tip, 0.6)], BOCA, 0.03, 0.01);
@@ -386,13 +298,7 @@ function picoTera(mid, bl, br) {
 var MASKS = [
   { id: 'tera-rosa', name: 'Tera rosa', fn: function () { tera('rosa'); } },
   { id: 'tera-verde', name: 'Tera verde', fn: function () { tera('verde'); } },
-  { id: 'tera-dorada', name: 'Tera dorada', fn: function () { tera('dorada'); } },
-  { id: 'anteojos', name: 'Anteojos', fn: anteojos },
-  { id: 'bigote', name: 'Bigote', fn: bigote },
-  { id: 'sonidista', name: 'Sonidista', fn: sonidista },
-  { id: 'huemul', name: 'Huemul', fn: huemul },
-  { id: 'chilco', name: 'Chilco', fn: chilco },
-  { id: 'nada', name: 'Sin máscara', fn: null }
+  { id: 'tera-dorada', name: 'Tera dorada', fn: function () { tera('dorada'); } }
 ];
 
 /* ---------- Detección, filtro y predicción ---------- */
