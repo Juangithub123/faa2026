@@ -120,6 +120,17 @@ function caja(x) { obs.push({ t: 'caja', x: x, w: 22, y0: 0, y1: 24 }); return x
 function amarillo(x) { return rnd() < 0.5 ? valla(x) : caja(x); }
 function cartel(x) { obs.push({ t: 'cartel', x: x, w: 58, y0: 34, y1: 60, b: Math.floor(rnd() * BANNERS.length) }); return x + 58; }
 function bafle(x, h) { obs.push({ t: 'bafle', x: x, w: 34, y0: 0, y1: h }); return x + 34; }
+function bafleStairs(x, v) {
+  /* escalera de bafles estirada: tres escalones separados (32, 60, 88), cada uno alcanzable desde el piso por si
+     te caés en un hueco; huecos más anchos cuanto más rápido vas, con una ficha en el aire marcando cada salto */
+  var hs = [32, 60, 88], gap = Math.max(36, Math.min(66, v * 0.3)), px = x, e = x;
+  hs.forEach(function (h, i) {
+    e = bafle(px, h); coinLine(px + (i === hs.length - 1 ? 3 : 10), h + 12, i === hs.length - 1 ? 2 : 1, 14);
+    if (i < hs.length - 1) { coinLine(e + gap / 2 - 7, h + 30, 1, 0); }
+    px = e + gap;
+  });
+  return e;
+}
 function plat(x, w, y, hang) { var o = { x: x, w: w, y: y, hang: !!hang }; plats.push(o); return o; }
 
 /* ---------- Diseño de nivel ----------
@@ -159,9 +170,9 @@ function groundPattern(x, v, m) {
     var w = Math.max(110, v * 1.2 + rnd() * 50), p1 = plat(x, w, T1);
     coinLine(x + 14, T1 + 10, Math.floor((w - 28) / 22), 22); e = x + w;
   } else if (k === 'escalon') {
-    /* bafle bajo y uno alto: se sube de a uno, arriba hay fichas, después se cae con fichas en la bajada */
-    bafle(x, 44); e = bafle(x + 34, 88); coinLine(x + 38, 98, 2, 16);
-    coinLine(e + 16, 70, 1, 0); coinLine(e + 34, 40, 1, 0);
+    /* escalera de bafles separados: se sube de a uno, arriba hay fichas, después se cae con fichas en la bajada */
+    e = bafleStairs(x, v);
+    coinLine(e + 18, 70, 1, 0); coinLine(e + 38, 40, 1, 0);
   } else if (k === 'arribaOAbajo') {
     /* andamio largo arriba (con fichas) y vallas abajo: elegís el camino */
     var L = Math.max(220, v * 2.6), pa = plat(x, L, T1);
@@ -179,8 +190,8 @@ function groundPattern(x, v, m) {
 function airStage(x, v) {
   /* etapa aérea: andamios colgantes a distintas alturas, unidos por saltos marcados con fichas */
   var mt = maxTier(), e = x, lvl = 1, y, prev = null, i;
-  /* entrada: dos escalones blancos para subir */
-  bafle(x, 44); e = bafle(x + 34, 88); coinLine(x + 38, 98, 2, 16);
+  /* entrada: escalera de bafles para subir */
+  e = bafleStairs(x, v);
   prev = plat(e + Math.max(16, v * 0.22), 110, T2, true); lvl = 2; e = prev.x + prev.w;
   coinLine(prev.x + 12, prev.y + 10, 4, 22);
   for (i = 0; i < section.max; i++) {

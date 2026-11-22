@@ -34,7 +34,18 @@ var CATS = [
       CIR(X - 4, b - 13, 4.5, '#333'); CIR(X - 4, b - 13, 2, '#666'); }],
     ['Latas de película', function () { [0, 1, 2].forEach(function (i) { var y = b - 8 - i * 8; FR(X - 14, y, 28, 7, i % 2 ? YL : Y); R(X - 14, y + 2.5, 28, 1.2, YD); }); TEXT('35mm', X, b - 4.2, 3.6, K, 800); }],
     ['Bolsa de arena', function () { POLY([X - 15, b, X + 15, b, X + 13, b - 9, X + 4, b - 13, X - 4, b - 13, X - 13, b - 9], Y); POLY([X - 11, b - 10, X - 7, b - 22, X + 7, b - 22, X + 11, b - 10], YL); R(X - 1, b - 24, 2, 14, K); R(X - 13, b - 6, 26, 1.4, YD); }],
-    ['Foco de piso (fresnel)', function () { LINE(X - 10, b, X, b - 10, K, 1.6); LINE(X + 10, b, X, b - 10, K, 1.6); LINE(X, b, X, b - 10, K, 1.6); FR(X - 11, b - 26, 18, 14, Y); CIR(X + 8, b - 19, 6.5, K, false); CIR(X + 8, b - 19, 4.5, YL); POLY([X + 7, b - 27, X + 15, b - 31, X + 15, b - 27], YD); POLY([X + 7, b - 11, X + 15, b - 7, X + 15, b - 11], YD); }]
+    ['Foco de piso (fresnel)', function () {
+      R(X - 11, b - 3, 22, 3, K); LINE(X, b - 3, X, b - 9, K, 2.2);
+      R(X - 12, b - 10, 24, 2, K); R(X - 12, b - 22, 2, 12, K); R(X + 10, b - 22, 2, 12, K);
+      g.save(); g.translate(X, b - 17); g.rotate(-0.38);
+      R(-14, -5, 3, 10, YD); for (var i = 0; i < 4; i++) { R(-11, -7 + i * 4, 2, 2, K); }
+      FR(-11, -8, 19, 16, Y); R(-11, -8, 19, 3, YL); R(-11, 4, 19, 2, YD);
+      POLY([8, -8, 15, -13, 16, -10, 9, -6], YD); POLY([8, 8, 15, 13, 16, 10, 9, 6], YD);
+      g.fillStyle = OUT; g.beginPath(); g.ellipse(9, 0, 4.3, 8.8, 0, 0, 7); g.fill();
+      g.fillStyle = YL; g.beginPath(); g.ellipse(9, 0, 3.5, 8, 0, 0, 7); g.fill();
+      g.strokeStyle = YD; g.lineWidth = 0.7; [5.5, 3].forEach(function (r) { g.beginPath(); g.ellipse(9, 0, r * 0.44, r, 0, 0, 7); g.stroke(); });
+      g.restore();
+      g.fillStyle = 'rgba(255,232,140,.28)'; g.beginPath(); g.moveTo(X + 13, b - 26); g.lineTo(X + 40, b - 46); g.lineTo(X + 46, b - 30); g.lineTo(X + 15, b - 19); g.fill(); }]
   ] },
   { id: 'B', t: 'Agacharse (celeste)', s: 'Cuelgan a media altura: se pasa agachado. Medida: ~58 de ancho × 26 de alto.', items: [
     ['Pancarta (la actual)', function () { wires(X - 25, X + 25, b - 60); FR(X - 29, b - 60, 58, 26, C); R(X - 29, b - 60, 58, 1.6, WC); R(X - 29, b - 35.6, 58, 1.6, WC); TEXT('EDUCACIÓN', X, b - 51, 8, '#10283c'); TEXT('PÚBLICA', X, b - 42, 8, '#10283c'); }],
@@ -51,7 +62,14 @@ var CATS = [
     ['Bafle (el actual)', function () { FR(X - 17, b - 44, 34, 44, WC); R(X - 17, b - 44, 34, 3, F); CIR(X, b - 20, 10, K); CIR(X, b - 20, 5, '#5a4a3a'); CIR(X, b - 35, 3.5, K); }],
     ['Flight case con ruedas', function () { FR(X - 17, b - 44, 34, 40, WC); R(X - 17, b - 44, 34, 4, '#fff8dc'); R(X - 17, b - 24, 34, 2, WD); [[X - 17, b - 44], [X + 13, b - 44], [X - 17, b - 8], [X + 13, b - 8]].forEach(function (q) { R(q[0], q[1], 4, 4, GR); }); R(X - 5, b - 28, 10, 3, K); R(X - 17, b - 34, 34, 2, F); CIR(X - 11, b - 2.5, 2.5, K); CIR(X + 11, b - 2.5, 2.5, K); }],
     ['Pila de cajas de equipo', function () { FR(X - 18, b - 22, 36, 22, WC); R(X - 18, b - 13, 36, 2, F); TEXT('FRÁGIL', X, b - 6, 5, K, 800); FR(X - 13, b - 44, 26, 22, '#fff8dc'); R(X - 13, b - 35, 26, 2, WD); TEXT('LUCES', X, b - 28, 5, K, 800); }],
-    ['Consola de sonido', function () { R(X - 14, b - 24, 3, 24, K); R(X + 11, b - 24, 3, 24, K); FR(X - 19, b - 44, 38, 20, WC); R(X - 19, b - 44, 38, 3, F); for (var i = 0; i < 8; i++) { R(X - 16 + i * 4.3, b - 38, 1, 11, '#888'); R(X - 17 + i * 4.3, b - 33 + (i * 7 % 6), 3, 2, K); } }],
+    ['Consola de sonido', function () {
+      LINE(X - 15, b, X + 13, b - 24, K, 2); LINE(X + 15, b, X - 13, b - 24, K, 2); R(X - 17, b - 1.5, 6, 1.5, K); R(X + 11, b - 1.5, 6, 1.5, K);
+      POLY([X - 21, b - 24, X + 21, b - 24, X + 17, b - 41, X - 17, b - 41], WC); FR(X - 21, b - 27, 42, 4, F);
+      FR(X - 17, b - 45, 34, 4, K); for (var i = 0; i < 8; i++) { R(X - 15 + i * 4, b - 44, 2, 2, i > 6 ? '#ff4b4b' : (i > 4 ? '#ffd23f' : '#5fd068')); }
+      for (i = 0; i < 7; i++) { var f = (i + 0.5) / 7, xb = X - 16 + 32 * f, xf = X - 19 + 38 * f;
+        CIR(xb, b - 38, 1.3, K); CIR(xb + (xf - xb) * 0.3, b - 35, 1.3, F);
+        LINE(xb + (xf - xb) * 0.55, b - 32.5, xf, b - 28, '#6b6358', 0.9);
+        var k = (i * 5 % 7) / 7, cx = xb + (xf - xb) * (0.55 + 0.45 * k), cy = b - 32.5 + 4.5 * k; R(cx - 1.6, cy - 1, 3.2, 2, K); } }],
     ['Practicable (tarima)', function () { FR(X - 20, b - 44, 40, 6, WC); R(X - 20, b - 40, 40, 2, F); LINE(X - 16, b - 38, X + 16, b, K, 1.4); LINE(X + 16, b - 38, X - 16, b, K, 1.4); R(X - 18, b - 38, 2.5, 38, K); R(X + 15.5, b - 38, 2.5, 38, K); }],
     ['Equipo de guitarra (cabezal)', function () { FR(X - 17, b - 30, 34, 30, WC); R(X - 15, b - 28, 30, 26, '#2b2622'); for (var i = 0; i < 6; i++) { R(X - 15, b - 26 + i * 4.3, 30, 0.8, '#3d3732'); } FR(X - 17, b - 44, 34, 14, WC); R(X - 15, b - 41, 30, 3, F); for (i = 0; i < 6; i++) { CIR(X - 12 + i * 4.8, b - 35, 1.2, K); } }],
     ['Baúl de vestuario', function () { FR(X - 18, b - 40, 36, 40, WC); POLY([X - 18, b - 40, X - 14, b - 44, X + 14, b - 44, X + 18, b - 40], '#fff8dc'); R(X - 18, b - 30, 36, 2, WD); R(X - 18, b - 12, 36, 2, WD); R(X - 3, b - 26, 6, 6, F); }]
