@@ -7,7 +7,11 @@ var LIB = './jz/jeelizFaceFilter.moduleES6.js', NET = './jz/NN_LIGHT_1.json';
 var LIB_BYTES = 111478, NET_BYTES = 711104;
 /* calibración: el tamaño de la ventana de detección de Jeeliz contra las unidades de las máscaras (9,5 cm),
    y dónde quedan los ojos respecto del centro de esa ventana */
-var JZ_SIZE = 0.6, JZ_EYES = -0.3, MAX_FACES = 2;
+var JZ_SIZE = 0.6, JZ_EYES = -0.3, MAX_FACES = 1;
+/* menos trabajo por cuadro: una sola pasada del detector y una sola escala de búsqueda (por defecto hace de 2 a 6) */
+var SCAN = { nDetectsPerLoop: 1, nScaleLevels: 1 };
+/* menos suavizado (por defecto alphaRange [0.04, 1], translación [0.002, 0.01], rotación [0.015, 0.1]) */
+var STAB = { alphaRange: [0.3, 1], translationFactorRange: [0.0015, 0.005], rotationFactorRange: [0.008, 0.05] };
 var $ = function (id) { return document.getElementById(id); };
 var cv = $('cv'), ctx = cv.getContext('2d'), vid = $('vid');
 var detector = null, stream = null, facing = 'user', mask = 'anteojos';
@@ -317,10 +321,11 @@ function loadDetector() {
   var netP = grab(NET, NET_BYTES, function (p) { prog.net = p; showProgress(); }).then(function (bytes) { return new TextDecoder().decode(bytes); });
   return Promise.all([libP, netP]).then(function (r) {
     var JZ = r[0].default, jc = $('jzcv');
-    jc.width = vid.videoWidth || 640; jc.height = vid.videoHeight || 480;
+    /* el lienzo interno de Jeeliz no se ve: con la mitad de la resolución alcanza */
+    jc.width = Math.round((vid.videoWidth || 640) / 2); jc.height = Math.round((vid.videoHeight || 480) / 2);
     return new Promise(function (ok, fail) {
       JZ.init({
-        canvas: jc, NNC: r[1], maxFacesDetected: MAX_FACES, followZRot: true,
+        canvas: jc, NNC: r[1], maxFacesDetected: MAX_FACES, followZRot: true, scanSettings: SCAN, stabilizationSettings: STAB,
         videoSettings: { videoElement: vid },
         callbackReady: function (err) { if (err) { fail(err); } else { ok(JZ); } },
         callbackTrack: onTrack
