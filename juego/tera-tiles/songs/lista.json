@@ -1,5 +1,10 @@
 [
   {
+    "file": "21st-century-schizoid-man.mid",
+    "title": "21st Century Schizoid Man",
+    "artist": "King Crimson"
+  },
+  {
     "file": "africa.mid",
     "title": "Africa",
     "artist": "Toto"
@@ -8,6 +13,27 @@
     "file": "bohemian-rhapsody.mid",
     "title": "Bohemian Rhapsody",
     "artist": "Queen"
+  },
+  {
+    "file": "careless-whisper.mid",
+    "title": "Careless Whisper",
+    "artist": "George Michael",
+    "melodia": "ALTO SAX"
+  },
+  {
+    "file": "clair-de-lune.mid",
+    "title": "Clair de Lune",
+    "artist": "Claude Debussy"
+  },
+  {
+    "file": "dancing-with-the-moonlit-knight.mid",
+    "title": "Dancing with the Moonlit Knight",
+    "artist": "Genesis"
+  },
+  {
+    "file": "firth-of-fifth.mid",
+    "title": "Firth of Fifth",
+    "artist": "Genesis"
   },
   {
     "file": "my-heart-will-go-on.mid",

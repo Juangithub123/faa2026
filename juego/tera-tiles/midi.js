@@ -121,14 +121,25 @@
     return { n, mean: n ? sumP / n : 0, poly: n ? overl / n : 0, density: n / span };
   }
 
-  function analyze(midi) {
+  function analyze(midi, hints) {
+    hints = hints || {};
     // eliminar notas de batería duplicadas entre pistas (hay MIDIs con el kit entero + el kit separado por pieza)
     const seen = new Set();
     for (const v of midi.voices) {
       if (v.ch !== 9) continue;
       v.notes = v.notes.filter(n => { const k = n.p + ':' + Math.round(n.t * 50); if (seen.has(k)) return false; seen.add(k); return true; });
     }
-    midi.voices = midi.voices.filter(v => v.notes.length);
+    // pistas con instrumento duplicadas (mismas notas en el mismo momento): se deja una sola
+    const keyOf = n => n.p + ':' + Math.round(n.t * 50);
+    const kept = [];
+    for (const v of midi.voices) {
+      if (v.ch === 9 || !v.notes.length) { kept.push(v); continue; }
+      const ks = new Set(v.notes.map(keyOf));
+      const dup = kept.find(o => o.ch !== 9 && Math.abs(o.notes.length - v.notes.length) <= v.notes.length * 0.1 && v.notes.filter(n => o._keys.has(keyOf(n))).length >= v.notes.length * 0.9);
+      if (dup) continue;
+      v._keys = ks; kept.push(v);
+    }
+    midi.voices = kept.filter(v => v.notes.length);
     const maxN = Math.max(1, ...midi.voices.map(v => v.notes.length));
     midi.voices.forEach((v, i) => {
       v.id = i;
@@ -138,10 +149,17 @@
       const nm = (v.name || '').replace(/[^\w\s.#()áéíóúñÁÉÍÓÚÑ-]/g, '').trim();
       v.label = (nm && !/^(track|pista)?\s*\d*$/i.test(nm) ? nm : v.family);
     });
+    // si varias pistas comparten nombre, se las distingue por instrumento
+    const cnt = {};
+    midi.voices.forEach(v => { cnt[v.label] = (cnt[v.label] || 0) + 1; });
+    midi.voices.forEach(v => { if (cnt[v.label] > 1 && !v.drums) v.label = v.family; });
+    const seenL = {};
+    midi.voices.forEach(v => { const l = v.label; seenL[l] = (seenL[l] || 0) + 1; if (seenL[l] > 1) v.label = l + ' ' + seenL[l]; });
+    const byHint = (h) => { if (!h) return null; const q = String(h).toLowerCase(); return midi.voices.find(v => !v.drums && (v.label.toLowerCase().includes(q) || (v.name || '').toLowerCase().includes(q))) || null; };
     const pitched = midi.voices.filter(v => !v.drums && v.st.n >= Math.max(12, maxN * 0.03));
     const famOf = v => v.program >> 3;
     // bajo: familia "Bajo"; si no, la voz más grave, poco polifónica, que no sea pad/FX
-    let bass = pitched.filter(v => famOf(v) === 4).sort((a, b) => b.st.n - a.st.n)[0];
+    let bass = byHint(hints.bass) || pitched.filter(v => famOf(v) === 4).sort((a, b) => b.st.n - a.st.n)[0];
     if (!bass) bass = pitched.filter(v => v.st.mean < 52 && v.st.poly < 0.3 && ![11, 12, 15].includes(famOf(v)))
       .sort((a, b) => (a.st.mean - Math.log(a.st.n) * 3) - (b.st.mean - Math.log(b.st.n) * 3))[0];
     // melodía: puntaje por agudo, monofonía, cantidad de notas y nombre
@@ -176,6 +194,8 @@
         midi.voices.push(bass);
       }
     }
+    const forced = byHint(hints.melody);
+    if (forced && forced !== bass) melody = forced;
     const drums = midi.voices.filter(v => v.drums);
     const harmony = pitched.filter(v => v !== bass && v !== melody && v.notes.length);
     // voces chiquitas (pocas notas) también van a la armonía para que suenen de base

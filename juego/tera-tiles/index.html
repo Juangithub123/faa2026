@@ -184,7 +184,7 @@
   <div class="crt"></div>
 </div>
 
-<script src="midi.js?v=1122a"></script>
+<script src="midi.js?v=1122b"></script>
 <script>
 (() => {
 'use strict';
@@ -514,7 +514,7 @@ async function openSong(meta) {
         try { const r = await fetch(meta.file); if (!r.ok) throw 0; buf = await r.arrayBuffer(); }
         catch (_) { throw new Error('no se pudo leer ' + meta.file + '. Si abriste el archivo con doble clic, usá un servidor local o el botón "+ ARCHIVOS".'); }
       }
-      meta.midi = K.analyze(K.parseMidi(buf));
+      meta.midi = K.analyze(K.parseMidi(buf), { melody: meta.melodia, bass: meta.bajo });
     }
     song = meta;
     const m = meta.midi;
@@ -578,7 +578,7 @@ addEventListener('drop', async e => {
 async function loadLibrary() {
   try {
     const r = await fetch('songs/lista.json', { cache: 'no-cache' });
-    if (r.ok) { const list = await r.json(); if (Array.isArray(list) && list.length) SONGS = list.map(x => ({ id: x.id || x.file, file: 'songs/' + x.file, title: x.title || cleanTitle(x.file), artist: x.artist || '' })); }
+    if (r.ok) { const list = await r.json(); if (Array.isArray(list) && list.length) SONGS = list.map(x => ({ id: x.id || x.file, file: 'songs/' + x.file, title: x.title || cleanTitle(x.file), artist: x.artist || '', melodia: x.melodia, bajo: x.bajo })); }
   } catch (e) {}
   try { const recs = await DB.all(); (recs || []).forEach(r => SONGS.push({ ...r, lib: true })); } catch (e) {}
   sortSongs(); renderSongList();
