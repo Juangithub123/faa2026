@@ -1,0 +1,22 @@
+[
+  {
+    "file": "africa.mid",
+    "title": "Africa",
+    "artist": "Toto"
+  },
+  {
+    "file": "bohemian-rhapsody.mid",
+    "title": "Bohemian Rhapsody",
+    "artist": "Queen"
+  },
+  {
+    "file": "my-heart-will-go-on.mid",
+    "title": "My Heart Will Go On",
+    "artist": "Céline Dion"
+  },
+  {
+    "file": "sandstorm.mid",
+    "title": "Sandstorm",
+    "artist": "Darude"
+  }
+]
