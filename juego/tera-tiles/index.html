@@ -29,7 +29,7 @@
   #app { position: relative; height: 100%; width: min(100vw, 100dvh * 0.62); min-width: 300px; background: var(--bg2); overflow: hidden; }
   @media (max-aspect-ratio: 7/10) { #app { width: 100vw; } }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; display: block; }
-  .crt { pointer-events: none; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px); mix-blend-mode: multiply; z-index: 5; }
+  .crt { pointer-events: none; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.14) 0 1px, transparent 1px 3px); z-index: 5; }
 
   .screen { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; padding: 22px 16px calc(22px + env(safe-area-inset-bottom)); gap: 14px; overflow-y: auto; z-index: 10; background: var(--bg2); }
   .screen.on { display: flex; }
@@ -66,7 +66,7 @@
   #score { position: absolute; top: 14px; right: 12px; font-size: 12px; text-shadow: 2px 2px 0 #000; text-align: right; line-height: 1.6; }
   #score small { font-size: 8px; color: var(--dim); display: block; }
   #mult { position: absolute; top: 14px; left: 12px; font-size: 12px; color: var(--l1); text-shadow: 2px 2px 0 #000; }
-  #prog { position: absolute; top: 0; left: 0; height: 4px; background: var(--l2); width: 0; }
+  #prog { position: absolute; top: 0; left: 0; height: 4px; background: var(--l2); width: 100%; transform: scaleX(0); transform-origin: 0 0; }
   #judge { position: absolute; top: 36%; width: 100%; text-align: center; font-size: 16px; text-shadow: 3px 3px 0 #000; opacity: 0; }
   #combo { position: absolute; top: calc(36% + 30px); width: 100%; text-align: center; font-size: 11px; color: var(--ink); text-shadow: 2px 2px 0 #000; }
   #judge.pop { animation: pop .45s steps(6) forwards; }
@@ -184,7 +184,7 @@
   <div class="crt"></div>
 </div>
 
-<script src="midi.js?v=1122b"></script>
+<script src="midi.js?v=1122c"></script>
 <script>
 (() => {
 'use strict';
@@ -218,16 +218,25 @@ const WIN = { perfect: 0.050, good: 0.095, ok: 0.140 };   // ventanas de acierto
 const PTS = { perfect: 300, good: 200, ok: 100 };
 
 // ================== AUDIO 8 BITS ==================
-let ctx = null, master, baseBus, playerBus, WAVES = {}, NOISE;
+// Como en una consola de verdad: pocos "canales" fijos (osciladores que nunca se apagan)
+// y cada nota es solo un cambio de frecuencia y volumen. Así no se crean nodos por nota
+// (eso era lo que trababa el juego, sobre todo en Firefox) y nunca suenan más de ~10 voces.
+let ctx = null, master, limiter, echoIn, WAVES = {}, NOISE = {}, CH = null;
 function initAudio() {
   if (ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-  const comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = -16; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.15;
-  master = ctx.createGain(); master.gain.value = 3.0;
-  master.connect(comp); comp.connect(ctx.destination);
-  baseBus = ctx.createGain(); baseBus.connect(master);
-  playerBus = ctx.createGain(); playerBus.connect(master);
+  // cadena final: master -> limitador -> salida
+  limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -6; limiter.knee.value = 4; limiter.ratio.value = 12; limiter.attack.value = 0.002; limiter.release.value = 0.12;
+  master = ctx.createGain(); master.gain.value = 0.85;
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 35; // saca el DC y el retumbe
+  master.connect(hp); hp.connect(limiter); limiter.connect(ctx.destination);
+  // eco corto (como el truco de "delay" de los compositores de NES)
+  echoIn = ctx.createGain(); echoIn.gain.value = 1;
+  const dl = ctx.createDelay(1), fb = ctx.createGain(), lp = ctx.createBiquadFilter(), wet = ctx.createGain();
+  dl.delayTime.value = 0.18; fb.gain.value = 0.3; lp.type = 'lowpass'; lp.frequency.value = 2600; wet.gain.value = 0.28;
+  echoIn.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(wet); wet.connect(master);
+
   const pulse = (D) => {
     const N = 40, re = new Float32Array(N + 1), im = new Float32Array(N + 1);
     for (let n = 1; n <= N; n++) re[n] = 2 / (n * Math.PI) * Math.sin(n * Math.PI * D);
@@ -244,75 +253,116 @@ function initAudio() {
   };
   WAVES.p12 = pulse(0.125); WAVES.p25 = pulse(0.25); WAVES.p50 = pulse(0.5);
   WAVES.tri = stepped(x => { const s = Math.floor(x * 32); const v = s < 16 ? 15 - s : s - 16; return (v / 7.5) - 1; });
-  const len = ctx.sampleRate * 1.5;
-  NOISE = ctx.createBuffer(1, len, ctx.sampleRate);
-  const ch = NOISE.getChannelData(0);
-  let reg = 1, hold = 0, val = 0;
-  for (let i = 0; i < len; i++) { // ruido tipo LFSR, con sample-and-hold para que suene "crujiente"
-    if (hold-- <= 0) { const bit = (reg ^ (reg >> 1)) & 1; reg = (reg >> 1) | (bit << 14); val = (reg & 1) ? 1 : -1; hold = 1; }
-    ch[i] = val;
-  }
+  // ruido del chip: registro LFSR de 15 bits, modo largo (siseo) y modo corto (metálico)
+  const lfsr = (tap, len) => {
+    const b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0);
+    let reg = 1;
+    for (let i = 0; i < len; i++) { const bit = (reg ^ (reg >> tap)) & 1; reg = (reg >> 1) | (bit << 14); d[i] = (reg & 1) ? 0.9 : -0.9; }
+    return b;
+  };
+  NOISE.long = lfsr(1, Math.floor(ctx.sampleRate * 1.0));
+  NOISE.short = lfsr(6, 93 * 8);
 }
 const mtof = (p) => 440 * Math.pow(2, (p - 69) / 12);
+const vel = (v) => 0.55 + 0.45 * (v ?? 0.8);
 
-function tone(wave, p, t, d, vol, bus, opts = {}) {
+// canal tonal (pulso o triángulo): un oscilador fijo, con vibrato opcional
+function toneChannel(bus, wave, vol, opts = {}) {
   const o = ctx.createOscillator(), g = ctx.createGain();
-  o.setPeriodicWave(wave);
-  o.frequency.value = mtof(p);
-  const end = t + Math.max(0.03, d);
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(vol, t + 0.004);
-  if (opts.decay) g.gain.linearRampToValueAtTime(vol * opts.decay, Math.min(end, t + 0.18));
-  g.gain.setValueAtTime(opts.decay ? vol * opts.decay : vol, end);
-  g.gain.linearRampToValueAtTime(0, end + 0.025);
+  o.setPeriodicWave(wave); o.frequency.value = 220; g.gain.value = 0;
   o.connect(g); g.connect(bus);
-  o.start(t); o.stop(end + 0.04);
-  return { o, g };
+  if (opts.echo) { const s = ctx.createGain(); s.gain.value = opts.echo; g.connect(s); s.connect(echoIn); }
+  let lfoG = null;
+  if (opts.vib) {
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 5.6;
+    lfoG = ctx.createGain(); lfoG.gain.value = 0;
+    lfo.connect(lfoG); lfoG.connect(o.detune); lfo.start();
+    o._lfo = lfo;
+  }
+  o.start();
+  const ch = {
+    o, g, vol,
+    // una nota: ataque instantáneo, caída a "sus", vibrato si es larga, corte al final
+    note(t, p, d, v, sus = opts.sus ?? 0.7) {
+      const a = vol * vel(v);
+      o.frequency.setValueAtTime(mtof(p), t);
+      g.gain.setTargetAtTime(a, t, 0.002);
+      if (sus < 1) g.gain.setTargetAtTime(a * sus, t + 0.02, 0.09);
+      g.gain.setTargetAtTime(0, t + Math.max(0.03, d), 0.012);
+      if (lfoG) { lfoG.gain.setTargetAtTime(0, t, 0.01); if (d > 0.4) lfoG.gain.setTargetAtTime(opts.vib, t + 0.22, 0.12); }
+    },
+    // acorde arpegiado (cambia de nota 30 veces por segundo)
+    arp(t, ps, d, v, attack) {
+      const a = vol * vel(v), step = 1 / 30, n = Math.max(1, Math.min(900, Math.ceil(d / step)));
+      for (let k = 0; k < n; k++) o.frequency.setValueAtTime(mtof(ps[k % ps.length]), t + k * step);
+      if (attack) { g.gain.setTargetAtTime(a, t, 0.002); g.gain.setTargetAtTime(a * 0.6, t + 0.02, 0.1); }
+      else g.gain.setTargetAtTime(a * 0.6, t, 0.004);
+      g.gain.setTargetAtTime(0, t + Math.max(0.03, d), 0.012);
+    },
+    // golpe con barrido de altura (bombo y toms)
+    sweep(t, f0, f1, dur, v) {
+      const a = vol * vel(v);
+      o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      g.gain.setTargetAtTime(a, t, 0.001); g.gain.setTargetAtTime(0, t + 0.01, dur / 3);
+    },
+    cut(t) { g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, 0.01); },
+    stop(t) { try { g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, 0.02); o.stop(t + 0.2); o._lfo && o._lfo.stop(t + 0.2); } catch (e) {} },
+  };
+  return ch;
 }
-function arp(wave, pitches, t, d, vol, bus, attack) {
-  const o = ctx.createOscillator(), g = ctx.createGain();
-  o.setPeriodicWave(wave);
-  const step = 1 / 30;
-  const n = Math.max(1, Math.ceil(d / step));
-  for (let k = 0; k < n && k < 600; k++) o.frequency.setValueAtTime(mtof(pitches[k % pitches.length]), t + k * step);
-  const end = t + d;
-  g.gain.setValueAtTime(attack ? 0 : vol * 0.65, t);
-  if (attack) { g.gain.linearRampToValueAtTime(vol, t + 0.004); g.gain.linearRampToValueAtTime(vol * 0.65, Math.min(end, t + 0.15)); }
-  g.gain.setValueAtTime(vol * 0.65, end);
-  g.gain.linearRampToValueAtTime(0, end + 0.02);
-  o.connect(g); g.connect(bus);
-  o.start(t); o.stop(end + 0.03);
-  return { o, g };
+// canal de ruido: una fuente en loop; la "altura" del ruido es la velocidad de lectura, como en el chip
+function noiseChannel(bus, buf, vol, hpf) {
+  const s = ctx.createBufferSource(), g = ctx.createGain();
+  s.buffer = buf; s.loop = true; g.gain.value = 0;
+  let last = s;
+  if (hpf) { const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hpf; s.connect(f); last = f; }
+  last.connect(g); g.connect(bus); s.start();
+  return {
+    hit(t, rate, dur, v) {
+      const a = vol * vel(v);
+      s.playbackRate.setValueAtTime(rate, t);
+      g.gain.setTargetAtTime(a, t, 0.001); g.gain.setTargetAtTime(0, t + 0.005, dur / 3);
+    },
+    cut(t) { g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, 0.01); },
+    stop(t) { try { g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, 0.02); s.stop(t + 0.2); } catch (e) {} },
+  };
 }
-function noiseHit(t, dur, vol, bus, type, freq, q = 1, rate = 1) {
-  const s = ctx.createBufferSource(); s.buffer = NOISE; s.playbackRate.value = rate;
-  const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-  s.connect(f); f.connect(g); g.connect(bus);
-  s.start(t, Math.random() * 1.2); s.stop(t + dur + 0.02);
-  return { o: s, g };
+
+// juego de canales: uno para la base y otro (más presente) para lo que toca el jugador
+function makeChannels(player) {
+  const bus = ctx.createGain(); bus.connect(master);
+  const k = player ? 1.15 : 1;
+  return {
+    bus,
+    lead: toneChannel(bus, player ? WAVES.p50 : WAVES.p25, (player ? 0.2 : 0.15), { echo: player ? 0.5 : 0.35, vib: 14, sus: 0.75 }),
+    harm: toneChannel(bus, player ? WAVES.p25 : WAVES.p12, (player ? 0.15 : 0.075), { echo: 0.25 }),
+    bass: toneChannel(bus, WAVES.tri, 0.32 * k, { sus: 1 }),
+    kick: toneChannel(bus, WAVES.tri, 0.42 * k),
+    noise: noiseChannel(bus, NOISE.long, 0.2 * k, 120),
+    hat: noiseChannel(bus, NOISE.long, 0.1 * k, 5000),
+    metal: noiseChannel(bus, NOISE.short, 0.07 * k, 3000),
+  };
 }
-function sweep(wave, f0, f1, t, dur, vol, bus) {
-  const o = ctx.createOscillator(), g = ctx.createGain();
-  o.setPeriodicWave(wave);
-  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
-  g.gain.setValueAtTime(vol, t); g.gain.linearRampToValueAtTime(0, t + dur);
-  o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.02);
-  return { o, g };
+function stopChannels(C, t) { if (!C) return; for (const k in C) if (C[k] && C[k].stop) C[k].stop(t); setTimeout(() => { try { C.bus.disconnect(); } catch (e) {} }, 600); }
+
+// a qué canal de batería va cada pieza (General MIDI) y con qué sonido
+function drumVoice(p) {
+  if (p === 35 || p === 36) return { ch: 'kick', f0: 150, f1: 45, dur: 0.14, pri: 5 };
+  if (p === 38 || p === 40) return { ch: 'noise', rate: 0.42, dur: 0.17, pri: 5 };
+  if (p === 37 || p === 39) return { ch: 'noise', rate: 0.7, dur: 0.07, pri: 3 };
+  if ([41, 43, 45, 47, 48, 50].includes(p)) { const f = 75 + (p - 41) * 15; return { ch: 'kick', f0: f * 1.7, f1: f, dur: 0.18, pri: 4 }; }
+  if (p === 49 || p === 57 || p === 52 || p === 55) return { ch: 'noise', rate: 0.9, dur: 0.75, pri: 4 };
+  if (p === 51 || p === 59 || p === 53) return { ch: 'metal', rate: 1.2, dur: 0.3, pri: 2 };
+  if (p === 46) return { ch: 'hat', rate: 1, dur: 0.24, pri: 2 };
+  if (p === 42 || p === 44) return { ch: 'hat', rate: 1, dur: 0.045, pri: 2 };
+  if (p === 54 || p === 69 || p === 70 || p === 82) return { ch: 'hat', rate: 0.8, dur: 0.05, pri: 1 };
+  return { ch: 'metal', rate: 0.5 + ((p * 7) % 10) / 12, dur: 0.06, pri: 1 };
 }
-function drum(p, t, vol, bus) {
-  const out = [];
-  if (p === 35 || p === 36) { out.push(sweep(WAVES.tri, 170, 42, t, 0.13, vol * 1.6, bus)); out.push(noiseHit(t, 0.02, vol * 0.4, bus, 'lowpass', 2000)); }
-  else if (p === 38 || p === 40) { out.push(noiseHit(t, 0.16, vol * 1.1, bus, 'bandpass', 1900, 0.7)); out.push(sweep(WAVES.p50, 260, 140, t, 0.05, vol * 0.35, bus)); }
-  else if (p === 37 || p === 39) out.push(noiseHit(t, 0.08, vol * 0.8, bus, 'bandpass', 2600, 1.2));
-  else if (p === 42 || p === 44) out.push(noiseHit(t, 0.035, vol * 0.55, bus, 'highpass', 7000));
-  else if (p === 46) out.push(noiseHit(t, 0.22, vol * 0.5, bus, 'highpass', 6500));
-  else if (p === 49 || p === 57 || p === 52 || p === 55) out.push(noiseHit(t, 0.6, vol * 0.6, bus, 'highpass', 4500, 0.7, 0.8));
-  else if (p === 51 || p === 59 || p === 53) out.push(noiseHit(t, 0.25, vol * 0.4, bus, 'bandpass', 6000, 1.5));
-  else if ([41, 43, 45, 47, 48, 50].includes(p)) { const f = 70 + (p - 41) * 14; out.push(sweep(WAVES.tri, f * 1.6, f, t, 0.16, vol * 1.3, bus)); }
-  else out.push(noiseHit(t, 0.05, vol * 0.35, bus, 'bandpass', 2500 + (p - 60) * 120, 2));
-  return out;
+function playDrum(C, p, at, v) {
+  const dv = drumVoice(p);
+  if (dv.ch === 'kick') C.kick.sweep(at, dv.f0, dv.f1, dv.dur, v);
+  else C[dv.ch].hit(at, dv.rate, dv.dur, v);
+  if (p === 35 || p === 36) C.noise.hit(at, 0.05, 0.03, (v ?? 0.8) * 0.6); // "click" del bombo
 }
 
 // ================== PREPARAR TEMA ==================
@@ -322,23 +372,41 @@ function harmonySegments(notes) {
   notes.forEach(n => { ev.push({ t: n.t, on: 1, p: n.p, v: n.v }); ev.push({ t: n.t + n.d, on: 0, p: n.p }); });
   ev.sort((a, b) => a.t - b.t || a.on - b.on);
   const active = new Map(); const segs = [];
-  let lastT = 0, attack = false, vel = 0.7;
+  let lastT = 0, attack = false, velo = 0.7;
   for (let i = 0; i < ev.length;) {
     const t = ev[i].t;
     if (active.size && t - lastT > 0.015) {
       const ps = [...active.keys()].sort((a, b) => b - a).slice(0, 3);
-      segs.push({ t: lastT, d: t - lastT, ps, attack, v: vel });
+      segs.push({ t: lastT, d: t - lastT, ps, attack, v: velo });
       attack = false;
     }
     let newOn = false;
     while (i < ev.length && ev[i].t - t < 0.012) {
       const e = ev[i++];
-      if (e.on) { active.set(e.p, (active.get(e.p) || 0) + 1); newOn = true; vel = e.v; }
+      if (e.on) { active.set(e.p, (active.get(e.p) || 0) + 1); newOn = true; velo = e.v; }
       else { const c = (active.get(e.p) || 0) - 1; if (c <= 0) active.delete(e.p); else active.set(e.p, c); }
     }
     if (newOn || t - lastT > 0.015) { lastT = t; if (newOn) attack = true; }
   }
   return segs;
+}
+// una línea por canal: cada nota termina cuando empieza la siguiente (el canal es monofónico)
+function trimMono(evs) {
+  evs.sort((a, b) => a.t - b.t);
+  for (let i = 0; i < evs.length - 1; i++) { const e = evs[i], nx = evs[i + 1]; if (e.d !== undefined && e.t + e.d > nx.t) e.d = Math.max(0.02, nx.t - e.t); }
+  return evs;
+}
+// batería: por canal, si dos golpes caen juntos gana el de más prioridad
+function drumEvents(notes) {
+  const by = {};
+  for (const n of notes) {
+    const dv = drumVoice(n.p);
+    const arr = by[dv.ch] = by[dv.ch] || [];
+    const last = arr[arr.length - 1];
+    if (last && Math.abs(last.t - n.t) < 0.012) { if (dv.pri > last.pri) arr[arr.length - 1] = { t: n.t, ch: 'drum', n, pri: dv.pri }; continue; }
+    arr.push({ t: n.t, ch: 'drum', n, pri: dv.pri });
+  }
+  return Object.values(by).flat();
 }
 
 function prepareBase(midi, part, chart) {
@@ -358,27 +426,54 @@ function prepareBase(midi, part, chart) {
   // notas de la parte del jugador que no dependen de gemas (p.ej. percusión latina) suenan solas
   for (const n of chart.auto) (part.kind === 'drums' ? drums : part.kind === 'bass' ? bass : harm).push(n);
   const evs = [];
-  lead.forEach(n => evs.push({ t: n.t, kind: 'lead', n }));
-  bass.forEach(n => evs.push({ t: n.t, kind: 'bass', n }));
-  drums.forEach(n => evs.push({ t: n.t, kind: 'drum', n }));
-  harmonySegments(harm).forEach(sg => evs.push({ t: sg.t, kind: 'harm', sg }));
+  trimMono(K.monophonic(lead, true).map(n => ({ t: n.t, d: n.d, ch: 'lead', n }))).forEach(e => evs.push(e));
+  trimMono(K.monophonic(bass, false).map(n => ({ t: n.t, d: n.d, ch: 'bass', n }))).forEach(e => evs.push(e));
+  drumEvents(drums).forEach(e => evs.push(e));
+  harmonySegments(harm).forEach(sg => evs.push({ t: sg.t, d: sg.d, ch: 'harm', sg }));
   evs.sort((a, b) => a.t - b.t);
   return evs;
 }
 
-function playBaseEvent(e, at) {
-  const n = e.n;
-  if (e.kind === 'lead') tone(WAVES.p25, n.p, at, n.d, 0.07 + 0.05 * n.v, baseBus, { decay: 0.75 });
-  else if (e.kind === 'bass') tone(WAVES.tri, n.p, at, n.d, 0.20 + 0.08 * n.v, baseBus);
-  else if (e.kind === 'drum') drum(n.p, at, 0.14 + 0.1 * n.v, baseBus);
-  else { const sg = e.sg; arp(WAVES.p12, sg.ps, at, sg.d, 0.035 + 0.025 * sg.v, baseBus, sg.attack); }
+// sonidos de la parte del jugador, ya repartidos por canal y asignados a cada gema
+function preparePlayer(part, chart) {
+  const all = [];
+  chart.forEach(g => g.notes.forEach(n => all.push({ n, g })));
+  const evs = [];
+  if (part.kind === 'drums') {
+    const notes = all.map(x => x.n);
+    const owner = new Map(all.map(x => [x.n, x.g]));
+    drumEvents(notes).forEach(e => evs.push({ ...e, g: owner.get(e.n) }));
+  } else {
+    const mainCh = part.kind === 'bass' ? 'bass' : 'lead';
+    const main = [], rest = [];
+    all.forEach(x => ((part.kind !== 'harmony' && x.n.main) ? main : rest).push(x));
+    trimMono(main.map(x => ({ t: x.n.t, d: x.n.d, ch: mainCh, n: x.n, g: x.g }))).forEach(e => evs.push(e));
+    // el resto (acompañamiento de la misma pista) se arpegia; cada tramo es de la gema que lo cubre
+    const segs = harmonySegments(rest.map(x => x.n));
+    let gi = 0;
+    for (const sg of segs) {
+      while (gi + 1 < chart.length && chart[gi + 1].t <= sg.t + 0.03) gi++;
+      if (chart[gi]) evs.push({ t: sg.t, d: sg.d, ch: 'harm', sg, g: chart[gi] });
+    }
+  }
+  chart.forEach(g => { g.ev = []; });
+  evs.sort((a, b) => a.t - b.t).forEach(e => e.g && e.g.ev.push(e));
 }
 
-function playPlayerNote(n, kind, at, dur) {
-  if (kind === 'drums') return drum(n.p, at, 0.22 + 0.12 * n.v, playerBus);
-  if (kind === 'bass') return [tone(WAVES.tri, n.p, at, dur, 0.26 + 0.08 * n.v, playerBus)];
-  if (kind === 'harmony' || !n.main) return [tone(WAVES.p12, n.p, at, dur, 0.04 + 0.03 * n.v, playerBus, { decay: 0.7 })];
-  return [tone(WAVES.p50, n.p, at, dur, 0.09 + 0.05 * n.v, playerBus, { decay: 0.8 })];
+// toca un evento en un juego de canales. "from": si ya empezó (toque tarde), arranca desde ahí
+function playEvent(C, e, at, cut = 0) {
+  if (e.ch === 'drum') { playDrum(C, e.n.p, at, e.n.v); return; }
+  const d = Math.max(0.03, e.d - cut);
+  if (e.ch === 'harm') C.harm.arp(at, e.sg.ps, d, e.sg.v, e.sg.attack || cut > 0);
+  else C[e.ch].note(at, e.n.p, d, e.n.v);
+}
+
+// sonido simple para la calibración
+function blip(p, t, d, vol) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.setPeriodicWave(WAVES.p50); o.frequency.value = mtof(p);
+  g.gain.setValueAtTime(vol, t); g.gain.setTargetAtTime(0, t + d, 0.01);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + d + 0.1);
 }
 
 // ================== ESTADO DEL JUEGO ==================
@@ -590,16 +685,19 @@ async function startGame() {
   if (ctx.state !== 'running') await ctx.resume();
   const m = song.midi, part = m.parts[partKey];
   const chart = K.buildChart(m, partKey, S.diff);
-  chart.forEach(g => { g.state = 0; g.holding = false; g.nodes = []; });
+  chart.forEach(g => { g.state = 0; g.holding = false; });
   const base = S.base ? prepareBase(m, part, chart) : [];
+  preparePlayer(part, chart);
   const pps = H * 0.62 * S.speed;           // píxeles por segundo
   const travel = HITY / pps;
   const first = chart.length ? chart[0].t : 0;
   const lead = Math.max(1.6, travel - first + 0.8);
   const skipTo = S.skip && first > travel + 4 ? first - travel - 1.5 : 0;
   const lastEnd = chart.length ? Math.max(...chart.map(g => g.t + g.d)) : m.duration;
+  if (G) stopGame();
   G = {
     m, part, chart, base, bi: 0, pps,
+    CB: makeChannels(false), CP: makeChannels(true),
     start: ctx.currentTime + (skipTo ? 1.2 - skipTo : lead),
     end: Math.min(m.duration, lastEnd + 6) + 0.5,
     score: 0, combo: 0, maxCombo: 0, counts: { perfect: 0, good: 0, ok: 0, miss: 0 }, maxPts: 0, gotPts: 0, judgedMax: 0,
@@ -607,8 +705,6 @@ async function startGame() {
     particles: [], nextGem: 0, paused: false, over: false, holdAcc: 0,
   };
   chart.forEach(g => { G.maxPts += gemMax(g); });
-  baseBus.gain.cancelScheduledValues(ctx.currentTime); baseBus.gain.setValueAtTime(1, ctx.currentTime);
-  playerBus.gain.cancelScheduledValues(ctx.currentTime); playerBus.gain.setValueAtTime(1, ctx.currentTime);
   updateHud();
   $('judge').textContent = ''; $('combo').textContent = '';
   show(null);
@@ -625,7 +721,7 @@ function scheduler() {
     G.bi++;
     if (e.t > G.end) continue;
     if (at < ctx.currentTime - 0.03) continue;  // atrasado: se descarta
-    playBaseEvent(e, Math.max(at, ctx.currentTime));
+    playEvent(G.CB, e, Math.max(at, ctx.currentTime));
   }
 }
 setInterval(scheduler, 30);
@@ -637,7 +733,7 @@ function judge(lane, perfMs) {
   if (!G || G.paused || G.over) return;
   G.lanesDown[lane] = true;
   G.laneFlash[lane] = 1;
-  const pos = heardPos(perfMs) - S.offset / 1000;
+  const pos = smoothPos(perfMs) - S.offset / 1000;
   let best = null, bestD = 1e9;
   for (let i = G.nextGem; i < G.chart.length; i++) {
     const g = G.chart[i];
@@ -655,13 +751,14 @@ function judge(lane, perfMs) {
   G.score += pts; G.gotPts += PTS[kind] * 4; G.judgedMax += gemMax(best);
   if (best.d > 0) best.holding = true;
   // sonido: las notas de esta gema; si ya empezaron, suenan ya
-  const now = ctx.currentTime, songNow = now - G.start;
-  for (const n of best.notes) {
-    let at = G.start + n.t, dur = n.d;
-    if (at < now) { dur = n.t + n.d - songNow; at = now; if (dur < 0.06) { if (n === best.notes[0]) dur = 0.08; else continue; } }
-    const nodes = playPlayerNote(n, G.part.kind, at, dur);
-    if (nodes) best.nodes = best.nodes.concat(nodes);
-  }
+  const now = ctx.currentTime + 0.005, songNow = now - G.start;
+  best.ev.forEach((e, i) => {
+    const at = G.start + e.t;
+    if (at >= now) { playEvent(G.CP, e, at); return; }
+    const late = songNow - e.t;
+    if (e.ch === 'drum') { if (late < 0.15) playEvent(G.CP, e, now); return; }
+    if (e.d - late > 0.05 || i === 0) playEvent(G.CP, e, now, Math.min(late, Math.max(0, e.d - 0.08)));
+  });
   popJudge(kind === 'perfect' ? '¡PERFECTO!' : kind === 'good' ? 'BIEN' : 'OK', kind === 'perfect' ? LANE_COLORS[2] : kind === 'good' ? LANE_COLORS[1] : '#fff');
   burst(lane, kind === 'perfect' ? 10 : 6);
   updateHud();
@@ -670,7 +767,7 @@ function judge(lane, perfMs) {
 function release(lane) {
   if (!G) return;
   G.lanesDown[lane] = false;
-  const pos = heardPos(performance.now()) - S.offset / 1000;
+  const pos = smoothPos(performance.now()) - S.offset / 1000;
   for (const g of G.chart) {
     if (g.lane === lane && g.holding) {
       g.holding = false;
@@ -680,10 +777,8 @@ function release(lane) {
 }
 function cutGem(g) {
   const now = ctx.currentTime;
-  for (const nd of g.nodes) {
-    try { nd.g.gain.cancelScheduledValues(now); nd.g.gain.setTargetAtTime(0, now, 0.01); nd.o.stop(now + 0.06); } catch (e) {}
-  }
-  g.nodes = [];
+  const chs = new Set((g.ev || []).map(e => e.ch).filter(c => c !== 'drum'));
+  chs.forEach(c => G.CP[c].cut(now));
 }
 
 function miss(g) {
@@ -714,7 +809,9 @@ function burst(lane, n) {
 // ================== DIBUJO ==================
 const GLYPH = { H: [5, 5, 7, 5, 5], J: [1, 1, 1, 5, 2], K: [5, 5, 6, 5, 5], L: [4, 4, 4, 4, 7] };
 function glyph(ch, x, y, c) { cx.fillStyle = c; GLYPH[ch].forEach((row, r) => { for (let b = 0; b < 3; b++) if (row & (4 >> b)) cx.fillRect(x + b, y + r, 1, 1); }); }
-function shade(hex, f) { const n = parseInt(hex.slice(1), 16); const r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = (v) => Math.max(0, Math.min(255, Math.round(f >= 0 ? v + (255 - v) * f : v * (1 + f)))); return `rgb(${m(r)},${m(g)},${m(b)})`; }
+const SHADES = new Map();
+function shade(hex, f) { const key = hex + f; if (SHADES.has(key)) return SHADES.get(key); const c = shadeCalc(hex, f); SHADES.set(key, c); return c; }
+function shadeCalc(hex, f) { const n = parseInt(hex.slice(1), 16); const r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = (v) => Math.max(0, Math.min(255, Math.round(f >= 0 ? v + (255 - v) * f : v * (1 + f)))); return `rgb(${m(r)},${m(g)},${m(b)})`; }
 
 let lastFrame = performance.now();
 function loop() {
@@ -725,8 +822,20 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
+// reloj suavizado: avanza con el reloj de la pantalla y se corrige de a poco hacia el del audio
+// (en Firefox el reloj del audio avanza a saltos y eso hacía que las notas tiemblen)
+function smoothPos(perfMs) { return G.sPerf === undefined ? heardPos(perfMs) : G.sPos + (perfMs - G.sPerf) / 1000; }
+function syncClock(nowMs) {
+  const raw = heardPos(nowMs);
+  if (G.sPerf === undefined) { G.sPos = raw; G.sPerf = nowMs; return raw; }
+  const pred = smoothPos(nowMs);
+  const err = raw - pred;
+  G.sPos = Math.abs(err) > 0.12 ? raw : pred + err * 0.06;
+  G.sPerf = nowMs;
+  return G.sPos;
+}
 function step(nowMs, dt) {
-  const pos = heardPos(nowMs);
+  const pos = syncClock(nowMs);
   const jpos = pos - S.offset / 1000;
   // fallos
   while (G.nextGem < G.chart.length) {
@@ -745,10 +854,11 @@ function step(nowMs, dt) {
     if (Math.random() < 0.3) burst(g.lane, 1);
   }
   // cuenta regresiva
-  const c = $('count');
   const s = Math.ceil(-pos);
-  c.textContent = pos < -0.15 && s <= 3 ? s : '';
-  $('prog').style.width = Math.max(0, Math.min(100, pos / G.end * 100)) + '%';
+  const ct = pos < -0.15 && s <= 3 ? String(s) : '';
+  if (ct !== G.shownCount) { G.shownCount = ct; $('count').textContent = ct; }
+  const pr = Math.round(Math.max(0, Math.min(1, pos / G.end)) * 200) / 200;
+  if (pr !== G.shownProg) { G.shownProg = pr; $('prog').style.transform = `scaleX(${pr})`; }
   if (pos > G.end && !G.over) finish();
   if (G.score !== G.shownScore) { G.shownScore = G.score; updateHud(); }
 }
@@ -758,7 +868,7 @@ function draw(nowMs, dt) {
   let pos = (nowMs / 1000) % 1000;
   if (G) {
     if (G.paused) pos = G.lastPos;
-    else { pos = heardPos(nowMs); if (G.lastPos !== undefined && pos < G.lastPos && G.lastPos - pos < 0.05) pos = G.lastPos; G.lastPos = pos; }
+    else { pos = G.sPerf !== undefined ? smoothPos(nowMs) : heardPos(nowMs); G.lastPos = pos; }
   }
   const pps = G ? G.pps : H * 0.6;
   // carriles
@@ -846,7 +956,7 @@ function finish() {
   if (isBest) store.set(key, { score: G.score, grade });
   const sb = store.get('best:' + song.id, null);
   if (!sb || G.score > sb.score) store.set('best:' + song.id, { score: G.score, grade });
-  baseBus.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
+  G.CB.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
   $('resTitle').textContent = song.title + ' · ' + G.part.name;
   $('resGrade').textContent = grade;
   $('resBox').innerHTML = [
@@ -861,9 +971,8 @@ function stopGame() {
   if (!G) return;
   try { G.wake && G.wake.release(); } catch (e) {}
   const now = ctx.currentTime;
-  baseBus.gain.cancelScheduledValues(now); baseBus.gain.setTargetAtTime(0, now, 0.03);
-  playerBus.gain.cancelScheduledValues(now); playerBus.gain.setTargetAtTime(0, now, 0.03);
-  G.chart.forEach(g => g.nodes = []);
+  G.CB.bus.gain.setTargetAtTime(0, now, 0.02); G.CP.bus.gain.setTargetAtTime(0, now, 0.02);
+  stopChannels(G.CB, now + 0.1); stopChannels(G.CP, now + 0.1);
   G = null;
   $('count').textContent = '';
 }
@@ -918,7 +1027,7 @@ async function runCal() {
   initAudio(); if (ctx.state !== 'running') await ctx.resume();
   const t0 = ctx.currentTime + 1.0, spb = 60 / CAL_BPM;
   calib.beats = [];
-  for (let i = 0; i < CAL_N; i++) { const t = t0 + i * spb; calib.beats.push(i * spb); tone(WAVES.p50, i % 4 ? 84 : 91, t, 0.05, 0.25, master); }
+  for (let i = 0; i < CAL_N; i++) { const t = t0 + i * spb; calib.beats.push(i * spb); blip(i % 4 ? 84 : 91, t, 0.05, 0.3); }
   calib.taps = []; calib.on = true; calib.t0 = t0;
   $('calTap').textContent = 'TOCÁ CON EL PULSO';
   setTimeout(endCal, (1.0 + CAL_N * spb + 0.5) * 1000);
