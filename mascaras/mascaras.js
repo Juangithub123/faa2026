@@ -11,7 +11,7 @@ var WASM = './mp/vision_wasm_internal.wasm';
 var WASM_BYTES = 14665716, MODEL_BYTES = 230000; /* tamaños reales, por si el servidor no los informa */
 var $ = function (id) { return document.getElementById(id); };
 var cv = $('cv'), ctx = cv.getContext('2d'), vid = $('vid');
-var detector = null, stream = null, facing = 'user', mask = 'anteojos';
+var detector = null, stream = null, facing = 'user', mask = 'tera-rosa';
 var faces = [], lastTs = -1, running = false;
 /* el detector mira una copia chica del video y corre unas pocas veces por segundo; entre detección y detección
    se predice el movimiento, así la máscara se dibuja fluida a la velocidad de la pantalla */
@@ -278,7 +278,59 @@ function chilco() {
   }
 }
 
+/* La tera, mascota del FAA!: lo que lleva en la cabeza, sin la cabeza gris (para que se vea la cara).
+   Visor de dos placas triangulares translúcidas cruzadas en X, pico, auriculares grises con cable y copete. */
+var TERA = {
+  rosa: { visor: [255, 60, 110, 0.4], borde: [176, 18, 66, 1] },
+  verde: { visor: [236, 230, 140, 0.45], borde: [150, 140, 50, 1] },
+  dorada: { visor: [242, 186, 80, 0.45], borde: [150, 92, 30, 1] }
+};
+var GRIS = [150, 150, 150, 1], GRIS_OSC = [70, 72, 70, 1], GRIS_CLARO = [196, 196, 196, 1], PICO = [226, 128, 230, 1];
+
+function tera(col) {
+  var A = F.A, c = TERA[col];
+  /* visor: dos triángulos que se tocan en el centro, apenas curvados hacia los costados */
+  var tl = [-0.6, -0.62, -0.2], bl = [-0.6, 0.5, -0.2], mid = [0, 0.12, -0.36], tr = [0.6, -0.62, -0.2], br = [0.6, 0.5, -0.2];
+  poly([tl, bl, mid], c.visor);
+  poly([tr, mid, br], c.visor);
+  strip([tl, bl, mid, tl], c.borde, 0.025, 0.02);
+  strip([tr, br, mid, tr], c.borde, 0.025, 0.02);
+  /* pico: una pirámide desde la nariz hacia adelante y abajo */
+  var top = [0, 0.22, -0.38], bot = [0, 0.58, -0.32], l = [-0.18, 0.4, -0.33], r = [0.18, 0.4, -0.33], tip = [0, 0.98, -1.0];
+  poly([top, l, tip], PICO); poly([top, tip, r], PICO); poly([l, bot, tip], PICO); poly([bot, r, tip], PICO);
+  [-1, 1].forEach(function (sg) { strip([[sg * 0.13, 0.45, -0.37], lerp([sg * 0.13, 0.45, -0.37], tip, 0.62)], [110, 40, 120, 1], 0.03, 0.01); });
+  /* auriculares grises */
+  var R = A.hw + 0.14, band = [], light = [];
+  for (var i = 0; i <= 18; i++) {
+    var t = i / 18 * Math.PI, h = A.earY - A.top[1] + 0.45;
+    band.push([-R * Math.cos(t), A.earY - h * Math.sin(t), A.earZ + 0.1]);
+    light.push([-(R - 0.01) * Math.cos(t), A.earY - (h + 0.03) * Math.sin(t), A.earZ + 0.08]);
+  }
+  strip(band, GRIS_OSC, 0.16, 0, true);
+  strip(light.slice(2, 17), GRIS, 0.08, 0.01, true);
+  [-1, 1].forEach(function (sg) {
+    var cc = [sg * (R + 0.02), A.earY, A.earZ], v = norm([-sg * 0.45, 0, 1]), out = norm(cross(EY, v));
+    if (out[0] * sg < 0) { out = mul(out, -1); }
+    poly(ring(cc, EY, v, 0.36, 0.32, 22), GRIS_OSC);
+    poly(ring(add(cc, mul(out, 0.1)), EY, v, 0.36, 0.32, 22), GRIS);
+    poly(ring(add(cc, mul(out, 0.11)), EY, v, 0.22, 0.2, 20), GRIS_CLARO);
+  });
+  /* cable que cuelga del auricular derecho de la imagen */
+  var c0 = [R + 0.1, A.earY + 0.3, A.earZ + 0.05];
+  strip([c0, [R + 0.18, A.earY + 0.8, A.earZ - 0.05], [R + 0.08, A.earY + 1.35, A.earZ - 0.25], [R - 0.05, A.earY + 1.9, A.earZ - 0.3]], NEGRO, 0.025);
+  /* copete: plumitas finas desde arriba y atrás de la cabeza, hacia arriba y atrás */
+  var base = [0.08, A.top[1] - 0.12, A.earZ + 0.15];
+  [[0.2, -1.4, 1.5], [0.42, -1.12, 1.7], [0.62, -0.8, 1.8], [0.03, -1.55, 1.25]].forEach(function (d, k) {
+    var end = add(base, d), ctl = add(base, [d[0] * 0.3, d[1] * 0.85, d[2] * 0.3]), pts = [];
+    for (var j = 0; j <= 8; j++) { var u = j / 8; pts.push(add(add(mul(base, (1 - u) * (1 - u)), mul(ctl, 2 * u * (1 - u))), mul(end, u * u))); }
+    strip(pts, NEGRO, k === 3 ? 0.045 : 0.035);
+  });
+}
+
 var MASKS = [
+  { id: 'tera-rosa', name: 'Tera rosa', fn: function () { tera('rosa'); } },
+  { id: 'tera-verde', name: 'Tera verde', fn: function () { tera('verde'); } },
+  { id: 'tera-dorada', name: 'Tera dorada', fn: function () { tera('dorada'); } },
   { id: 'anteojos', name: 'Anteojos', fn: anteojos },
   { id: 'bigote', name: 'Bigote', fn: bigote },
   { id: 'sonidista', name: 'Sonidista', fn: sonidista },
