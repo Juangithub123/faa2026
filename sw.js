@@ -5,6 +5,8 @@
 var VERSION = 'faa26-v19';
 /* El juego secreto se guarda aparte, para que funcione sin señal; se pide primero a la red para tomar cambios. */
 var GAME = 'faa26-juego', GAME_FILES = ['juego/', 'juego/juego.js', 'juego/ranking.js', 'juego/side.png', 'juego/back.png', 'juego/atlas.png', 'juego/n26.png', 'juego/arte.js', 'juego/carriles/', 'juego/carriles/carriles.js'];
+/* Las máscaras (mascaras/) no se bajan al instalar: se guardan aparte recién cuando alguien las usa (pesan ~4 MB). */
+var MASK = 'faa26-mascaras';
 var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'config.js', 'manifest.webmanifest', 'logo.webp', 'map.webp', 'icons/icon-192.png', 'data.json', 'cronograma-faa-2026.pdf', 'vendor/leaflet.js', 'vendor/leaflet.css'];
 
 self.addEventListener('install', function (e) {
@@ -14,7 +16,7 @@ self.addEventListener('install', function (e) {
   }));
 });
 self.addEventListener('activate', function (e) {
-  e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== VERSION && k !== 'faa26-tiles' && k !== GAME; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));
+  e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== VERSION && k !== 'faa26-tiles' && k !== GAME && k !== MASK; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));
 });
 self.addEventListener('fetch', function (e) {
   var req = e.request, url = new URL(req.url);
@@ -28,7 +30,24 @@ self.addEventListener('fetch', function (e) {
     }));
     return;
   }
+  if (url.hostname === 'storage.googleapis.com' && url.pathname.indexOf('/mediapipe-models/') === 0) {
+    /* modelo del detector de caras: primero la copia guardada */
+    e.respondWith(caches.open(MASK).then(function (c) {
+      return c.match(req).then(function (hit) {
+        return hit || fetch(req).then(function (res) { if (res.ok) { c.put(req, res.clone()); } return res; });
+      });
+    }));
+    return;
+  }
   if (url.origin !== location.origin) { return; }
+  if (url.pathname.indexOf('/mascaras/') > -1) {
+    /* como el juego: se pregunta a la red si hay versión nueva; sin señal, la última copia */
+    e.respondWith(fetch(new Request(req.url, { cache: 'no-cache' })).then(function (res) {
+      if (res.ok) { var copy = res.clone(); caches.open(MASK).then(function (c) { c.put(req.url.split('?')[0], copy); }); }
+      return res;
+    }).catch(function () { return caches.open(MASK).then(function (c) { return c.match(req, { ignoreSearch: true }); }).then(function (r) { return r || Response.error(); }); }));
+    return;
+  }
   if (url.pathname.indexOf('/cal/') > -1) {
     /* calendarios: siempre de la red (cambian con el cronograma); sin señal, la última copia */
     e.respondWith(fetch(new Request(req.url, { cache: 'no-cache' })).then(function (res) {
