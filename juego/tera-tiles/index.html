@@ -1424,6 +1424,13 @@ $('syncCancel').onclick = () => { syncCancelled = true; stopMic(); show('sSong')
 // ================== ENTRADA ==================
 // mantener apretado no tiene que abrir el menú contextual (en Android eso hace vibrar el teléfono)
 addEventListener('contextmenu', (e) => e.preventDefault());
+// mantener apretado en Android: el navegador reconoce el "toque largo" y vibra (para seleccionar o abrir un
+// menú) aunque después se cancele el menú. Cancelar el toque desde que empieza evita que lo reconozca.
+// (el juego usa pointerdown/up, que siguen llegando igual; los botones quedan afuera para que respondan)
+const noLongPress = (e) => { if (e.cancelable && !e.target.closest('button, a, input, select, summary, label')) e.preventDefault(); };
+view.addEventListener('touchstart', noLongPress, { passive: false });
+$('hud').addEventListener('touchstart', noLongPress, { passive: false });
+$('calTap').addEventListener('touchstart', noLongPress, { passive: false });
 addEventListener('keydown', (e) => {
   if (calib.on) { calTap(e.timeStamp); return; }
   const k = e.key.toLowerCase();
