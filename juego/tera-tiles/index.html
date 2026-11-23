@@ -150,6 +150,8 @@
     <div class="sub" id="chartInfo"></div>
     <button class="btn big" id="playBtn">▶ JUGAR</button>
     <div class="label">COOPERATIVO · PRUEBA (mismo tema en los dos teléfonos)</div>
+    <div class="sub" style="text-align:left;max-width:340px">El anfitrión hace sonar todo lo que nadie toca. Marcá qué partes tocan los otros teléfonos:</div>
+    <div class="row" id="othersRow"></div>
     <div class="row">
       <button class="btn" id="hostBtn">ANFITRIÓN</button>
       <button class="btn" id="joinBtn">UNIRSE</button>
@@ -510,8 +512,9 @@ function drumEvents(notes) {
   return Object.values(by).flat();
 }
 
-function prepareBase(midi, part, chart) {
+function prepareBase(midi, part, chart, others = []) {
   const exclude = new Set(part.voices);
+  others.forEach(k => { const p = midi.parts[k]; if (p && p !== part) p.voices.forEach(v => exclude.add(v)); });
   const lead = [], bass = [], harm = [], drums = [], amb = [];
   for (const v of midi.voices) {
     if (exclude.has(v)) continue;
@@ -722,6 +725,7 @@ async function openSong(meta) {
     $('songInfo').textContent = (meta.artist ? meta.artist + ' · ' : '') + Math.round(m.duration / 60) + ' min · ' + Math.round(m.bpm) + ' bpm';
     const main = ['melody', 'bass', 'drums', 'harmony'].filter(k => m.parts[k]);
     partKey = m.parts.melody ? 'melody' : main[0]; // cada tema arranca en su melodía
+    coopOthers.clear();
     const mk = (k, box) => {
       const p = m.parts[k];
       const n = K.buildChart(m, k, 'normal').length;
@@ -745,7 +749,22 @@ async function openSong(meta) {
   }
 }
 
+// partes que tocan los otros teléfonos (solo importa en el anfitrión)
+const coopOthers = new Set();
+function renderOthers() {
+  const row = $('othersRow'); row.innerHTML = '';
+  if (!song) return;
+  ['melody', 'bass', 'drums', 'harmony'].filter(k => song.midi.parts[k]).forEach(k => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (coopOthers.has(k) ? ' sel' : '');
+    b.textContent = { melody: 'MELODÍA', bass: 'BAJO', drums: 'BATERÍA', harmony: 'ARMONÍA' }[k];
+    if (k === partKey) { b.disabled = true; b.style.opacity = 0.35; b.textContent = 'VOS'; }
+    b.onclick = () => { coopOthers.has(k) ? coopOthers.delete(k) : coopOthers.add(k); renderOthers(); };
+    row.appendChild(b);
+  });
+}
 function refreshSel() {
+  renderOthers();
   document.querySelectorAll('#partList .btn, #trackList .btn').forEach(b => b.classList.toggle('sel', b.dataset.p === partKey));
   document.querySelectorAll('#diffRow .btn').forEach(b => b.classList.toggle('sel', b.dataset.d === S.diff));
   document.querySelectorAll('#baseRow .btn').forEach(b => b.classList.toggle('sel', (b.dataset.b === '1') === S.base));
@@ -793,7 +812,8 @@ async function startGame(opts = {}) {
   const m = song.midi, part = m.parts[partKey];
   const chart = K.buildChart(m, partKey, S.diff);
   chart.forEach(g => { g.state = 0; g.holding = false; });
-  const base = S.base ? prepareBase(m, part, chart) : [];
+  // cooperativo: el anfitrión toca todo lo que nadie eligió; el invitado va sin base
+  const base = opts.noBase ? [] : (opts.start || S.base) ? prepareBase(m, part, chart, opts.others || []) : [];
   preparePlayer(part, chart);
   const pps = H * 0.62 * S.speed;           // píxeles por segundo
   const travel = HITY / pps;
@@ -1165,7 +1185,7 @@ async function hostSync() {
   playChirp(e);
   syncMsg('¡Señal enviada!', '');
   await sleep(400); if (syncCancelled) return;
-  startGame({ start: e + COOP.K });
+  startGame({ start: e + COOP.K, others: [...coopOthers].filter(k => k !== partKey) });
 }
 async function joinSync() {
   syncCancelled = false;
@@ -1191,7 +1211,7 @@ async function joinSync() {
       if (start - ctx.currentTime < 0.8) { syncMsg('La señal llegó tarde. Probá de nuevo.'); return; }
       syncMsg('¡Sincronizado!', `Calidad de la señal: ${(d.score * 100).toFixed(0)}%`);
       await sleep(300);
-      startGame({ start });
+      startGame({ start, noBase: true });
       return;
     }
   }
