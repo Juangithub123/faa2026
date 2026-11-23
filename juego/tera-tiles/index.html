@@ -683,12 +683,47 @@ let song = null;          // { meta, midi }
 let partKey = 'melody';
 let G = null;             // partida en curso
 
-const cv = $('cv'), cx = cv.getContext('2d');
+// Se dibuja en un lienzo 2D chico fuera de la página y se muestra con WebGL: en Firefox (sobre todo en
+// Android) pasar un lienzo 2D a la pantalla en cada cuadro es lento, y con WebGL es una sola orden a la
+// placa de video. Se ve exactamente igual. Con ?gl=0 se usa el método anterior.
+const view = $('cv');
+let gl = null, glTex = null;
+function initGL() {
+  if (/[?&]gl=0/.test(location.search)) return null;
+  let g = null;
+  try { g = view.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: false, powerPreference: 'low-power' }); } catch (e) {}
+  if (!g) return null;
+  const sh = (type, src) => { const o = g.createShader(type); g.shaderSource(o, src); g.compileShader(o); return o; };
+  const p = g.createProgram();
+  g.attachShader(p, sh(g.VERTEX_SHADER, 'attribute vec2 a;varying vec2 v;void main(){v=a*.5+.5;gl_Position=vec4(a,0.,1.);}'));
+  g.attachShader(p, sh(g.FRAGMENT_SHADER, 'precision mediump float;uniform sampler2D t;varying vec2 v;void main(){gl_FragColor=texture2D(t,v);}'));
+  g.linkProgram(p);
+  if (!g.getProgramParameter(p, g.LINK_STATUS)) return null;
+  g.useProgram(p);
+  const b = g.createBuffer(); g.bindBuffer(g.ARRAY_BUFFER, b);
+  g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), g.STATIC_DRAW);
+  const loc = g.getAttribLocation(p, 'a'); g.enableVertexAttribArray(loc); g.vertexAttribPointer(loc, 2, g.FLOAT, false, 0, 0);
+  glTex = g.createTexture(); g.bindTexture(g.TEXTURE_2D, glTex);
+  [[g.TEXTURE_MIN_FILTER, g.NEAREST], [g.TEXTURE_MAG_FILTER, g.NEAREST], [g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE], [g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE]].forEach(([k, v]) => g.texParameteri(g.TEXTURE_2D, k, v));
+  g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, true);
+  return g;
+}
+gl = initGL();
+view.addEventListener('webglcontextlost', (e) => e.preventDefault());
+view.addEventListener('webglcontextrestored', () => { gl = initGL(); });
+const cv = gl ? document.createElement('canvas') : view;
+const cx = cv.getContext('2d', gl ? { willReadFrequently: true } : undefined);
+function present() {
+  if (!gl || gl.isContextLost()) return;
+  gl.viewport(0, 0, view.width, view.height);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
 let W = 160, H = 280, LW = 34, X0 = 12, HITY = 240;
 function resize() {
   const r = $('app').getBoundingClientRect();
   W = 160; H = Math.max(220, Math.round(W * r.height / r.width));
-  cv.width = W; cv.height = H;
+  cv.width = W; cv.height = H; view.width = W; view.height = H;
   LW = 34; X0 = Math.round((W - LW * 4) / 2); HITY = H - 38;
   cx.imageSmoothingEnabled = false;
 }
@@ -970,7 +1005,7 @@ function scheduler() {
     if (at > horizon) break;
     G.bi++;
     if (e.t > G.end) continue;
-    if (at < ctx.currentTime - 0.03) continue;  // atrasado: se descarta
+    if (at < ctx.currentTime - 0.03) { if (DIAG) DIAG.late++; continue; }  // atrasado: se descarta
     playEvent(G.CB, e, Math.max(at, ctx.currentTime));
   }
 }
@@ -1069,7 +1104,28 @@ function loop() {
   const dt = Math.min(0.05, (nowMs - lastFrame) / 1000); lastFrame = nowMs;
   if (G && !G.paused) step(nowMs, dt);
   draw(nowMs, dt);
+  present();
+  if (DIAG) diagFrame(nowMs, performance.now() - nowMs);
   requestAnimationFrame(loop);
+}
+// ===== diagnóstico: agregar ?diag a la dirección =====
+const DIAG = /[?&]diag/.test(location.search) ? { el: null, n: 0, work: 0, maxGap: 0, last: 0, t0: 0, late: 0, aJump: 0, aRef: null } : null;
+function diagFrame(nowMs, workMs) {
+  const D = DIAG;
+  if (!D.el) { D.el = document.createElement('div'); D.el.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;font:11px ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.65);padding:3px 6px;pointer-events:none;white-space:pre-wrap'; document.body.appendChild(D.el); D.t0 = nowMs; }
+  if (D.last) D.maxGap = Math.max(D.maxGap, nowMs - D.last);
+  D.last = nowMs; D.n++; D.work += workMs;
+  // el reloj del audio contra el de la pantalla: si el audio se traba, se separan
+  if (ctx && ctx.state === 'running') {
+    if (!D.aRef) D.aRef = [nowMs, ctx.currentTime];
+    else if (nowMs - D.aRef[0] > 250) { const dA = (ctx.currentTime - D.aRef[1]) * 1000, dP = nowMs - D.aRef[0]; if (Math.abs(dA - dP) > 25) D.aJump++; D.aRef = [nowMs, ctx.currentTime]; }
+  } else D.aRef = null;
+  if (nowMs - D.t0 >= 1000) {
+    const fps = D.n * 1000 / (nowMs - D.t0);
+    D.el.textContent = `${fps.toFixed(0)} fps · cuadro ${(D.work / D.n).toFixed(2)} ms · peor salto ${D.maxGap.toFixed(0)} ms · ${gl ? 'webgl' : '2d'}\n` +
+      `audio: ${ctx ? ctx.sampleRate + ' Hz · latencia ' + ((ctx.baseLatency || 0) * 1000).toFixed(0) + '+' + ((ctx.outputLatency || 0) * 1000).toFixed(0) + ' ms' : 'sin iniciar'} · tirones ${D.aJump} · notas tarde ${D.late} · ${/Firefox/.test(navigator.userAgent) ? 'Firefox' : /Chrome/.test(navigator.userAgent) ? 'Chrome' : 'otro'}`;
+    D.n = 0; D.work = 0; D.maxGap = 0; D.t0 = nowMs;
+  }
 }
 
 // reloj suavizado: avanza con el reloj de la pantalla y se corrige de a poco hacia el del audio
@@ -1368,18 +1424,18 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); if (k in KEYS) release(KEYS[k]); });
 const pointerLane = new Map();
-cv.addEventListener('pointerdown', (e) => {
+view.addEventListener('pointerdown', (e) => {
   if (!G || G.paused) return;
   e.preventDefault();
-  const r = cv.getBoundingClientRect();
+  const r = view.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W;
   const lane = Math.max(0, Math.min(3, Math.floor((x - X0) / LW)));
   pointerLane.set(e.pointerId, lane);
-  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  try { view.setPointerCapture(e.pointerId); } catch (_) {}
   judge(lane, e.timeStamp);
 });
 const up = (e) => { const l = pointerLane.get(e.pointerId); if (l !== undefined) { pointerLane.delete(e.pointerId); if (![...pointerLane.values()].includes(l)) release(l); } };
-cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+view.addEventListener('pointerup', up); view.addEventListener('pointercancel', up);
 
 // ================== CALIBRACIÓN ==================
 const calib = { on: false, start: 0, beats: [], taps: [] };
