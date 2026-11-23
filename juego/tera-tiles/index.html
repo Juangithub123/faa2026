@@ -689,7 +689,9 @@ let G = null;             // partida en curso
 const view = $('cv');
 let gl = null, glTex = null;
 function initGL() {
-  if (/[?&]gl=0/.test(location.search)) return null;
+  // WebGL solo en Firefox (en Chrome el lienzo 2D directo es más rápido). ?gl=1 / ?gl=0 lo fuerzan.
+  const q = /[?&]gl=([01])/.exec(location.search);
+  if (q ? q[1] === '0' : !/Firefox/.test(navigator.userAgent)) return null;
   let g = null;
   try { g = view.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: false, powerPreference: 'low-power' }); } catch (e) {}
   if (!g) return null;
@@ -720,10 +722,17 @@ function present() {
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 let W = 160, H = 280, LW = 34, X0 = 12, HITY = 240;
+// SC: cuántos píxeles reales tiene cada "píxel gordo" del lienzo. Todo se dibuja con píxeles gordos,
+// pero lo que se mueve (notas, pulso, partículas) se ubica con la precisión de la pantalla, así baja
+// suave en vez de a saltos desparejos.
+let SC = 1;
+const snap = (v) => Math.round(v * SC) / SC;
 function resize() {
   const r = $('app').getBoundingClientRect();
   W = 160; H = Math.max(220, Math.round(W * r.height / r.width));
-  cv.width = W; cv.height = H; view.width = W; view.height = H;
+  SC = Math.max(1, Math.min(4, Math.floor(r.width * (window.devicePixelRatio || 1) / W)));
+  cv.width = W * SC; cv.height = H * SC; view.width = W * SC; view.height = H * SC;
+  cx.setTransform(SC, 0, 0, SC, 0, 0);
   LW = 34; X0 = Math.round((W - LW * 4) / 2); HITY = H - 38;
   cx.imageSmoothingEnabled = false;
 }
@@ -987,7 +996,7 @@ async function startGame(opts = {}) {
     end: Math.min(m.duration, lastEnd + 6) + 0.5,
     score: 0, combo: 0, maxCombo: 0, counts: { perfect: 0, good: 0, ok: 0, miss: 0 }, maxPts: 0, gotPts: 0, judgedMax: 0,
     lanesDown: [false, false, false, false], laneFlash: [0, 0, 0, 0], laneMiss: [0, 0, 0, 0],
-    particles: [], nextGem: 0, paused: false, over: false, holdAcc: 0,
+    particles: [], nextGem: 0, paused: false, over: false, holdAcc: 0, born: ctx.currentTime + 0.2,
   };
   chart.forEach(g => { G.maxPts += gemMax(g); });
   updateHud();
@@ -1005,7 +1014,7 @@ function scheduler() {
     if (at > horizon) break;
     G.bi++;
     if (e.t > G.end) continue;
-    if (at < ctx.currentTime - 0.03) { if (DIAG) DIAG.late++; continue; }  // atrasado: se descarta
+    if (at < ctx.currentTime - 0.03) { if (DIAG && at > G.born) DIAG.late++; continue; }  // atrasado: se descarta
     playEvent(G.CB, e, Math.max(at, ctx.currentTime));
   }
 }
@@ -1195,7 +1204,7 @@ function drawBackdrop(th, pos, pps) {
   const beats = G ? G.m.beats : null;
   if (beats) {
     for (let i = 0; i < beats.length; i++) {
-      const y = Math.round(HITY - (beats[i] - pos) * pps);
+      const y = snap(HITY - (beats[i] - pos) * pps);
       if (y < -2) break; if (y > HITY) continue;
       cx.fillStyle = rgbC(th.dash, i % 4 === 0 ? 0.42 : 0.2);
       cx.fillRect(X0, y, LW * 4, 1);
@@ -1227,9 +1236,9 @@ function draw(nowMs, dt) {
       if (g.state === 1 && !g.holding && (g.d === 0 || pos > g.t + g.d)) continue;
       const col = LANE_COLORS[g.lane];
       const x = X0 + g.lane * LW;
-      let y = Math.round(HITY - (g.t - pos) * pps);
+      let y = snap(HITY - (g.t - pos) * pps);
       if (g.d > 0) {
-        const y2 = Math.round(HITY - (g.t + g.d - pos) * pps);
+        const y2 = snap(HITY - (g.t + g.d - pos) * pps);
         const yb = g.holding ? HITY : y;
         framed(x + LW / 2 - 3, y2, 6, yb - y2, (g.state === 2 || g.broken) ? '#5a4a3a' : g.holding ? shade(col, 0.3) : shade(col, -0.25));
         if (g.holding) { cx.fillStyle = '#fff'; cx.fillRect(x + LW / 2 - 1, y2, 2, yb - y2); y = HITY; }
@@ -1257,7 +1266,7 @@ function draw(nowMs, dt) {
   // partículas
   if (G) {
     G.particles = G.particles.filter(p => (p.life -= dt) > 0);
-    for (const p of G.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 260 * dt; cx.fillStyle = p.c; cx.fillRect(Math.round(p.x), Math.round(p.y), 2, 2); }
+    for (const p of G.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 260 * dt; cx.fillStyle = p.c; cx.fillRect(snap(p.x), snap(p.y), 2, 2); }
     for (let l = 0; l < 4; l++) { G.laneFlash[l] = Math.max(0, G.laneFlash[l] - dt * 6); G.laneMiss[l] = Math.max(0, G.laneMiss[l] - dt * 4); }
   }
 }
