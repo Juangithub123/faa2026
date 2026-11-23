@@ -1,12 +1,12 @@
 /* Ranking del staff y pozo común para Tera Tiles.
    Usa la misma planilla de Google (Apps Script) que ¡Corre, sonidista! (../ranking.js), con juego=teratiles.
    - Ranking: uno por tema (solo los temas de la biblioteca), con el mejor puntaje de cada apodo.
-   - Pozo común: cada partida suma el 1 % de su puntaje en fichas. Sin señal quedan guardadas en el
+   - Pozo común: cada partida suma el 0,25 % de su puntaje en fichas (1 cada 400 puntos). Sin señal quedan guardadas en el
      teléfono (misma lista de pendientes que los otros juegos) y se mandan después. */
 (function () {
 'use strict';
 var URL = 'https://script.google.com/macros/s/AKfycbwxL9zxyDG1T9gg9pPqzpRNzI5wFGNc9XR6aMMdax-PdUywFKKR-ace5_Biw4nfhT_MkA/exec';
-var GAME = 'teratiles', NICK = 'faa26-nick', POZO = 'faa26-pozo-pend', PCT = 0.01;
+var GAME = 'teratiles', NICK = 'faa26-nick', POZO = 'faa26-pozo-pend', PCT = 0.0025;
 var DIF = { facil: 'fácil', normal: 'normal', dificil: 'difícil' };
 var PARTE = { melody: 'melodía', bass: 'bajo', drums: 'batería', harmony: 'armonía' };
 var last = null, sent = false, tema = '';
@@ -174,9 +174,9 @@ window.TRank = {
     last = { score: r.score, secs: r.secs, tema: tema, parte: r.parte, dif: r.dif, fichas: fichas }; sent = false;
     if (fichas > 0) {
       var q = pend(); q.f += fichas; q.s += r.secs || 0; q.k = (q.k || 0) + 1; setPend(q);
-      note.textContent = 'Esta toma suma ' + fmt(fichas) + ' fichas (1 cada 100 puntos)…';
+      note.textContent = 'Esta toma suma ' + fmt(fichas) + ' fichas (1 cada 400 puntos)…';
       flush().then(function (ok) { note.textContent = ok ? 'Tus ' + fmt(fichas) + ' fichas ya se sumaron. ¡Gracias!' : 'Tus ' + fmt(fichas) + ' fichas se suman cuando haya señal.'; });
-    } else { note.textContent = 'Cada 100 puntos suman una ficha al pozo.'; }
+    } else { note.textContent = 'Cada 400 puntos suman una ficha al pozo.'; }
     resBox.hidden = !tema;
     if (!tema) { return; }
     resBox.querySelector('h3 small').textContent = r.song.title;

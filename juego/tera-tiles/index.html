@@ -222,7 +222,7 @@
 <script src="../arte.js?v=1117h"></script>
 <script src="midi.js?v=1122c"></script>
 <script src="sync.js?v=1122a"></script>
-<script src="rank.js?v=1123a"></script>
+<script src="rank.js?v=1123b"></script>
 <script>
 (() => {
 'use strict';
@@ -325,7 +325,11 @@ function toneChannel(bus, wave, vol, opts = {}) {
   if (typeof wave === 'string') o.type = wave; else o.setPeriodicWave(wave);
   o.frequency.value = 220; g.gain.value = 0;
   let filt = null;
-  if (opts.lp || opts.fenv) { filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = opts.lp || opts.fenv[0]; filt.Q.value = opts.q || 0.7; o.connect(filt); filt.connect(g); }
+  if (opts.lp || opts.fenv) {
+    filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = opts.lp || opts.fenv[0]; filt.Q.value = opts.q || 0.7; o.connect(filt); filt.connect(g);
+    // la envolvente del filtro se calcula una vez por bloque (2,7 ms) y no en cada muestra: no se oye y pesa mucho menos
+    if (opts.fenv) try { filt.frequency.automationRate = 'k-rate'; } catch (e) {}
+  }
   else o.connect(g);
   g.connect(bus);
   if (opts.echo) { const s = ctx.createGain(); s.gain.value = opts.echo; g.connect(s); s.connect(echoIn); }
@@ -334,6 +338,7 @@ function toneChannel(bus, wave, vol, opts = {}) {
     const lfo = ctx.createOscillator(); lfo.frequency.value = 5.6;
     lfoG = ctx.createGain(); lfoG.gain.value = 0;
     lfo.connect(lfoG); lfoG.connect(o.detune); lfo.start();
+    try { o.detune.automationRate = 'k-rate'; } catch (e) {}   // vibrato de 5,6 Hz: alcanza con un valor por bloque
     o._lfo = lfo;
   }
   o.start();
@@ -490,6 +495,13 @@ function isAmbient(v) {
 }
 
 // juego de canales: uno para la base y otro (más presente) para lo que toca el jugador
+// cada canal se crea recién cuando se usa por primera vez: un tema sin batería no tiene cuatro ruidos
+// sonando en silencio, y del juego del jugador solo existen los canales de su parte (menos carga para el audio)
+function lazyCh(bus, make) {
+  const C = { bus, _made: {} };
+  for (const k in make) Object.defineProperty(C, k, { enumerable: true, get() { return C._made[k] || (C._made[k] = make[k]()); } });
+  return C;
+}
 function makeChannels(player, fam = {}) {
   const bus = ctx.createGain(); bus.connect(master);
   const k = player ? 1.15 : 1;
@@ -499,48 +511,45 @@ function makeChannels(player, fam = {}) {
     const harmI = keys ? 'epiano' : FAM_INSTR[fam.harm ?? 0];
     const bassI = keys ? 'pbass' : 'bass';
     const lv = { piano: .22, epiano: .2, organ: .1, brass: .1, reed: .12, flute: .16, strings: .1, guitar: .16, synth: .1, bass: .22 };
-    return {
-      bus,
-      lead: instrChannel(bus, leadI === 'bass' ? 'synth' : leadI, (lv[leadI] || .12) * (player ? 1.2 : 0.85), { echo: player ? 0.25 : 0.15 }),
-      harm: chordChannel(bus, () => instrChannel(bus, harmI === 'bass' ? 'guitar' : harmI, (lv[harmI] || .1) * (player ? 0.8 : 0.5)), 0, {}),
-      bass: instrChannel(bus, bassI, (keys ? 0.3 : 0.28) * k),
-      kick: toneChannel(bus, 'sine', 0.6 * k),
-      noise: noiseChannel(bus, NOISE.white, 0.2 * k, 250, 7000, true),
-      crash: noiseChannel(bus, NOISE.white, 0.11 * k, 4500, 0, true),
-      hat: noiseChannel(bus, NOISE.white, 0.08 * k, 7000, 0, true),
-      metal: noiseChannel(bus, NOISE.white, 0.05 * k, 5500, 11000, true),
-      amb: ambientChannel(bus, (player ? 0.16 : 0.11) * (keys ? 0.8 : 1), keys ? 'organ' : 'strings'),
-    };
+    return lazyCh(bus, {
+      lead: () => instrChannel(bus, leadI === 'bass' ? 'synth' : leadI, (lv[leadI] || .12) * (player ? 1.2 : 0.85), { echo: player ? 0.25 : 0.15 }),
+      harm: () => chordChannel(bus, () => instrChannel(bus, harmI === 'bass' ? 'guitar' : harmI, (lv[harmI] || .1) * (player ? 0.8 : 0.5)), 0, {}),
+      bass: () => instrChannel(bus, bassI, (keys ? 0.3 : 0.28) * k),
+      kick: () => toneChannel(bus, 'sine', 0.6 * k),
+      noise: () => noiseChannel(bus, NOISE.white, 0.2 * k, 250, 7000, true),
+      crash: () => noiseChannel(bus, NOISE.white, 0.11 * k, 4500, 0, true),
+      hat: () => noiseChannel(bus, NOISE.white, 0.08 * k, 7000, 0, true),
+      metal: () => noiseChannel(bus, NOISE.white, 0.05 * k, 5500, 11000, true),
+      amb: () => ambientChannel(bus, (player ? 0.16 : 0.11) * (keys ? 0.8 : 1), keys ? 'organ' : 'strings'),
+    });
   }
   if (S.sound === 'clasico') {
     // mismos instrumentos, sin sonido de chip: ondas comunes filtradas, acordes de verdad, ruido blanco
-    return {
-      bus,
-      lead: toneChannel(bus, 'sawtooth', player ? 0.13 : 0.09, { echo: player ? 0.4 : 0.25, vib: 12, sus: 0.8, lp: 2600 }),
-      harm: chordChannel(bus, 'triangle', player ? 0.12 : 0.07, { lp: 2000 }),
-      bass: toneChannel(bus, 'sawtooth', 0.2 * k, { sus: 0.85, lp: 650 }),
-      kick: toneChannel(bus, 'sine', 0.6 * k),
-      noise: noiseChannel(bus, NOISE.white, 0.22 * k, 250, 7000, true),
-      crash: noiseChannel(bus, NOISE.white, 0.12 * k, 4500, 0, true),
-      hat: noiseChannel(bus, NOISE.white, 0.09 * k, 7000, 0, true),
-      metal: noiseChannel(bus, NOISE.white, 0.06 * k, 5500, 11000, true),
-      amb: ambientChannel(bus, player ? 0.16 : 0.11),
-    };
+    return lazyCh(bus, {
+      lead: () => toneChannel(bus, 'sawtooth', player ? 0.13 : 0.09, { echo: player ? 0.4 : 0.25, vib: 12, sus: 0.8, lp: 2600 }),
+      harm: () => chordChannel(bus, 'triangle', player ? 0.12 : 0.07, { lp: 2000 }),
+      bass: () => toneChannel(bus, 'sawtooth', 0.2 * k, { sus: 0.85, lp: 650 }),
+      kick: () => toneChannel(bus, 'sine', 0.6 * k),
+      noise: () => noiseChannel(bus, NOISE.white, 0.22 * k, 250, 7000, true),
+      crash: () => noiseChannel(bus, NOISE.white, 0.12 * k, 4500, 0, true),
+      hat: () => noiseChannel(bus, NOISE.white, 0.09 * k, 7000, 0, true),
+      metal: () => noiseChannel(bus, NOISE.white, 0.06 * k, 5500, 11000, true),
+      amb: () => ambientChannel(bus, player ? 0.16 : 0.11),
+    });
   }
-  return {
-    bus,
-    lead: toneChannel(bus, player ? WAVES.p50 : WAVES.p25, (player ? 0.2 : 0.15), { echo: player ? 0.5 : 0.35, vib: 14, sus: 0.75 }),
-    harm: toneChannel(bus, player ? WAVES.p25 : WAVES.p12, (player ? 0.15 : 0.075), { echo: 0.25 }),
-    bass: toneChannel(bus, WAVES.tri, 0.32 * k, { sus: 1 }),
-    kick: toneChannel(bus, WAVES.tri, 0.42 * k),
-    noise: noiseChannel(bus, NOISE.long, 0.2 * k, 120),
-    crash: noiseChannel(bus, NOISE.long, 0.13 * k, 2000),
-    hat: noiseChannel(bus, NOISE.long, 0.1 * k, 5000),
-    metal: noiseChannel(bus, NOISE.short, 0.07 * k, 3000),
-    amb: ambientChannel(bus, player ? 0.16 : 0.11),
-  };
+  return lazyCh(bus, {
+    lead: () => toneChannel(bus, player ? WAVES.p50 : WAVES.p25, (player ? 0.2 : 0.15), { echo: player ? 0.5 : 0.35, vib: 14, sus: 0.75 }),
+    harm: () => toneChannel(bus, player ? WAVES.p25 : WAVES.p12, (player ? 0.15 : 0.075), { echo: 0.25 }),
+    bass: () => toneChannel(bus, WAVES.tri, 0.32 * k, { sus: 1 }),
+    kick: () => toneChannel(bus, WAVES.tri, 0.42 * k),
+    noise: () => noiseChannel(bus, NOISE.long, 0.2 * k, 120),
+    crash: () => noiseChannel(bus, NOISE.long, 0.13 * k, 2000),
+    hat: () => noiseChannel(bus, NOISE.long, 0.1 * k, 5000),
+    metal: () => noiseChannel(bus, NOISE.short, 0.07 * k, 3000),
+    amb: () => ambientChannel(bus, player ? 0.16 : 0.11),
+  });
 }
-function stopChannels(C, t) { if (!C) return; for (const k in C) if (C[k] && C[k].stop) C[k].stop(t); setTimeout(() => { try { C.bus.disconnect(); } catch (e) {} }, 600); }
+function stopChannels(C, t) { if (!C) return; for (const k in C._made) C._made[k].stop(t); setTimeout(() => { try { C.bus.disconnect(); } catch (e) {} }, 600); }
 
 // a qué canal de batería va cada pieza (General MIDI) y con qué sonido
 function drumVoice(p) {
@@ -1001,6 +1010,8 @@ async function startGame(opts = {}) {
     particles: [], nextGem: 0, paused: false, over: false, holdAcc: 0, born: ctx.currentTime + 0.2, t0: performance.now(),
   };
   chart.forEach(g => { G.maxPts += gemMax(g); });
+  // los canales de la parte del jugador se crean ya, así el primer toque no espera a armarlos
+  const used = new Set(); chart.forEach(g => (g.ev || []).forEach(e => used.add(e.ch === 'drum' ? drumVoice(e.n.p).ch : e.ch))); used.forEach(c => G.CP[c]);
   updateHud();
   $('judge').textContent = ''; $('combo').textContent = '';
   show(null);
