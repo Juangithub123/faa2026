@@ -1137,7 +1137,9 @@ const DIAG = /[?&]diag/.test(location.search) ? { el: null, n: 0, work: 0, maxGa
 function diagFrame(nowMs, workMs) {
   const D = DIAG;
   if (!D.el) { D.el = document.createElement('div'); D.el.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;font:11px ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.65);padding:3px 6px;pointer-events:none;white-space:pre-wrap'; document.body.appendChild(D.el); D.t0 = nowMs; }
-  if (D.last) { D.maxGap = Math.max(D.maxGap, nowMs - D.last); if (nowMs - D.last > 1.6 * (D.per || 16.7)) D.drop++; else D.per = (D.per || 16.7) * 0.95 + (nowMs - D.last) * 0.05; }
+  // cuadro perdido: el hueco es más de 1,6 veces el cuadro más corto del segundo anterior (así sirve aunque la
+  // pantalla cambie de 60 a 90 o 120 Hz en el medio)
+  if (D.last) { const gap = nowMs - D.last; D.maxGap = Math.max(D.maxGap, gap); D.minGap = Math.min(D.minGap || 1e9, gap); if (gap > 1.6 * (D.per || 16.7)) D.drop++; }
   D.last = nowMs; D.n++; D.work += workMs;
   // el reloj del audio contra el de la pantalla: si el audio se traba, se separan
   if (ctx && ctx.state === 'running') {
@@ -1148,6 +1150,7 @@ function diagFrame(nowMs, workMs) {
     const fps = D.n * 1000 / (nowMs - D.t0);
     D.el.textContent = `${fps.toFixed(0)} fps · cuadro ${(D.work / D.n).toFixed(2)} ms · peor salto ${D.maxGap.toFixed(0)} ms · perdidos ${D.drop}/s · ${gl ? 'webgl' : '2d'}\n` +
       `audio: ${ctx ? ctx.sampleRate + ' Hz · latencia ' + ((ctx.baseLatency || 0) * 1000).toFixed(0) + '+' + ((ctx.outputLatency || 0) * 1000).toFixed(0) + ' ms' : 'sin iniciar'} · tirones ${D.aJump} · saltos del reloj ${D.jumps} · notas tarde ${D.late} · ${/Firefox/.test(navigator.userAgent) ? 'Firefox' : /Chrome/.test(navigator.userAgent) ? 'Chrome' : 'otro'}`;
+    D.per = Math.max(5, D.minGap || 16.7); D.minGap = 0;
     D.n = 0; D.work = 0; D.maxGap = 0; D.drop = 0; D.t0 = nowMs;
   }
 }
