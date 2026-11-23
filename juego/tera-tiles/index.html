@@ -253,7 +253,7 @@ const S = {
 
 const LANE_COLORS = ['--l0', '--l1', '--l2', '--l3'].map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim());
 const KEYS = { h: 0, j: 1, k: 2, l: 3 };
-const WIN = { perfect: 0.050, good: 0.095, ok: 0.140 };   // ventanas de acierto (s)
+const WIN = { perfect: 0.060, good: 0.110, ok: 0.165 };   // ventanas de acierto (s)
 const PTS = { perfect: 300, good: 200, ok: 100 };
 
 // ================== AUDIO 8 BITS ==================
@@ -724,7 +724,7 @@ gl = initGL();
 view.addEventListener('webglcontextlost', (e) => e.preventDefault());
 view.addEventListener('webglcontextrestored', () => { gl = initGL(); });
 const cv = gl ? document.createElement('canvas') : view;
-const cx = cv.getContext('2d', gl ? { willReadFrequently: true } : undefined);
+let cx = cv.getContext('2d', gl ? { willReadFrequently: true } : undefined);
 function present() {
   if (!gl || gl.isContextLost()) return;
   gl.viewport(0, 0, view.width, view.height);
@@ -1121,8 +1121,10 @@ function shade(hex, f) { const key = hex + f; if (SHADES.has(key)) return SHADES
 function shadeCalc(hex, f) { const n = parseInt(hex.slice(1), 16); const r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = (v) => Math.max(0, Math.min(255, Math.round(f >= 0 ? v + (255 - v) * f : v * (1 + f)))); return `rgb(${m(r)},${m(g)},${m(b)})`; }
 
 let lastFrame = performance.now();
-function loop() {
-  const nowMs = performance.now();
+// se usa la hora del cuadro que da el navegador (la misma para todo el cuadro y pareja entre cuadros),
+// no la hora en que se ejecuta el código, que varía unos milisegundos y hace avanzar las notas a tirones
+function loop(ts) {
+  const nowMs = (ts && ts > lastFrame) ? ts : performance.now();
   const dt = Math.min(0.05, (nowMs - lastFrame) / 1000); lastFrame = nowMs;
   if (G && !G.paused) step(nowMs, dt);
   draw(nowMs, dt);
@@ -1131,11 +1133,11 @@ function loop() {
   requestAnimationFrame(loop);
 }
 // ===== diagnóstico: agregar ?diag a la dirección =====
-const DIAG = /[?&]diag/.test(location.search) ? { el: null, n: 0, work: 0, maxGap: 0, last: 0, t0: 0, late: 0, aJump: 0, jumps: 0, aRef: null } : null;
+const DIAG = /[?&]diag/.test(location.search) ? { el: null, n: 0, work: 0, maxGap: 0, last: 0, t0: 0, late: 0, aJump: 0, jumps: 0, drop: 0, aRef: null } : null;
 function diagFrame(nowMs, workMs) {
   const D = DIAG;
   if (!D.el) { D.el = document.createElement('div'); D.el.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;font:11px ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.65);padding:3px 6px;pointer-events:none;white-space:pre-wrap'; document.body.appendChild(D.el); D.t0 = nowMs; }
-  if (D.last) D.maxGap = Math.max(D.maxGap, nowMs - D.last);
+  if (D.last) { D.maxGap = Math.max(D.maxGap, nowMs - D.last); if (nowMs - D.last > 1.6 * (D.per || 16.7)) D.drop++; else D.per = (D.per || 16.7) * 0.95 + (nowMs - D.last) * 0.05; }
   D.last = nowMs; D.n++; D.work += workMs;
   // el reloj del audio contra el de la pantalla: si el audio se traba, se separan
   if (ctx && ctx.state === 'running') {
@@ -1144,7 +1146,7 @@ function diagFrame(nowMs, workMs) {
   } else D.aRef = null;
   if (nowMs - D.t0 >= 1000) {
     const fps = D.n * 1000 / (nowMs - D.t0);
-    D.el.textContent = `${fps.toFixed(0)} fps · cuadro ${(D.work / D.n).toFixed(2)} ms · peor salto ${D.maxGap.toFixed(0)} ms · ${gl ? 'webgl' : '2d'}\n` +
+    D.el.textContent = `${fps.toFixed(0)} fps · cuadro ${(D.work / D.n).toFixed(2)} ms · peor salto ${D.maxGap.toFixed(0)} ms · perdidos ${D.drop} · ${gl ? 'webgl' : '2d'}\n` +
       `audio: ${ctx ? ctx.sampleRate + ' Hz · latencia ' + ((ctx.baseLatency || 0) * 1000).toFixed(0) + '+' + ((ctx.outputLatency || 0) * 1000).toFixed(0) + ' ms' : 'sin iniciar'} · tirones ${D.aJump} · saltos del reloj ${D.jumps} · notas tarde ${D.late} · ${/Firefox/.test(navigator.userAgent) ? 'Firefox' : /Chrome/.test(navigator.userAgent) ? 'Chrome' : 'otro'}`;
     D.n = 0; D.work = 0; D.maxGap = 0; D.t0 = nowMs;
   }
@@ -1212,24 +1214,41 @@ function skyGrad(th, y0, y1) {
   g.addColorStop(0, rgbC(th.sky[0])); g.addColorStop(0.6, rgbC(th.sky[1])); g.addColorStop(1, rgbC(th.sky[2]));
   return g;
 }
+// la parte quieta del fondo (degradé, carriles y sus líneas) se pinta en un lienzo aparte y se vuelve a pintar
+// solo cuando cambia algún color de la paleta; en cada cuadro se copia de una vez, que es mucho más liviano
+const bgC = document.createElement('canvas'), bgX = bgC.getContext('2d');
+let bgKey = '';
 function drawBackdrop(th, pos, pps) {
-  cx.fillStyle = skyGrad(th, 0, H); cx.fillRect(0, 0, W, H);
-  const dk = cx.createLinearGradient(0, H * 0.3, 0, H); dk.addColorStop(0, rgbC(th.trB, 0)); dk.addColorStop(1, rgbC(th.trB, 0.6));
-  cx.fillStyle = dk; cx.fillRect(0, 0, W, H);
-  for (let l = 0; l < 4; l++) { cx.fillStyle = rgbC(l % 2 ? th.trA : th.trB, 0.28); cx.fillRect(X0 + l * LW, 0, LW, H); }
+  const key = W + 'x' + H + '@' + SC + rgbC(th.sky[0]) + rgbC(th.sky[1]) + rgbC(th.sky[2]) + rgbC(th.trA) + rgbC(th.trB) + rgbC(th.dash);
+  if (key !== bgKey) {
+    bgKey = key;
+    if (bgC.width !== W * SC || bgC.height !== H * SC) { bgC.width = W * SC; bgC.height = H * SC; }
+    const c0 = cx; cx = bgX; cx.setTransform(SC, 0, 0, SC, 0, 0);
+    cx.fillStyle = skyGrad(th, 0, H); cx.fillRect(0, 0, W, H);
+    const dk = cx.createLinearGradient(0, H * 0.3, 0, H); dk.addColorStop(0, rgbC(th.trB, 0)); dk.addColorStop(1, rgbC(th.trB, 0.6));
+    cx.fillStyle = dk; cx.fillRect(0, 0, W, H);
+    for (let l = 0; l < 4; l++) { cx.fillStyle = rgbC(l % 2 ? th.trA : th.trB, 0.28); cx.fillRect(X0 + l * LW, 0, LW, H); }
+    // carriles: líneas finas y quietas
+    cx.fillStyle = rgbC(th.dash, 0.3);
+    for (let l = 0; l <= 4; l++) cx.fillRect(X0 + l * LW - (l === 4 ? 1 : 0), 0, 1, H);
+    cx = c0;
+  }
+  cx.drawImage(bgC, 0, 0, W, H);
   // pulso: líneas finas que bajan con las notas (más marcada al empezar cada compás)
   const beats = G ? G.m.beats : null;
   if (beats) {
-    for (let i = 0; i < beats.length; i++) {
+    // se arranca desde el primer pulso que todavía está en pantalla (no desde el principio del tema)
+    let i = G.beatI || 0;
+    while (i > 0 && beats[i - 1] > pos - 0.5) i--;
+    while (i < beats.length && (HITY - (beats[i] - pos) * pps) > HITY + 2) i++;
+    G.beatI = i;
+    for (; i < beats.length; i++) {
       const y = snap(HITY - (beats[i] - pos) * pps);
       if (y < -2) break; if (y > HITY) continue;
       cx.fillStyle = rgbC(th.dash, i % 4 === 0 ? 0.42 : 0.2);
       cx.fillRect(X0, y, LW * 4, 1);
     }
   }
-  // carriles: líneas finas y quietas
-  cx.fillStyle = rgbC(th.dash, 0.3);
-  for (let l = 0; l <= 4; l++) cx.fillRect(X0 + l * LW - (l === 4 ? 1 : 0), 0, 1, H);
   // destello del carril al tocar
   if (G) for (let l = 0; l < 4; l++) if (G.laneFlash[l] > 0) { cx.fillStyle = `rgba(246,239,196,${0.16 * G.laneFlash[l]})`; cx.fillRect(X0 + l * LW, 0, LW, HITY + 8); }
 }
