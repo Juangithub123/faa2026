@@ -544,9 +544,8 @@ function vMas() {
   var it = [];
   it.push(['?', 'Ayuda', 'Cómo usar la guía y qué significa cada cosa']);
   it = it.concat([['mapa', 'Mapa y sedes', 'Dónde queda cada lugar y el recorrido del día'], ['arte', 'Ambientación', 'Qué ambienta Arte en cada sede'], ['equipo', 'Equipo', 'Quién está en cada área'], ['pendientes', 'Pendientes y avisos', 'Lo que falta confirmar, por día'], ['antes', 'Antes del festival', 'Fechas de la previa'], ['novedades', 'Novedades', 'Historial de cambios'], ['ajustes', 'Ajustes', 'Tu nombre, tema, avisos e instalación']]);
-  /* Extras: cosas para el staff fuera de la logística (la cámara, y el juego cuando ya se descubrió) */
-  var ex = [['camara', 'Cámara FAA', 'Fotos y videos con máscaras de la tera']];
-  if (lsGet(K.game)) { ex.push(['juego', '¡Corre, sonidista!', 'La toma secreta del FAA!']); }
+  /* Extras: cosas para el staff fuera de la logística (la cámara y los juegos, que ya están a la vista de todos) */
+  var ex = [['camara', 'Cámara FAA', 'Fotos y videos con máscaras de la tera'], ['juego', 'Juegos', '¡Corre, sonidista! y Tera Tiles']];
   var row = function (x) { return '<li><button type="button" ' + (x[0] === '?' ? 'data-act="help"' : 'data-go="' + x[0] + '"') + '><b>' + x[1] + '</b><span>' + x[2] + '</span></button></li>'; };
   var rowEx = function (x) { return '<li><button type="button" data-act="' + x[0] + '"><b>' + x[1] + '</b><span>' + x[2] + '</span></button></li>'; };
   return head('Más', '') + '<ul class="menu">' + it.map(row).join('') + '</ul>' +
@@ -801,7 +800,6 @@ function secretCard() {
   if (SYNC.state === 'off' || navigator.onLine === false) {
     return '<section class="card secret"><p><b>¿Sin señal?</b> Mientras vuelve, corré, sonidista.</p><button class="btn sm pri" type="button" data-act="juego">Jugar</button></section>';
   }
-  if (D.hint && D.hint.on && !lsGet(K.game)) { return '<section class="card secret"><p>' + esc(D.hint.text) + '</p></section>'; }
   return '';
 }
 (function () {
