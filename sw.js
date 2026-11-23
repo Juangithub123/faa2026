@@ -2,7 +2,7 @@
    App: se guarda al instalar y se sirve desde el teléfono (funciona sin señal).
    data.json: siempre se pide a la red; si no hay señal, se usa la última copia guardada.
    Al publicar cambios en app.js, app.css o index.html, subí el número de VERSION. */
-var VERSION = 'faa26-v19';
+var VERSION = 'faa26-v20';
 /* El juego secreto se guarda aparte, para que funcione sin señal; se pide primero a la red para tomar cambios. */
 var GAME = 'faa26-juego', GAME_FILES = ['juego/', 'juego/juego.js', 'juego/ranking.js', 'juego/side.png', 'juego/back.png', 'juego/atlas.png', 'juego/n26.png', 'juego/arte.js', 'juego/carriles/', 'juego/carriles/carriles.js'];
 /* Las máscaras (mascaras/) no se bajan al instalar: se guardan aparte recién cuando alguien las usa (pesan ~4 MB). */

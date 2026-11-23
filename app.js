@@ -542,10 +542,15 @@ function vAntesCard() {
 function vAntes() { var k = 'antes'; if (!(k in X.open)) { X.open[k] = 1; } return head('Antes del festival', '') + vAntesCard(); }
 function vMas() {
   var it = [];
-  if (lsGet(K.game)) { it.push(['', '¡Corre, sonidista!', 'La toma secreta del FAA!']); }
   it.push(['?', 'Ayuda', 'Cómo usar la guía y qué significa cada cosa']);
   it = it.concat([['mapa', 'Mapa y sedes', 'Dónde queda cada lugar y el recorrido del día'], ['arte', 'Ambientación', 'Qué ambienta Arte en cada sede'], ['equipo', 'Equipo', 'Quién está en cada área'], ['pendientes', 'Pendientes y avisos', 'Lo que falta confirmar, por día'], ['antes', 'Antes del festival', 'Fechas de la previa'], ['novedades', 'Novedades', 'Historial de cambios'], ['ajustes', 'Ajustes', 'Tu nombre, tema, avisos e instalación']]);
-  return head('Más', '') + '<ul class="menu">' + it.map(function (x) { return '<li><button type="button" ' + (x[0] === '?' ? 'data-act="help"' : x[0] ? 'data-go="' + x[0] + '"' : 'data-act="juego"') + '><b>' + x[1] + '</b><span>' + x[2] + '</span></button></li>'; }).join('') + '</ul>';
+  /* Extras: cosas para el staff fuera de la logística (la cámara, y el juego cuando ya se descubrió) */
+  var ex = [['camara', 'Cámara FAA', 'Fotos y videos con máscaras de la tera']];
+  if (lsGet(K.game)) { ex.push(['juego', '¡Corre, sonidista!', 'La toma secreta del FAA!']); }
+  var row = function (x) { return '<li><button type="button" ' + (x[0] === '?' ? 'data-act="help"' : 'data-go="' + x[0] + '"') + '><b>' + x[1] + '</b><span>' + x[2] + '</span></button></li>'; };
+  var rowEx = function (x) { return '<li><button type="button" data-act="' + x[0] + '"><b>' + x[1] + '</b><span>' + x[2] + '</span></button></li>'; };
+  return head('Más', '') + '<ul class="menu">' + it.map(row).join('') + '</ul>' +
+    '<p class="kicker menu-k">Extras</p><ul class="menu">' + ex.map(rowEx).join('') + '</ul>';
 }
 function vAjustes() {
   var th = lsGet(K.theme) || 'auto', perm = ('Notification' in window) ? Notification.permission : 'unsupported';
@@ -654,6 +659,7 @@ document.addEventListener('click', function (e) {
   else if (act === 'help-close') { $('helpsheet').close(); }
   else if (act === 'help-go') { $('helpsheet').close(); go(t.getAttribute('data-to')); }
   else if (act === 'juego') { openGame(); }
+  else if (act === 'camara') { location.href = 'mascaras/'; }
   else if (act === 'juego-close') { $('juegosheet').close(); }
   else if (act === 'pdf-share') { sharePdf(); }
   else if (act === 'map-mine') { S.map.mine = true; S.map.focus = ''; go('mapa'); }

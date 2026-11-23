@@ -175,6 +175,7 @@ ol.route .leg.tight{border-left-color:var(--warn)}
 .menu button::after{content:"";position:absolute;right:18px;top:50%;width:9px;height:9px;border:solid var(--muted);border-width:2px 2px 0 0;transform:translateY(-50%) rotate(45deg)}
 .menu b{font-size:16.5px}
 .menu span{font-size:14px;color:var(--muted)}
+.menu-k{margin:22px 4px 8px}
 .people{display:flex;flex-wrap:wrap;gap:6px}
 .person{border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:14px;background:var(--surface)}
 .person.me{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700}
