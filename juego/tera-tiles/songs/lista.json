@@ -10,9 +10,20 @@
     "artist": "Toto"
   },
   {
+    "file": "another-brick-in-the-wall.mid",
+    "title": "Another Brick in the Wall",
+    "artist": "Pink Floyd"
+  },
+  {
     "file": "bohemian-rhapsody.mid",
     "title": "Bohemian Rhapsody",
     "artist": "Queen"
+  },
+  {
+    "file": "brain-damage.mid",
+    "title": "Brain Damage",
+    "artist": "Pink Floyd",
+    "melodia": "synth voice"
   },
   {
     "file": "cancion-para-mi-muerte.mid",
@@ -41,9 +52,49 @@
     "artist": "Genesis"
   },
   {
+    "file": "discipline.mid",
+    "title": "Discipline",
+    "artist": "King Crimson"
+  },
+  {
+    "file": "easy-money.mid",
+    "title": "Easy Money",
+    "artist": "King Crimson"
+  },
+  {
+    "file": "epitaph.mid",
+    "title": "Epitaph",
+    "artist": "King Crimson"
+  },
+  {
     "file": "firth-of-fifth.mid",
     "title": "Firth of Fifth",
     "artist": "Genesis"
+  },
+  {
+    "file": "fracture.mid",
+    "title": "Fracture",
+    "artist": "King Crimson"
+  },
+  {
+    "file": "frame-by-frame.mid",
+    "title": "Frame by Frame",
+    "artist": "King Crimson"
+  },
+  {
+    "file": "goodbye-blue-sky.mid",
+    "title": "Goodbye Blue Sky",
+    "artist": "Pink Floyd"
+  },
+  {
+    "file": "hairless-heart.mid",
+    "title": "Hairless Heart",
+    "artist": "Genesis"
+  },
+  {
+    "file": "i-talk-to-the-wind.mid",
+    "title": "I Talk to the Wind",
+    "artist": "King Crimson"
   },
   {
     "file": "inconsciente-colectivo.mid",
@@ -61,6 +112,11 @@
     "artist": "Soda Stereo"
   },
   {
+    "file": "lilywhite-lilith.mid",
+    "title": "Lilywhite Lilith",
+    "artist": "Genesis"
+  },
+  {
     "file": "lunes-por-la-madrugada.mid",
     "title": "Lunes por la madrugada",
     "artist": "Los Fabulosos Cadillacs",
@@ -70,6 +126,11 @@
     "file": "mil-horas.mid",
     "title": "Mil horas",
     "artist": "Los Abuelos de la Nada"
+  },
+  {
+    "file": "money.mid",
+    "title": "Money",
+    "artist": "Pink Floyd"
   },
   {
     "file": "my-heart-will-go-on.mid",
@@ -101,5 +162,59 @@
     "file": "sandstorm.mid",
     "title": "Sandstorm",
     "artist": "Darude"
+  },
+  {
+    "file": "shine-on-you-crazy-diamond.mid",
+    "title": "Shine On You Crazy Diamond",
+    "artist": "Pink Floyd"
+  },
+  {
+    "file": "starless.mid",
+    "title": "Starless",
+    "artist": "King Crimson"
+  },
+  {
+    "file": "the-battle-of-epping-forest.mid",
+    "title": "The Battle of Epping Forest",
+    "artist": "Genesis",
+    "melodia": "Guitarra 3"
+  },
+  {
+    "file": "the-carpet-crawlers.mid",
+    "title": "The Carpet Crawlers",
+    "artist": "Genesis",
+    "melodia": "Synth lead"
+  },
+  {
+    "file": "the-knife.mid",
+    "title": "The Knife",
+    "artist": "Genesis"
+  },
+  {
+    "file": "the-lamb-lies-down-on-broadway.mid",
+    "title": "The Lamb Lies Down on Broadway",
+    "artist": "Genesis",
+    "melodia": "Synth lead"
+  },
+  {
+    "file": "the-lamia.mid",
+    "title": "The Lamia",
+    "artist": "Genesis"
+  },
+  {
+    "file": "the-musical-box.mid",
+    "title": "The Musical Box",
+    "artist": "Genesis",
+    "melodia": "Peter Gabriel"
+  },
+  {
+    "file": "watcher-of-the-skies.mid",
+    "title": "Watcher of the Skies",
+    "artist": "Genesis"
+  },
+  {
+    "file": "wish-you-were-here.mid",
+    "title": "Wish You Were Here",
+    "artist": "Pink Floyd"
   }
 ]
