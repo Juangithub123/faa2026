@@ -221,7 +221,7 @@ const PTS = { perfect: 300, good: 200, ok: 100 };
 // Como en una consola de verdad: pocos "canales" fijos (osciladores que nunca se apagan)
 // y cada nota es solo un cambio de frecuencia y volumen. Así no se crean nodos por nota
 // (eso era lo que trababa el juego, sobre todo en Firefox) y nunca suenan más de ~10 voces.
-let ctx = null, master, limiter, echoIn, WAVES = {}, NOISE = {}, CH = null;
+let ctx = null, master, limiter, echoIn, roomIn, WAVES = {}, NOISE = {}, CH = null;
 function initAudio() {
   if (ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
@@ -261,10 +261,16 @@ function initAudio() {
     return b;
   };
   NOISE.long = lfsr(1, Math.floor(ctx.sampleRate * 1.0));
-  // reverb para los sonidos de ambiente (pads, cuerdas, coros, efectos): estos NO son 8 bits
-  const rl = Math.floor(ctx.sampleRate * 2.4), ir = ctx.createBuffer(2, rl, ctx.sampleRate);
-  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < rl; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / rl, 3.2); }
-  NOISE.ir = ir;
+  // "sala" liviana para los sonidos de ambiente: dos retardos cortos realimentados con filtro.
+  // (antes era un ConvolverNode de 2,4 s: demasiado pesado para el teléfono y trababa el audio)
+  roomIn = ctx.createGain(); roomIn.gain.value = 1;
+  const roomOut = ctx.createGain(); roomOut.gain.value = 0.5;
+  [[0.043, 0.55], [0.067, 0.5]].forEach(([t, fbv]) => {
+    const d = ctx.createDelay(0.2), fb = ctx.createGain(), f = ctx.createBiquadFilter();
+    d.delayTime.value = t; fb.gain.value = fbv; f.type = 'lowpass'; f.frequency.value = 1800;
+    roomIn.connect(d); d.connect(f); f.connect(fb); fb.connect(d); f.connect(roomOut);
+  });
+  roomOut.connect(master);
   NOISE.short = lfsr(6, 93 * 8);
 }
 const mtof = (p) => 440 * Math.pow(2, (p - 69) / 12);
@@ -335,31 +341,27 @@ function noiseChannel(bus, buf, vol, hpf) {
 // canal de ambiente: sintetizador suave y polifónico (dos osciladores levemente desafinados,
 // filtro, entrada y salida lentas, reverb). Máximo 10 voces a la vez para no cargar el audio.
 function ambientChannel(bus, vol) {
-  const dry = ctx.createGain(); dry.gain.value = 0.75;
-  const rev = ctx.createConvolver(); rev.buffer = NOISE.ir;
-  const wet = ctx.createGain(); wet.gain.value = 0.55;
-  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400; lp.Q.value = 0.3;
-  lp.connect(dry); dry.connect(bus); lp.connect(rev); rev.connect(wet); wet.connect(bus);
-  let voices = []; // {end, o1, o2, g}
+  // un oscilador por nota (triángulo filtrado), máximo 6 voces; todo comparte un filtro y la "sala"
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2000;
+  const send = ctx.createGain(); send.gain.value = 0.6;
+  lp.connect(bus); lp.connect(send); send.connect(roomIn);
+  let voices = [];
   return {
     note(t, p, d, v) {
       voices = voices.filter(x => x.end > t);
-      if (voices.length >= 10) return;
-      const f = mtof(p), a = vol * vel(v);
-      const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain();
-      o1.type = 'triangle'; o2.type = 'sawtooth';
-      o1.frequency.value = f; o2.frequency.value = f; o2.detune.value = 7;
-      const g2 = ctx.createGain(); g2.gain.value = 0.35;
-      o1.connect(g); o2.connect(g2); g2.connect(g); g.connect(lp);
-      const atk = Math.min(0.15, Math.max(0.02, d * 0.2)), rel = 0.45, end = t + Math.max(0.05, d);
+      if (voices.length >= 6) return;
+      const a = vol * vel(v);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.value = mtof(p);
+      o.connect(g); g.connect(lp);
+      const atk = Math.min(0.12, Math.max(0.02, d * 0.2)), end = t + Math.max(0.05, d);
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a, t + atk);
-      g.gain.setTargetAtTime(a * 0.8, t + atk, 0.3);
-      g.gain.setTargetAtTime(0, end, rel / 3);
-      o1.start(t); o2.start(t); o1.stop(end + rel * 1.5); o2.stop(end + rel * 1.5);
-      voices.push({ end: end + rel, o1, o2, g });
+      g.gain.setValueAtTime(a, end); g.gain.linearRampToValueAtTime(0, end + 0.35);
+      o.start(t); o.stop(end + 0.4);
+      voices.push({ end: end + 0.4, o, g });
     },
-    cut(t) { voices.forEach(x => { try { x.g.gain.cancelScheduledValues(t); x.g.gain.setTargetAtTime(0, t, 0.05); } catch (e) {} }); },
-    stop(t) { voices.forEach(x => { try { x.g.gain.cancelScheduledValues(t); x.g.gain.setTargetAtTime(0, t, 0.05); x.o1.stop(t + 0.3); x.o2.stop(t + 0.3); } catch (e) {} }); voices = []; },
+    cut(t) { voices.forEach(x => { try { x.g.gain.cancelScheduledValues(t); x.g.gain.setTargetAtTime(0, t, 0.05); x.o.stop(t + 0.3); } catch (e) {} }); voices = []; },
+    stop(t) { this.cut(t); },
   };
 }
 // ¿esta pista es un sonido de ambiente? (pads, cuerdas sostenidas, coros, efectos de sintetizador y de sonido)
@@ -382,7 +384,7 @@ function makeChannels(player) {
     noise: noiseChannel(bus, NOISE.long, 0.2 * k, 120),
     hat: noiseChannel(bus, NOISE.long, 0.1 * k, 5000),
     metal: noiseChannel(bus, NOISE.short, 0.07 * k, 3000),
-    amb: ambientChannel(bus, player ? 0.09 : 0.06),
+    amb: ambientChannel(bus, player ? 0.16 : 0.11),
   };
 }
 function stopChannels(C, t) { if (!C) return; for (const k in C) if (C[k] && C[k].stop) C[k].stop(t); setTimeout(() => { try { C.bus.disconnect(); } catch (e) {} }, 600); }
