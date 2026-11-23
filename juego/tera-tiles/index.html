@@ -222,6 +222,7 @@
 <script src="../arte.js?v=1117h"></script>
 <script src="midi.js?v=1122c"></script>
 <script src="sync.js?v=1122a"></script>
+<script src="rank.js?v=1123a"></script>
 <script>
 (() => {
 'use strict';
@@ -881,6 +882,7 @@ async function openSong(meta) {
       meta.midi = K.analyze(K.parseMidi(buf), { melody: meta.melodia, bass: meta.bajo });
     }
     song = meta;
+    if (window.TRank) TRank.song(meta);
     const m = meta.midi;
     $('songTitle').textContent = meta.title;
     $('songInfo').textContent = (meta.artist ? meta.artist + ' · ' : '') + Math.round(m.duration / 60) + ' min · ' + Math.round(m.bpm) + ' bpm';
@@ -996,7 +998,7 @@ async function startGame(opts = {}) {
     end: Math.min(m.duration, lastEnd + 6) + 0.5,
     score: 0, combo: 0, maxCombo: 0, counts: { perfect: 0, good: 0, ok: 0, miss: 0 }, maxPts: 0, gotPts: 0, judgedMax: 0,
     lanesDown: [false, false, false, false], laneFlash: [0, 0, 0, 0], laneMiss: [0, 0, 0, 0],
-    particles: [], nextGem: 0, paused: false, over: false, holdAcc: 0, born: ctx.currentTime + 0.2,
+    particles: [], nextGem: 0, paused: false, over: false, holdAcc: 0, born: ctx.currentTime + 0.2, t0: performance.now(),
   };
   chart.forEach(g => { G.maxPts += gemMax(g); });
   updateHud();
@@ -1291,6 +1293,7 @@ function finish() {
     ['PERFECTO', G.counts.perfect], ['BIEN', G.counts.good], ['OK', G.counts.ok], ['FALLÓ', G.counts.miss],
   ].map(([a, b]) => `<div><span>${a}</span><span>${b}</span></div>`).join('');
   $('resBest').textContent = isBest ? '¡NUEVO RÉCORD!' : 'Récord: ' + prev.score.toLocaleString('es-AR');
+  if (window.TRank) TRank.over({ score: G.score, secs: (performance.now() - G.t0) / 1000, parte: partKey, dif: S.diff, song });
   setTimeout(() => { show('sRes'); }, 600);
 }
 
@@ -1500,6 +1503,7 @@ loop();
 // para pruebas
 window.__tero = { playChirp, ensureChirp, get G() { return G; }, openSong, startGame, get SONGS() { return SONGS; }, addFiles, judge, get ctx() { return ctx; }, get master() { return master; } };
 })();
+if (window.TRank) TRank.mount();
 </script>
 </body>
 </html>
