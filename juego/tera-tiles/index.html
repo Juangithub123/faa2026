@@ -149,6 +149,11 @@
     <input type="range" id="spd" min="0.6" max="1.8" step="0.1">
     <div class="sub" id="chartInfo"></div>
     <button class="btn big" id="playBtn">▶ JUGAR</button>
+    <div class="label">COOPERATIVO · PRUEBA (mismo tema en los dos teléfonos)</div>
+    <div class="row">
+      <button class="btn" id="hostBtn">ANFITRIÓN</button>
+      <button class="btn" id="joinBtn">UNIRSE</button>
+    </div>
     <button class="btn" id="backBtn" style="justify-content:center">← VOLVER</button>
   </section>
 
@@ -173,6 +178,16 @@
     <button class="btn" id="menuBtn" style="justify-content:center">MENÚ</button>
   </section>
 
+  <!-- SINCRONIZACIÓN -->
+  <section class="screen" id="sSync">
+    <div class="spacer"></div>
+    <h2>COOPERATIVO</h2>
+    <div class="sub" id="syncMsg" style="font-size:11px;max-width:300px"></div>
+    <div class="sub" id="syncInfo"></div>
+    <div class="spacer"></div>
+    <button class="btn" id="syncCancel" style="justify-content:center">✕ CANCELAR</button>
+  </section>
+
   <!-- CALIBRACIÓN -->
   <section class="screen" id="sCal">
     <h2>CALIBRAR</h2>
@@ -190,6 +205,7 @@
 </div>
 
 <script src="midi.js?v=1122c"></script>
+<script src="sync.js?v=1122a"></script>
 <script>
 (() => {
 'use strict';
@@ -771,7 +787,7 @@ async function loadLibrary() {
 }
 
 // ================== PARTIDA ==================
-async function startGame() {
+async function startGame(opts = {}) {
   initAudio();
   if (ctx.state !== 'running') await ctx.resume();
   const m = song.midi, part = m.parts[partKey];
@@ -783,13 +799,14 @@ async function startGame() {
   const travel = HITY / pps;
   const first = chart.length ? chart[0].t : 0;
   const lead = Math.max(1.6, travel - first + 0.8);
-  const skipTo = S.skip && first > travel + 4 ? first - travel - 1.5 : 0;
+  const skipTo = !opts.start && S.skip && first > travel + 4 ? first - travel - 1.5 : 0;
   const lastEnd = chart.length ? Math.max(...chart.map(g => g.t + g.d)) : m.duration;
   if (G) stopGame();
   G = {
     m, part, chart, base, bi: 0, pps,
     CB: makeChannels(false), CP: makeChannels(true),
-    start: ctx.currentTime + (skipTo ? 1.2 - skipTo : lead),
+    start: opts.start || (ctx.currentTime + (skipTo ? 1.2 - skipTo : lead)),
+    coop: !!opts.start,
     end: Math.min(m.duration, lastEnd + 6) + 0.5,
     score: 0, combo: 0, maxCombo: 0, counts: { perfect: 0, good: 0, ok: 0, miss: 0 }, maxPts: 0, gotPts: 0, judgedMax: 0,
     lanesDown: [false, false, false, false], laneFlash: [0, 0, 0, 0], laneMiss: [0, 0, 0, 0],
@@ -1069,7 +1086,7 @@ function stopGame() {
 }
 
 function pause() {
-  if (!G || G.over || G.paused) return;
+  if (!G || G.over || G.paused || G.coop) return; // en cooperativo no se pausa (se perdería la sincronía)
   G.paused = true; ctx.suspend(); show('sPause');
 }
 function resume() {
@@ -1087,11 +1104,109 @@ $('againBtn').onclick = () => { stopGame(); startGame(); };
 $('menuBtn').onclick = () => { stopGame(); show('sMenu'); renderSongList(); };
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
+// ================== COOPERATIVO (sincronización por sonido) ==================
+const COOP = { K: 5.0 };     // segundos entre el chirp del anfitrión y el inicio del tema
+let mic = null, chirpRef = null, syncCancelled = false;
+function syncMsg(t, info) { $('syncMsg').textContent = t; $('syncInfo').textContent = info || ''; }
+function ensureChirp() { if (!chirpRef) { chirpRef = SyncKit.makeChirp(ctx.sampleRate); chirpRef.sr = ctx.sampleRate; } }
+function playChirp(at) {
+  const b = ctx.createBuffer(1, chirpRef.length, ctx.sampleRate); b.copyToChannel(chirpRef, 0);
+  const s = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = 0.9;
+  s.buffer = b; s.connect(g); g.connect(ctx.destination); s.start(at);
+}
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+// micrófono: un AudioWorklet que manda bloques con su número de muestra en el reloj del audio
+const CAP = `class Cap extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(4096);this.n=0;this.f=0}
+process(i){const c=i[0]&&i[0][0];if(!c)return true;if(this.n===0)this.f=currentFrame;this.b.set(c,this.n);this.n+=c.length;
+if(this.n+128>this.b.length){this.port.postMessage({f:this.f,d:this.b.slice(0,this.n)});this.n=0}return true}}registerProcessor('cap',Cap)`;
+async function startMic() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([CAP], { type: 'application/javascript' })));
+  const src = ctx.createMediaStreamSource(stream), node = new AudioWorkletNode(ctx, 'cap'), mute = ctx.createGain();
+  mute.gain.value = 0; src.connect(node); node.connect(mute); mute.connect(ctx.destination);
+  mic = { stream, src, node, chunks: [] };
+  node.port.onmessage = (e) => { mic.chunks.push(e.data); const keep = ctx.sampleRate * 6; let tot = 0; for (let i = mic.chunks.length - 1; i >= 0; i--) { tot += mic.chunks[i].d.length; if (tot > keep) { mic.chunks.splice(0, i); break; } } };
+}
+function stopMic() { if (!mic) return; try { mic.stream.getTracks().forEach(t => t.stop()); mic.node.disconnect(); mic.src.disconnect(); } catch (e) {} mic = null; }
+// muestras del micrófono entre dos instantes del reloj del audio
+function micWindow(t0, t1) {
+  const sr = ctx.sampleRate, f0 = Math.floor(t0 * sr), f1 = Math.floor(t1 * sr);
+  const out = new Float32Array(Math.max(0, f1 - f0));
+  for (const c of mic.chunks) {
+    const a = Math.max(c.f, f0), b = Math.min(c.f + c.d.length, f1);
+    if (b > a) out.set(c.d.subarray(a - c.f, b - c.f), a - f0);
+  }
+  return out;
+}
+function findChirp(t0, t1) {
+  const x = micWindow(t0, t1), r = SyncKit.detect(x, chirpRef);
+  if (!r || r.score < 0.12 || r.ratio < 12) return null;
+  return { t: t0 + r.idx / ctx.sampleRate, score: r.score, ratio: r.ratio };
+}
+// demora propia (parlante + micrófono): el teléfono se escucha a sí mismo
+async function measureLoopback() {
+  const res = [];
+  for (let k = 0; k < 4 && !syncCancelled; k++) {
+    const e = ctx.currentTime + 0.25; playChirp(e);
+    await sleep(1100);
+    const d = findChirp(e - 0.05, e + 0.9);
+    if (d) { const L = d.t - e; if (L > 0 && L < 0.6) res.push(L); }
+  }
+  if (res.length < 2) return null;
+  res.sort((a, b) => a - b);
+  return { L: res[Math.floor(res.length / 2)], spread: res[res.length - 1] - res[0], n: res.length };
+}
+async function hostSync() {
+  syncCancelled = false;
+  initAudio(); if (ctx.state !== 'running') await ctx.resume(); ensureChirp();
+  show('sSync'); syncMsg('Acercá los teléfonos. El otro tiene que estar en "UNIRSE" esperando la señal.', '');
+  for (let i = 3; i > 0; i--) { syncMsg('Mandando la señal en ' + i + '…', 'Mismo tema en los dos teléfonos'); await sleep(1000); if (syncCancelled) return; }
+  const e = ctx.currentTime + 0.2;
+  playChirp(e);
+  syncMsg('¡Señal enviada!', '');
+  await sleep(400); if (syncCancelled) return;
+  startGame({ start: e + COOP.K });
+}
+async function joinSync() {
+  syncCancelled = false;
+  initAudio(); if (ctx.state !== 'running') await ctx.resume(); ensureChirp();
+  show('sSync'); syncMsg('Pidiendo el micrófono…');
+  try { await startMic(); } catch (err) { syncMsg('No pude usar el micrófono: ' + err.message); return; }
+  syncMsg('Midiendo la demora de este teléfono…', 'Va a sonar un "fiu" 4 veces. Silencio, por favor.');
+  await sleep(400);
+  const lb = await measureLoopback();
+  if (syncCancelled) { stopMic(); return; }
+  if (!lb) { stopMic(); syncMsg('No me pude escuchar a mí mismo. Subí el volumen y probá de nuevo.'); return; }
+  const listenFrom = ctx.currentTime;
+  syncMsg('Esperando la señal del anfitrión…', `Demora propia: ${Math.round(lb.L * 1000)} ms (±${Math.round(lb.spread * 500)}). Ahora tocá ANFITRIÓN en el otro teléfono.`);
+  const deadline = ctx.currentTime + 60;
+  while (!syncCancelled && ctx.currentTime < deadline) {
+    await sleep(250);
+    const now = ctx.currentTime;
+    const d = findChirp(Math.max(listenFrom, now - 1.6), now - 0.05);
+    // que el chirp haya entrado entero en la ventana
+    if (d && d.t + SyncKit.CHIRP.dur < now - 0.06) {
+      const start = d.t + COOP.K - lb.L;
+      stopMic();
+      if (start - ctx.currentTime < 0.8) { syncMsg('La señal llegó tarde. Probá de nuevo.'); return; }
+      syncMsg('¡Sincronizado!', `Calidad de la señal: ${(d.score * 100).toFixed(0)}%`);
+      await sleep(300);
+      startGame({ start });
+      return;
+    }
+  }
+  stopMic();
+  if (!syncCancelled) syncMsg('No escuché la señal. Acercá los teléfonos y probá de nuevo.');
+}
+$('hostBtn').onclick = () => hostSync();
+$('joinBtn').onclick = () => joinSync();
+$('syncCancel').onclick = () => { syncCancelled = true; stopMic(); show('sSong'); refreshSel(); };
+
 // ================== ENTRADA ==================
 addEventListener('keydown', (e) => {
   if (calib.on) { calTap(e.timeStamp); return; }
   const k = e.key.toLowerCase();
-  if (k === 'escape' || k === 'p') { if (G && !G.over) (G.paused ? resume() : pause()); return; }
+  if (k === 'escape' || k === 'p') { if (G && !G.over && !G.coop) (G.paused ? resume() : pause()); return; }
   if (G && G.paused && k === 'enter') { resume(); return; }
   if (k in KEYS && !e.repeat && G) { e.preventDefault(); judge(KEYS[k], e.timeStamp); }
 });
@@ -1155,7 +1270,7 @@ renderSongList();
 loadLibrary();
 loop();
 // para pruebas
-window.__tero = { get G() { return G; }, openSong, startGame, get SONGS() { return SONGS; }, addFiles, judge, get ctx() { return ctx; }, get master() { return master; } };
+window.__tero = { playChirp, ensureChirp, get G() { return G; }, openSong, startGame, get SONGS() { return SONGS; }, addFiles, judge, get ctx() { return ctx; }, get master() { return master; } };
 })();
 </script>
 </body>
