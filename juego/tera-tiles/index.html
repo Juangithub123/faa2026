@@ -147,6 +147,13 @@
       <button class="btn" data-snd="instrumentos">INSTRUMENTOS</button>
       <button class="btn" data-snd="teclados">TECLADOS</button>
     </div>
+    <div class="label">FONDO</div>
+    <div class="row" id="fondoRow">
+      <button class="btn" data-fondo="gradiente">GRADIENTE</button>
+      <button class="btn" data-fondo="monte">MONTAÑAS</button>
+      <button class="btn" data-fondo="ruta">RUTA</button>
+      <button class="btn" data-fondo="marcha">MARCHA</button>
+    </div>
     <div class="label">INTRO</div>
     <div class="row" id="skipRow">
       <button class="btn" data-s="0">COMPLETA</button>
@@ -248,6 +255,7 @@ const S = {
   base: store.get('base', true),
   skip: store.get('skip', false),
   sound: store.get('sonido', 'instrumentos'),
+  fondo: store.get('fondo', 'monte'),
 };
 
 const LANE_COLORS = ['--l0', '--l1', '--l2', '--l3'].map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim());
@@ -886,6 +894,7 @@ function refreshSel() {
   document.querySelectorAll('#diffRow .btn').forEach(b => b.classList.toggle('sel', b.dataset.d === S.diff));
   document.querySelectorAll('#baseRow .btn').forEach(b => b.classList.toggle('sel', (b.dataset.b === '1') === S.base));
   document.querySelectorAll('#skipRow .btn').forEach(b => b.classList.toggle('sel', (b.dataset.s === '1') === S.skip));
+  document.querySelectorAll('[data-fondo]').forEach(b => b.classList.toggle('sel', b.dataset.fondo === S.fondo));
   document.querySelectorAll('[data-snd]').forEach(b => b.classList.toggle('sel', b.dataset.snd === S.sound));
   $('spd').value = S.speed; $('spdVal').textContent = S.speed.toFixed(1) + 'x';
   if (song) {
@@ -898,6 +907,7 @@ $('diffRow').onclick = (e) => { const d = e.target.closest('[data-d]'); if (d) {
 $('baseRow').onclick = (e) => { const d = e.target.closest('[data-b]'); if (d) { S.base = d.dataset.b === '1'; store.set('base', S.base); refreshSel(); } };
 $('soundRow').parentNode.addEventListener('click', (e) => { const d = e.target.closest('[data-snd]'); if (d && !d.closest('#soundRow')) { S.sound = d.dataset.snd; store.set('sonido', S.sound); refreshSel(); } });
 $('soundRow').onclick = (e) => { const d = e.target.closest('[data-snd]'); if (d) { S.sound = d.dataset.snd; store.set('sonido', S.sound); refreshSel(); } };
+$('fondoRow').onclick = (e) => { const d = e.target.closest('[data-fondo]'); if (d) { S.fondo = d.dataset.fondo; store.set('fondo', S.fondo); refreshSel(); } };
 $('skipRow').onclick = (e) => { const d = e.target.closest('[data-s]'); if (d) { S.skip = d.dataset.s === '1'; store.set('skip', S.skip); refreshSel(); } };
 $('spd').oninput = () => { S.speed = +$('spd').value; store.set('speed', S.speed); refreshSel(); };
 $('backBtn').onclick = () => { show('sMenu'); renderSongList(); };
@@ -1125,6 +1135,60 @@ function themeNow(pos) {
 const rgbC = (c, a) => a == null ? `rgb(${c[0]},${c[1]},${c[2]})` : `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 function framed(x, y, w, h, col) { cx.fillStyle = OUT; cx.fillRect(x - 1, y - 1, w + 2, h + 2); cx.fillStyle = col; cx.fillRect(x, y, w, h); }
 
+// ===== FONDOS: cuatro opciones, todas quietas (nada titila ni se desliza rápido) =====
+const FONDOS = { gradiente: 'Gradiente', monte: 'Montañas', ruta: 'Ruta', marcha: 'Marcha' };
+function skyGrad(th, y0, y1) {
+  const g = cx.createLinearGradient(0, y0, 0, y1);
+  g.addColorStop(0, rgbC(th.sky[0])); g.addColorStop(0.6, rgbC(th.sky[1])); g.addColorStop(1, rgbC(th.sky[2]));
+  return g;
+}
+function mountains(th, hz) {
+  cx.fillStyle = rgbC(th.mt);
+  cx.beginPath(); cx.moveTo(0, hz + 2);
+  for (let i = 0; i <= 40; i++) cx.lineTo(i * W / 40, hz - MOUNT[i]);
+  cx.lineTo(W, hz + 2); cx.closePath(); cx.fill();
+}
+function lanesTint(th, a) {
+  for (let l = 0; l < 4; l++) { cx.fillStyle = rgbC(l % 2 ? th.trA : th.trB, a); cx.fillRect(X0 + l * LW, 0, LW, H); }
+}
+function drawBackdrop(th, pos, pps) {
+  const f = S.fondo, hz = Math.round(H * 0.34);
+  if (f === 'gradiente') {
+    // solo el degradé de la paleta, de arriba a abajo, y los carriles apenas marcados
+    cx.fillStyle = skyGrad(th, 0, H); cx.fillRect(0, 0, W, H);
+    const dk = cx.createLinearGradient(0, H * 0.3, 0, H); dk.addColorStop(0, rgbC(th.trB, 0)); dk.addColorStop(1, rgbC(th.trB, 0.6));
+    cx.fillStyle = dk; cx.fillRect(0, 0, W, H);
+    lanesTint(th, 0.28);
+  } else if (f === 'monte' || f === 'marcha') {
+    cx.fillStyle = skyGrad(th, 0, hz + 20); cx.fillRect(0, 0, W, hz + 2);
+    mountains(th, hz);
+    const gg = cx.createLinearGradient(0, hz, 0, H);
+    gg.addColorStop(0, rgbC(th.sideB)); gg.addColorStop(1, rgbC(th.trB));
+    cx.fillStyle = gg; cx.fillRect(0, hz, W, H - hz);
+    if (f === 'marcha' && ARTE && ARTE.CROWDS && ARTE.CROWDS.length) {
+      // la marcha estudiantil caminando despacio por el horizonte
+      const C = ARTE.CROWDS, cw = 70, ch = Math.round(cw * C[0].uh / C[0].uw), drift = (performance.now() / 1000 * 4) % cw;
+      cx.save(); cx.imageSmoothingEnabled = true; cx.globalAlpha = 0.9;
+      for (let k = -1; k * cw < W + cw; k++) cx.drawImage(C[(k + 50) % C.length], Math.round(k * cw - drift), hz + 4 - ch, cw, ch);
+      cx.restore();
+    }
+    lanesTint(th, 0.45);
+  } else { // ruta: el escenario completo, pero quieto
+    cx.fillStyle = skyGrad(th, 0, hz + 20); cx.fillRect(0, 0, W, hz + 2);
+    mountains(th, hz);
+    cx.fillStyle = rgbC(th.sideA); cx.fillRect(0, hz, X0, H - hz); cx.fillRect(X0 + LW * 4, hz, W - X0 - LW * 4, H - hz);
+    for (let l = 0; l < 4; l++) {
+      const x = X0 + l * LW, c = l % 2 ? th.trA : th.trB;
+      cx.fillStyle = rgbC(c, 0.55); cx.fillRect(x, 0, LW, hz);
+      cx.fillStyle = rgbC(c); cx.fillRect(x, hz, LW, H - hz);
+    }
+    cx.fillStyle = rgbC(th.edge); cx.fillRect(X0 - 2, hz, 2, H - hz); cx.fillRect(X0 + LW * 4, hz, 2, H - hz);
+    cx.fillStyle = rgbC(th.dash, 0.18); for (let l = 1; l < 4; l++) cx.fillRect(X0 + l * LW, 0, 1, H);
+  }
+  // destello del carril al tocar
+  if (G) for (let l = 0; l < 4; l++) if (G.laneFlash[l] > 0) { cx.fillStyle = `rgba(246,239,196,${0.16 * G.laneFlash[l]})`; cx.fillRect(X0 + l * LW, 0, LW, HITY + 8); }
+}
+
 function draw(nowMs, dt) {
   let pos = (nowMs / 1000) % 1000;
   if (G) {
@@ -1133,45 +1197,7 @@ function draw(nowMs, dt) {
   }
   const pps = G ? G.pps : H * 0.6;
   const th = themeNow(pos) || { sky: [[242, 240, 205], [216, 222, 150], [158, 168, 92]], mt: [92, 98, 48], sideA: [82, 86, 32], sideB: [92, 96, 38], edge: [214, 202, 112], trA: [50, 52, 22], trB: [44, 46, 18], dash: [196, 190, 136] };
-  // cielo y montañas
-  const hz = Math.round(H * 0.34);
-  const sg = cx.createLinearGradient(0, 0, 0, hz + 30);
-  sg.addColorStop(0, rgbC(th.sky[0])); sg.addColorStop(0.6, rgbC(th.sky[1])); sg.addColorStop(1, rgbC(th.sky[2]));
-  cx.fillStyle = sg; cx.fillRect(0, 0, W, H);
-  cx.fillStyle = rgbC(th.mt);
-  for (let i = 0; i < 40; i++) { const x = i * 4, h = MOUNT[i]; cx.fillRect(x, hz - h, 4, h + 2); }
-  // costados que "avanzan" con la música
-  const scroll = Math.floor(pos * pps * 0.5);
-  for (let y = hz; y < H; y += 6) {
-    const k = Math.floor((y - scroll) / 6) & 1;
-    cx.fillStyle = rgbC(k ? th.sideA : th.sideB);
-    cx.fillRect(0, y, X0, 6); cx.fillRect(X0 + LW * 4, y, W - X0 - LW * 4, 6);
-  }
-  // pista: carriles oscuros (translúcidos arriba para que se vea el cielo)
-  for (let l = 0; l < 4; l++) {
-    const x = X0 + l * LW, c = l % 2 ? th.trA : th.trB;
-    cx.fillStyle = rgbC(c, 0.55); cx.fillRect(x, 0, LW, hz);
-    cx.fillStyle = rgbC(c); cx.fillRect(x, hz, LW, H - hz);
-    if (G && G.laneFlash[l] > 0) { cx.fillStyle = `rgba(246,239,196,${0.16 * G.laneFlash[l]})`; cx.fillRect(x, 0, LW, HITY + 8); }
-  }
-  // bordes de la pista
-  cx.fillStyle = rgbC(th.edge); cx.fillRect(X0 - 2, hz, 2, H - hz); cx.fillRect(X0 + LW * 4, hz, 2, H - hz);
-  cx.fillStyle = rgbC(th.edge, 0.5); cx.fillRect(X0 - 2, 0, 2, hz); cx.fillRect(X0 + LW * 4, 0, 2, hz);
-  // líneas de pulso (compás más marcado)
-  const beats = G ? G.m.beats : null;
-  if (beats) {
-    for (let i = 0; i < beats.length; i++) {
-      const y = Math.round(HITY - (beats[i] - pos) * pps);
-      if (y < -2) break; if (y > H) continue;
-      cx.fillStyle = rgbC(th.dash, i % 4 === 0 ? 0.55 : 0.22);
-      cx.fillRect(X0, y, LW * 4, i % 4 === 0 ? 2 : 1);
-    }
-  }
-  // separadores de carril: líneas cortadas como las de la ruta, que bajan con la música
-  cx.fillStyle = rgbC(th.dash, 0.8);
-  const off = Math.floor(pos * pps) % 12;
-  for (let l = 1; l < 4; l++) for (let y = -12 + off; y < H; y += 12) cx.fillRect(X0 + l * LW - 1, y, 2, 6);
-
+  drawBackdrop(th, pos, pps);
   if (G) {
     // gemas (bloques con borde oscuro, como los objetos del juego del sonidista)
     const top = pos + (HITY + 20) / pps, bottom = pos - 30 / pps;
