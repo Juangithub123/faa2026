@@ -1146,9 +1146,9 @@ function diagFrame(nowMs, workMs) {
   } else D.aRef = null;
   if (nowMs - D.t0 >= 1000) {
     const fps = D.n * 1000 / (nowMs - D.t0);
-    D.el.textContent = `${fps.toFixed(0)} fps · cuadro ${(D.work / D.n).toFixed(2)} ms · peor salto ${D.maxGap.toFixed(0)} ms · perdidos ${D.drop} · ${gl ? 'webgl' : '2d'}\n` +
+    D.el.textContent = `${fps.toFixed(0)} fps · cuadro ${(D.work / D.n).toFixed(2)} ms · peor salto ${D.maxGap.toFixed(0)} ms · perdidos ${D.drop}/s · ${gl ? 'webgl' : '2d'}\n` +
       `audio: ${ctx ? ctx.sampleRate + ' Hz · latencia ' + ((ctx.baseLatency || 0) * 1000).toFixed(0) + '+' + ((ctx.outputLatency || 0) * 1000).toFixed(0) + ' ms' : 'sin iniciar'} · tirones ${D.aJump} · saltos del reloj ${D.jumps} · notas tarde ${D.late} · ${/Firefox/.test(navigator.userAgent) ? 'Firefox' : /Chrome/.test(navigator.userAgent) ? 'Chrome' : 'otro'}`;
-    D.n = 0; D.work = 0; D.maxGap = 0; D.t0 = nowMs;
+    D.n = 0; D.work = 0; D.maxGap = 0; D.drop = 0; D.t0 = nowMs;
   }
 }
 
@@ -1216,7 +1216,10 @@ function skyGrad(th, y0, y1) {
 }
 // la parte quieta del fondo (degradé, carriles y sus líneas) se pinta en un lienzo aparte y se vuelve a pintar
 // solo cuando cambia algún color de la paleta; en cada cuadro se copia de una vez, que es mucho más liviano
+// Sin WebGL, ese lienzo va en la página, debajo del del juego: la placa de video los superpone sola y el
+// juego solo borra y dibuja lo que se mueve. Con WebGL (Firefox) se copia en cada cuadro.
 const bgC = document.createElement('canvas'), bgX = bgC.getContext('2d');
+if (!gl) { bgC.setAttribute('aria-hidden', 'true'); view.parentNode.insertBefore(bgC, view); }
 let bgKey = '';
 function drawBackdrop(th, pos, pps) {
   const key = W + 'x' + H + '@' + SC + rgbC(th.sky[0]) + rgbC(th.sky[1]) + rgbC(th.sky[2]) + rgbC(th.trA) + rgbC(th.trB) + rgbC(th.dash);
@@ -1233,7 +1236,7 @@ function drawBackdrop(th, pos, pps) {
     for (let l = 0; l <= 4; l++) cx.fillRect(X0 + l * LW - (l === 4 ? 1 : 0), 0, 1, H);
     cx = c0;
   }
-  cx.drawImage(bgC, 0, 0, W, H);
+  if (gl) cx.drawImage(bgC, 0, 0, W, H); else cx.clearRect(0, 0, W, H);
   // pulso: líneas finas que bajan con las notas (más marcada al empezar cada compás)
   const beats = G ? G.m.beats : null;
   if (beats) {
