@@ -1131,7 +1131,7 @@ function loop() {
   requestAnimationFrame(loop);
 }
 // ===== diagnóstico: agregar ?diag a la dirección =====
-const DIAG = /[?&]diag/.test(location.search) ? { el: null, n: 0, work: 0, maxGap: 0, last: 0, t0: 0, late: 0, aJump: 0, aRef: null } : null;
+const DIAG = /[?&]diag/.test(location.search) ? { el: null, n: 0, work: 0, maxGap: 0, last: 0, t0: 0, late: 0, aJump: 0, jumps: 0, aRef: null } : null;
 function diagFrame(nowMs, workMs) {
   const D = DIAG;
   if (!D.el) { D.el = document.createElement('div'); D.el.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;font:11px ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.65);padding:3px 6px;pointer-events:none;white-space:pre-wrap'; document.body.appendChild(D.el); D.t0 = nowMs; }
@@ -1145,7 +1145,7 @@ function diagFrame(nowMs, workMs) {
   if (nowMs - D.t0 >= 1000) {
     const fps = D.n * 1000 / (nowMs - D.t0);
     D.el.textContent = `${fps.toFixed(0)} fps · cuadro ${(D.work / D.n).toFixed(2)} ms · peor salto ${D.maxGap.toFixed(0)} ms · ${gl ? 'webgl' : '2d'}\n` +
-      `audio: ${ctx ? ctx.sampleRate + ' Hz · latencia ' + ((ctx.baseLatency || 0) * 1000).toFixed(0) + '+' + ((ctx.outputLatency || 0) * 1000).toFixed(0) + ' ms' : 'sin iniciar'} · tirones ${D.aJump} · notas tarde ${D.late} · ${/Firefox/.test(navigator.userAgent) ? 'Firefox' : /Chrome/.test(navigator.userAgent) ? 'Chrome' : 'otro'}`;
+      `audio: ${ctx ? ctx.sampleRate + ' Hz · latencia ' + ((ctx.baseLatency || 0) * 1000).toFixed(0) + '+' + ((ctx.outputLatency || 0) * 1000).toFixed(0) + ' ms' : 'sin iniciar'} · tirones ${D.aJump} · saltos del reloj ${D.jumps} · notas tarde ${D.late} · ${/Firefox/.test(navigator.userAgent) ? 'Firefox' : /Chrome/.test(navigator.userAgent) ? 'Chrome' : 'otro'}`;
     D.n = 0; D.work = 0; D.maxGap = 0; D.t0 = nowMs;
   }
 }
@@ -1158,7 +1158,11 @@ function syncClock(nowMs) {
   if (G.sPerf === undefined) { G.sPos = raw; G.sPerf = nowMs; return raw; }
   const pred = smoothPos(nowMs);
   const err = raw - pred;
-  G.sPos = Math.abs(err) > 0.12 ? raw : pred + err * 0.06;
+  // si el audio se atrasa o adelanta de golpe (el teléfono no llegó a generar el sonido a tiempo), la imagen
+  // lo alcanza en unos 150 ms en vez de saltar; solo salta si la diferencia es grande (más de 0,6 s)
+  const ae = Math.abs(err);
+  if (ae > 0.12 && DIAG && (!G.jumpAt || nowMs - G.jumpAt > 500)) { DIAG.jumps++; G.jumpAt = nowMs; }
+  G.sPos = ae > 0.6 ? raw : pred + err * (ae > 0.12 ? 0.3 : 0.06);
   G.sPerf = nowMs;
   return G.sPos;
 }
