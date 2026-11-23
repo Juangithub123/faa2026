@@ -261,6 +261,10 @@ function initAudio() {
     return b;
   };
   NOISE.long = lfsr(1, Math.floor(ctx.sampleRate * 1.0));
+  // reverb para los sonidos de ambiente (pads, cuerdas, coros, efectos): estos NO son 8 bits
+  const rl = Math.floor(ctx.sampleRate * 2.4), ir = ctx.createBuffer(2, rl, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < rl; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / rl, 3.2); }
+  NOISE.ir = ir;
   NOISE.short = lfsr(6, 93 * 8);
 }
 const mtof = (p) => 440 * Math.pow(2, (p - 69) / 12);
@@ -328,6 +332,43 @@ function noiseChannel(bus, buf, vol, hpf) {
   };
 }
 
+// canal de ambiente: sintetizador suave y polifónico (dos osciladores levemente desafinados,
+// filtro, entrada y salida lentas, reverb). Máximo 10 voces a la vez para no cargar el audio.
+function ambientChannel(bus, vol) {
+  const dry = ctx.createGain(); dry.gain.value = 0.75;
+  const rev = ctx.createConvolver(); rev.buffer = NOISE.ir;
+  const wet = ctx.createGain(); wet.gain.value = 0.55;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400; lp.Q.value = 0.3;
+  lp.connect(dry); dry.connect(bus); lp.connect(rev); rev.connect(wet); wet.connect(bus);
+  let voices = []; // {end, o1, o2, g}
+  return {
+    note(t, p, d, v) {
+      voices = voices.filter(x => x.end > t);
+      if (voices.length >= 10) return;
+      const f = mtof(p), a = vol * vel(v);
+      const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain();
+      o1.type = 'triangle'; o2.type = 'sawtooth';
+      o1.frequency.value = f; o2.frequency.value = f; o2.detune.value = 7;
+      const g2 = ctx.createGain(); g2.gain.value = 0.35;
+      o1.connect(g); o2.connect(g2); g2.connect(g); g.connect(lp);
+      const atk = Math.min(0.15, Math.max(0.02, d * 0.2)), rel = 0.45, end = t + Math.max(0.05, d);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a, t + atk);
+      g.gain.setTargetAtTime(a * 0.8, t + atk, 0.3);
+      g.gain.setTargetAtTime(0, end, rel / 3);
+      o1.start(t); o2.start(t); o1.stop(end + rel * 1.5); o2.stop(end + rel * 1.5);
+      voices.push({ end: end + rel, o1, o2, g });
+    },
+    cut(t) { voices.forEach(x => { try { x.g.gain.cancelScheduledValues(t); x.g.gain.setTargetAtTime(0, t, 0.05); } catch (e) {} }); },
+    stop(t) { voices.forEach(x => { try { x.g.gain.cancelScheduledValues(t); x.g.gain.setTargetAtTime(0, t, 0.05); x.o1.stop(t + 0.3); x.o2.stop(t + 0.3); } catch (e) {} }); voices = []; },
+  };
+}
+// ¿esta pista es un sonido de ambiente? (pads, cuerdas sostenidas, coros, efectos de sintetizador y de sonido)
+function isAmbient(v) {
+  if (v.drums) return false;
+  const p = v.program;
+  return (p >= 40 && p <= 44) || (p >= 48 && p <= 54) || (p >= 88 && p <= 103) || p === 119 || p >= 120 && p <= 127;
+}
+
 // juego de canales: uno para la base y otro (más presente) para lo que toca el jugador
 function makeChannels(player) {
   const bus = ctx.createGain(); bus.connect(master);
@@ -341,6 +382,7 @@ function makeChannels(player) {
     noise: noiseChannel(bus, NOISE.long, 0.2 * k, 120),
     hat: noiseChannel(bus, NOISE.long, 0.1 * k, 5000),
     metal: noiseChannel(bus, NOISE.short, 0.07 * k, 3000),
+    amb: ambientChannel(bus, player ? 0.09 : 0.06),
   };
 }
 function stopChannels(C, t) { if (!C) return; for (const k in C) if (C[k] && C[k].stop) C[k].stop(t); setTimeout(() => { try { C.bus.disconnect(); } catch (e) {} }, 600); }
@@ -411,10 +453,11 @@ function drumEvents(notes) {
 
 function prepareBase(midi, part, chart) {
   const exclude = new Set(part.voices);
-  const lead = [], bass = [], harm = [], drums = [];
+  const lead = [], bass = [], harm = [], drums = [], amb = [];
   for (const v of midi.voices) {
     if (exclude.has(v)) continue;
     if (v.drums) { drums.push(...v.notes); continue; }
+    if (v.role === 'harmony' && isAmbient(v)) { amb.push(...v.notes); continue; }
     if (v.role === 'lead' || v.role === 'bass') {
       const hi = v.role === 'lead';
       const mono = K.monophonic(v.notes.map(n => ({ ...n, main: false })), hi);
@@ -430,6 +473,7 @@ function prepareBase(midi, part, chart) {
   trimMono(K.monophonic(bass, false).map(n => ({ t: n.t, d: n.d, ch: 'bass', n }))).forEach(e => evs.push(e));
   drumEvents(drums).forEach(e => evs.push(e));
   harmonySegments(harm).forEach(sg => evs.push({ t: sg.t, d: sg.d, ch: 'harm', sg }));
+  amb.forEach(n => evs.push({ t: n.t, d: n.d, ch: 'amb', n }));
   evs.sort((a, b) => a.t - b.t);
   return evs;
 }
@@ -443,6 +487,8 @@ function preparePlayer(part, chart) {
     const notes = all.map(x => x.n);
     const owner = new Map(all.map(x => [x.n, x.g]));
     drumEvents(notes).forEach(e => evs.push({ ...e, g: owner.get(e.n) }));
+  } else if (part.voices.every(isAmbient)) {
+    all.forEach(x => evs.push({ t: x.n.t, d: x.n.d, ch: 'amb', n: x.n, g: x.g }));
   } else {
     const mainCh = part.kind === 'bass' ? 'bass' : 'lead';
     const main = [], rest = [];
