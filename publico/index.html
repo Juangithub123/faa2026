@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FAA! 2026 · Festival Artístico Audiovisual</title>
+<meta name="description" content="Programa del FAA! 2026 en El Bolsón, del 25 al 29 de noviembre: actividades, sedes, mapa, calendario y juegos.">
+<meta name="theme-color" content="#1F3A12">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FAA! 2026">
+<meta property="og:title" content="FAA! 2026 · Festival Artístico Audiovisual">
+<meta property="og:description" content="Programa, sedes y mapa del festival. Del 25 al 29 de noviembre, El Bolsón.">
+<link rel="stylesheet" href="app.css">
+<script>try{var t=localStorage.getItem('faap-theme');if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}</script>
+</head>
+<body class="pub">
+<header class="top">
+  <a class="brand" href="#programa" aria-label="FAA! 2026 · Programa"><img src="logo.webp" width="152" height="32" alt="Festival Artístico Audiovisual FAA! 2026"></a>
+  <button class="pdfbtn" type="button" data-act="pdf" aria-label="Cronograma en PDF: compartir o descargar">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2.5h8l4.5 4.5v13A1.5 1.5 0 0 1 17 21.5H6A1.5 1.5 0 0 1 4.5 20V4A1.5 1.5 0 0 1 6 2.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M13.5 2.5V7.5h5M8 13h8M8 16.5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Cronograma</span>
+  </button>
+  <button class="helpbtn" id="helpbtn" type="button" data-act="help" aria-label="Ayuda">?</button>
+</header>
+<nav class="days" id="days" aria-label="Día del festival"></nav>
+<main id="app" tabindex="-1"><p class="loading">Cargando el programa…</p></main>
+<dialog class="sheet" id="calsheet" aria-labelledby="calt"><div class="sheet-in" id="calin"></div></dialog>
+<dialog class="sheet help" id="helpsheet" aria-labelledby="helpt"><div class="sheet-in" id="helpin"></div></dialog>
+<dialog class="sheet" id="pdfsheet" aria-labelledby="pdft">
+  <div class="sheet-in">
+    <p class="kicker">PDF</p>
+    <h2 id="pdft">Cronograma oficial FAA! 2026</h2>
+    <p class="small muted">Del 25 al 29 de noviembre · El Bolsón. Funciona también sin señal.</p>
+    <div class="sheet-btns">
+      <button class="btn pri big" type="button" data-act="pdf-share"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.5" fill="currentColor"/><circle cx="6" cy="12" r="2.5" fill="currentColor"/><circle cx="18" cy="19" r="2.5" fill="currentColor"/><path d="M8.2 10.8 15.8 6.2M8.2 13.2l7.6 4.6" stroke="currentColor" stroke-width="2"/></svg>Compartir</button>
+      <a class="btn big" href="cronograma-faa-2026.pdf" download="Cronograma FAA 2026.pdf"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4.5 20.5h15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Descargar</a>
+      <a class="btn big" href="cronograma-faa-2026.pdf" target="_blank" rel="noopener">Ver</a>
+    </div>
+    <button class="btn sm sheet-x" type="button" data-act="pdf-close">Cerrar</button>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<nav class="nav" id="nav" aria-label="Secciones">
+  <button type="button" data-go="programa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3M17 2v3M3.5 9h17M5 4.5h14A1.5 1.5 0 0 1 20.5 6v13.5A1.5 1.5 0 0 1 19 21H5a1.5 1.5 0 0 1-1.5-1.5V6A1.5 1.5 0 0 1 5 4.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Programa</span></button>
+  <button type="button" data-go="mapa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a6.5 6.5 0 0 0-6.5 6.5c0 4.6 6.5 12.5 6.5 12.5S18.5 13.6 18.5 9A6.5 6.5 0 0 0 12 2.5Zm0 9a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z" fill="currentColor"/></svg><span>Mapa</span></button>
+  <button type="button" data-go="juegos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7.5h10a4.5 4.5 0 0 1 4.3 5.9l-1.2 3.7a2.3 2.3 0 0 1-3.9.8L14 15.5h-4l-2.2 2.4a2.3 2.3 0 0 1-3.9-.8l-1.2-3.7A4.5 4.5 0 0 1 7 7.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 10.5v3M6.5 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="15.5" cy="11" r="1.1" fill="currentColor"/><circle cx="17.5" cy="13" r="1.1" fill="currentColor"/></svg><span>Juegos</span></button>
+  <button type="button" data-go="mas"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="19" cy="12" r="2.2" fill="currentColor"/></svg><span>Más</span></button>
+</nav>
+<script src="app.js" defer></script>
+</body>
+</html>

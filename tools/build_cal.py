@@ -18,6 +18,7 @@ import json, os, datetime, hashlib
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE = 'https://juangithub123.github.io/faa2026/'
 OUT = os.path.join(ROOT, 'cal')
+UIDDOM = 'juangithub123.github.io'   # dominio de los UID (la versión pública usa otro)
 TZ = datetime.timezone(datetime.timedelta(hours=-3))  # Argentina, sin horario de verano
 
 d = json.load(open(os.path.join(ROOT, 'data.json'), encoding='utf-8'))
@@ -77,7 +78,7 @@ def vevent(uid, day, s, e, title, loc, desc, url):
         L.append('LOCATION:' + esc(loc))
     if desc:
         L.append('DESCRIPTION:' + esc(desc))
-    L += ['URL:' + url, 'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(title), 'TRIGGER:-PT1H', 'END:VALARM', 'END:VEVENT']
+    L += (['URL:' + url] if BASE else []) + ['BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(title), 'TRIGGER:-PT1H', 'END:VALARM', 'END:VEVENT']
     return L
 
 
@@ -107,7 +108,7 @@ def ev_desc(e):
 
 
 def ev_block(e):
-    return vevent('faa2026-' + e['id'] + '@juangithub123.github.io', e['day'], e['s'], e.get('e'), e['t'] + ' · FAA! 2026',
+    return vevent('faa2026-' + e['id'] + '@' + UIDDOM, e['day'], e['s'], e.get('e'), e['t'] + ' · FAA! 2026',
                   place(e['v'], e.get('room', '')), ev_desc(e), BASE + '#programa-' + str(DAYS[e['day']]['k']))
 
 
@@ -135,7 +136,7 @@ def write(rel, text):
     return True
 
 
-def main():
+def main(public=False):
     pub = [e for e in d['events'] if e.get('tag') != 'Equipo']
     changed = 0
     keep = set()
@@ -151,29 +152,30 @@ def main():
     for k, (name, evs) in groups.items():
         rel = k + '.ics'; keep.add(rel)
         changed += write(rel, calendar(name, [ev_block(e) for e in evs], 'Festival Artístico Audiovisual FAA! 2026 · El Bolsón · 25 al 29 de noviembre'))
-    # turnos oficiales de cada persona (sin las sugerencias)
-    members = {}
-    for p in d['people']:
-        for a in p.get('a') or []:
-            members.setdefault(a, []).append(p['id'])
-    mine = {pid: [] for pid in PEOPLE}
-    for sh in d['shifts']:
-        if sh.get('sug'):
-            continue
-        pids = sh['pids'] if sh.get('pids') is not None else members.get(sh['area'], [])
-        for pid in pids:
-            if pid in mine:
-                mine[pid].append(sh)
-    for pid, shs in mine.items():
-        evs = []
-        for sh in sorted(shs, key=lambda x: (x['day'], x['s'])):
-            area = AREAS.get(sh['area'], {}).get('n', '')
-            desc = 'Turno de ' + area + '.' + ('\n' + sh['note'] if sh.get('note') else '') + \
-                   ('\nCon: ' + ', '.join(sh.get('who') or []) if sh.get('who') else '') + '\nGuía del staff: ' + BASE
-            evs.append(vevent('faa2026-' + sh['id'] + '-' + pid + '@juangithub123.github.io', sh['day'], sh['s'], sh.get('e'),
-                              'Turno FAA!: ' + sh['t'], place(sh['v']), desc, BASE + '#turnos-' + str(DAYS[sh['day']]['k'])))
-        rel = 'staff/' + pid + '.ics'; keep.add(rel)
-        changed += write(rel, calendar('FAA! 2026 · Mis turnos (' + PEOPLE[pid]['n'].split(' ')[0] + ')', evs, 'Turnos oficiales del staff del FAA! 2026'))
+    # turnos oficiales de cada persona (sin las sugerencias); la versión pública no los lleva
+    if not public:
+        members = {}
+        for p in d['people']:
+            for a in p.get('a') or []:
+                members.setdefault(a, []).append(p['id'])
+        mine = {pid: [] for pid in PEOPLE}
+        for sh in d['shifts']:
+            if sh.get('sug'):
+                continue
+            pids = sh['pids'] if sh.get('pids') is not None else members.get(sh['area'], [])
+            for pid in pids:
+                if pid in mine:
+                    mine[pid].append(sh)
+        for pid, shs in mine.items():
+            evs = []
+            for sh in sorted(shs, key=lambda x: (x['day'], x['s'])):
+                area = AREAS.get(sh['area'], {}).get('n', '')
+                desc = 'Turno de ' + area + '.' + ('\n' + sh['note'] if sh.get('note') else '') + \
+                       ('\nCon: ' + ', '.join(sh.get('who') or []) if sh.get('who') else '') + '\nGuía del staff: ' + BASE
+                evs.append(vevent('faa2026-' + sh['id'] + '-' + pid + '@' + UIDDOM, sh['day'], sh['s'], sh.get('e'),
+                                  'Turno FAA!: ' + sh['t'], place(sh['v']), desc, BASE + '#turnos-' + str(DAYS[sh['day']]['k'])))
+            rel = 'staff/' + pid + '.ics'; keep.add(rel)
+            changed += write(rel, calendar('FAA! 2026 · Mis turnos (' + PEOPLE[pid]['n'].split(' ')[0] + ')', evs, 'Turnos oficiales del staff del FAA! 2026'))
     # borrar calendarios de actividades o personas que ya no existen
     for dp, _, fs in os.walk(OUT):
         for f in fs:
@@ -184,4 +186,12 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    # uso público: build_cal.py --public CARPETA_DE_SALIDA [URL_BASE]
+    if len(sys.argv) > 2 and sys.argv[1] == '--public':
+        OUT = os.path.abspath(sys.argv[2])
+        BASE = sys.argv[3] if len(sys.argv) > 3 else ''
+        UIDDOM = 'publico.faa2026'
+        main(public=True)
+    else:
+        main()

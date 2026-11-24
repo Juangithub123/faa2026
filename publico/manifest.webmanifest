@@ -1,0 +1,23 @@
+{
+  "id": "./",
+  "name": "FAA! 2026 · Festival Artístico Audiovisual",
+  "short_name": "FAA! 2026",
+  "description": "Programa, sedes, mapa y juegos del FAA! 2026. Del 25 al 29 de noviembre, El Bolsón.",
+  "lang": "es-AR",
+  "start_url": "./#programa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F4EE",
+  "theme_color": "#1F3A12",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Programa", "url": "./#programa" },
+    { "name": "Mapa", "url": "./#mapa" },
+    { "name": "Juegos", "url": "./#juegos" }
+  ]
+}
