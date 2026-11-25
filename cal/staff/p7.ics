@@ -10,7 +10,7 @@ X-PUBLISHED-TTL:PT6H
 X-WR-CALDESC:Turnos oficiales del staff del FAA! 2026
 BEGIN:VEVENT
 UID:faa2026-s127-p7@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261125T004546Z
 DTSTART:20261126T180000Z
 DTEND:20261126T203000Z
 SUMMARY:Turno FAA!: Proyección de Nuestra Tierra
@@ -26,8 +26,26 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
+UID:faa2026-s128-p7@juangithub123.github.io
+DTSTAMP:20261125T004546Z
+DTSTART:20261126T205000Z
+DTEND:20261126T221000Z
+SUMMARY:Turno FAA!: Proyección de Cortos Patagónicos
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Turno de Programación.\nCon: Abi Larotonda\, Valen (falta en l
+ a lista del staff)\nGuía del staff: https://juangithub123.github.io/faa20
+ 26/
+URL:https://juangithub123.github.io/faa2026/#turnos-26
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Proyección de Cortos Patagónicos
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
 UID:faa2026-s134-p7@juangithub123.github.io
-DTSTAMP:20261120T223449Z
+DTSTAMP:20261125T004546Z
 DTSTART:20261127T213000Z
 DTEND:20261128T003000Z
 SUMMARY:Turno FAA!: Proyección de Fuera de Combate y de la Competencia de 
@@ -35,30 +53,13 @@ SUMMARY:Turno FAA!: Proyección de Fuera de Combate y de la Competencia de
 LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
  del Bicentenario\, El Bolsón
 DESCRIPTION:Turno de Programación.\nFuera de Combate de 18:30 a 19:30\; Co
- rtos LDAA de 19:30 a 21:30.\nCon: Abi Larotonda\nGuía del staff: https://
- juangithub123.github.io/faa2026/
+ rtos LDAA de 19:30 a 21:30.\nCon: Abi Larotonda\, Valen (falta en la lista
+  del staff)\nGuía del staff: https://juangithub123.github.io/faa2026/
 URL:https://juangithub123.github.io/faa2026/#turnos-27
 BEGIN:VALARM
 ACTION:DISPLAY
 DESCRIPTION:Turno FAA!: Proyección de Fuera de Combate y de la Competencia
   de Cortos LDAA
-TRIGGER:-PT1H
-END:VALARM
-END:VEVENT
-BEGIN:VEVENT
-UID:faa2026-s139-p7@juangithub123.github.io
-DTSTAMP:20261120T223449Z
-DTSTART:20261129T183000Z
-DTEND:20261129T203000Z
-SUMMARY:Turno FAA!: Proyección de ganadores
-LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
-DESCRIPTION:Turno de Programación.\nCon: Abi Larotonda\, Martina Calá\, A
- na Laura Castrilli\nGuía del staff: https://juangithub123.github.io/faa20
- 26/
-URL:https://juangithub123.github.io/faa2026/#turnos-29
-BEGIN:VALARM
-ACTION:DISPLAY
-DESCRIPTION:Turno FAA!: Proyección de ganadores
 TRIGGER:-PT1H
 END:VALARM
 END:VEVENT

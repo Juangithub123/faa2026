@@ -9,19 +9,55 @@ REFRESH-INTERVAL;VALUE=DURATION:PT6H
 X-PUBLISHED-TTL:PT6H
 X-WR-CALDESC:Turnos oficiales del staff del FAA! 2026
 BEGIN:VEVENT
-UID:faa2026-s128-p47@juangithub123.github.io
-DTSTAMP:20261120T223449Z
-DTSTART:20261126T205000Z
-DTEND:20261126T221000Z
-SUMMARY:Turno FAA!: Proyección de Cortos Patagónicos
+UID:faa2026-s129-p47@juangithub123.github.io
+DTSTAMP:20261125T004546Z
+DTSTART:20261126T221500Z
+DTEND:20261127T000000Z
+SUMMARY:Turno FAA!: Proyección de Iberah
 LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
  del Bicentenario\, El Bolsón
-DESCRIPTION:Turno de Programación.\nCon: Alejandro Movia\nGuía del staff:
-  https://juangithub123.github.io/faa2026/
+DESCRIPTION:Turno de Programación.\nAlejo Estrabou presenta la película a
+ l final.\nCon: Alejandro Movia\, Antonio Borchardt\nGuía del staff: https
+ ://juangithub123.github.io/faa2026/
 URL:https://juangithub123.github.io/faa2026/#turnos-26
 BEGIN:VALARM
 ACTION:DISPLAY
-DESCRIPTION:Turno FAA!: Proyección de Cortos Patagónicos
+DESCRIPTION:Turno FAA!: Proyección de Iberah
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s136-p47@juangithub123.github.io
+DTSTAMP:20261125T004546Z
+DTSTART:20261128T170000Z
+DTEND:20261128T181500Z
+SUMMARY:Turno FAA!: Proyección del repaso de Cortos LDAA
+LOCATION:Bicentenario\, Gral. Roca 644 · Casa de la Historia y la Cultura 
+ del Bicentenario\, El Bolsón
+DESCRIPTION:Turno de Programación.\nCon: Gabriela Angulo\, Alejandro Movia
+ \nGuía del staff: https://juangithub123.github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Proyección del repaso de Cortos LDAA
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:faa2026-s137-p47@juangithub123.github.io
+DTSTAMP:20261125T004546Z
+DTSTART:20261128T203000Z
+DTEND:20261128T222000Z
+SUMMARY:Turno FAA!: Proyección de la Competencia global de Estudiantes (Au
+ la 2)
+LOCATION:UNRN\, Av. San Martín 2650\, El Bolsón
+DESCRIPTION:Turno de Programación.\nCon: Gabriela Angulo\, Alejandro Movia
+ \nGuía del staff: https://juangithub123.github.io/faa2026/
+URL:https://juangithub123.github.io/faa2026/#turnos-28
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Turno FAA!: Proyección de la Competencia global de Estudiantes
+  (Aula 2)
 TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
