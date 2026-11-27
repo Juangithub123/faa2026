@@ -9,14 +9,16 @@ REFRESH-INTERVAL;VALUE=DURATION:PT6H
 X-PUBLISHED-TTL:PT6H
 BEGIN:VEVENT
 UID:faa2026-d6@juangithub123.github.io
-DTSTAMP:20261120T232611Z
+DTSTAMP:20261127T233825Z
 DTSTART:20261129T023000Z
 DTEND:20261129T070000Z
 SUMMARY:RAVE FAA! · FAA! 2026
 LOCATION:La Esquina\, Sobre Perito Moreno\, a metros de Entre Amigos\, El B
  olsón
-DESCRIPTION:Line up con DJs · de 23:30 a 04:00\nFAA! 2026 · Festival Art
- ístico Audiovisual · El Bolsón
+DESCRIPTION:Line up con DJs · de 23:30 a 04:00 · Staff y acreditadxs: 2 t
+ ragos (fernet\, vermouth\, destornillador o gin) por $15.000 con la acredi
+ tación en mano\nFAA! 2026 · Festival Artístico Audiovisual · El Bolsó
+ n
 URL:https://juangithub123.github.io/faa2026/#programa-28
 BEGIN:VALARM
 ACTION:DISPLAY
