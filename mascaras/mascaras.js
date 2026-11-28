@@ -9,6 +9,8 @@
 var MODEL = 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite';
 var WASM = './mp/vision_wasm_internal.wasm';
 var WASM_BYTES = 14665716, MODEL_BYTES = 230000; /* tamaños reales, por si el servidor no los informa */
+/* modelo pesado, solo para el modo foto: 478 puntos de la cara con su profundidad (~3,7 MB) */
+var LMODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task', LMODEL_BYTES = 3758596;
 var $ = function (id) { return document.getElementById(id); };
 var cv = $('cv'), ctx = cv.getContext('2d'), vid = $('vid');
 var delegate = '', detector = null, stream = null, facing = 'user', mask = 'tera-rosa';
@@ -120,7 +122,13 @@ function headFrame(P, tr, now) {
   }
   var Z = cross(X, Y);
   var O = [mx - dot(rx, CANM), my - dot(ry, CANM), 0], s = k * UNIT;
-  var F = { O: O, s: s, X: X, Y: Y, Z: Z, f: cv.width * 1.6, A: ANCH };
+  return makeFrame(O, s, X, Y, Z, cv.width * 1.6);
+}
+
+/* el marco de una cabeza: origen en la imagen (entre las pupilas), tamaño de la unidad en píxeles, ejes de la cabeza
+   vistos en la imagen y distancia focal (para la perspectiva) */
+function makeFrame(O, s, X, Y, Z, f) {
+  var F = { O: O, s: s, X: X, Y: Y, Z: Z, f: f, A: ANCH };
   F.world = function (m) { return add(O, mul(add(add(mul(X, m[0]), mul(Y, m[1])), mul(Z, m[2])), s)); };
   F.proj = function (m) {
     var w = F.world(m), kk = F.f / (F.f + (w[2] - O[2]));
@@ -400,18 +408,23 @@ function render(now, s) {
   var W = cv.width, H = cv.height; s = s || 1;
   ctx.setTransform(s, 0, 0, s, 0, 0);
   if (facing === 'user') { ctx.setTransform(-s, 0, 0, s, W * s, 0); }
-  ctx.drawImage(vid, 0, 0, W, H);
+  drawScene(vid, W, H, faces.map(function (tr) { return function () { return headFrame(predicted(tr, now), tr, now); }; }));
+}
+
+/* dibuja la imagen de fondo y una máscara por cada marco (frames: funciones que arman el marco de cada cabeza) */
+function drawScene(src, W, H, frames) {
+  ctx.drawImage(src, 0, 0, W, H);
   var m = MASKS.filter(function (x) { return x.id === mask; })[0];
   if (!m || !m.fn) { return; }
-  faces.forEach(function (tr) {
-    F = headFrame(predicted(tr, now), tr, now); items = [];
+  frames.forEach(function (mk) {
+    F = mk(); items = [];
     m.fn();
-    /* la cabeza invisible: vuelve a dibujar el video real dentro del contorno de la cabeza, a la profundidad del centro
+    /* la cabeza invisible: vuelve a dibujar la imagen real dentro del contorno de la cabeza, a la profundidad del centro
        de la cabeza; lo que se dibujó antes (lo que está detrás) queda tapado por la cabeza de verdad */
     var head = F.head;
     items.push({ z: F.headZ, draw: function () {
       ctx.save(); ctx.beginPath(); head.forEach(function (p, i) { if (i) { ctx.lineTo(p[0], p[1]); } else { ctx.moveTo(p[0], p[1]); } });
-      ctx.closePath(); ctx.clip(); ctx.drawImage(vid, 0, 0, W, H); ctx.restore();
+      ctx.closePath(); ctx.clip(); ctx.drawImage(src, 0, 0, W, H); ctx.restore();
     } });
     items.sort(function (a, b) { return b.z - a.z; }).forEach(function (it) { it.draw(); });
   });
@@ -442,25 +455,48 @@ function grab(url, approx, onp) {
   });
 }
 
-var prog = { wasm: 0, model: 0 };
+var prog = { wasm: 0, model: 0, lm: 0, heavy: false };
 function showProgress() {
-  var p = (prog.wasm * WASM_BYTES + prog.model * MODEL_BYTES) / (WASM_BYTES + MODEL_BYTES);
+  if (prog.heavy && prog.base) { $('nivel').setAttribute('y', String(118 - 104 * prog.lm)); return; }
+  var n = WASM_BYTES + MODEL_BYTES + (prog.heavy ? LMODEL_BYTES : 0);
+  var p = (prog.wasm * WASM_BYTES + prog.model * MODEL_BYTES + (prog.heavy ? prog.lm * LMODEL_BYTES : 0)) / n;
   $('nivel').setAttribute('y', String(118 - 104 * p));
   $('meter').setAttribute('aria-valuenow', String(Math.round(p * 100)));
 }
 
-function loadDetector() {
-  var mpP = import('./mp/vision_bundle.mjs');
-  var wasmP = grab(WASM, WASM_BYTES, function (p) { prog.wasm = p; showProgress(); });
-  var modelP = grab(MODEL, MODEL_BYTES, function (p, total) { MODEL_BYTES = total; prog.model = p; showProgress(); });
-  return Promise.all([mpP, wasmP, modelP]).then(function (r) {
-    var mp = r[0], wasmUrl = URL.createObjectURL(new Blob([r[1]], { type: 'application/wasm' })), model = r[2];
-    return mp.FilesetResolver.forVisionTasks('./mp').then(function (files) {
-      files.wasmBinaryPath = wasmUrl;
-      var opts = function (delegate) { return { baseOptions: { modelAssetBuffer: new Uint8Array(model), delegate: delegate }, runningMode: 'VIDEO', minDetectionConfidence: 0.5 }; };
-      return mp.FaceDetector.createFromOptions(files, opts('GPU')).then(function (d) { delegate = 'GPU'; return d; }).catch(function () { delegate = 'CPU'; return mp.FaceDetector.createFromOptions(files, opts('CPU')); });
+/* el motor y el modelo chico se bajan una sola vez y los comparten la cámara y el modo foto */
+var engineP = null, modelP = null;
+function loadEngine() {
+  if (!engineP) {
+    var mpP = import('./mp/vision_bundle.mjs');
+    var wasmP = grab(WASM, WASM_BYTES, function (p) { prog.wasm = p; showProgress(); });
+    engineP = Promise.all([mpP, wasmP]).then(function (r) {
+      var mp = r[0], wasmUrl = URL.createObjectURL(new Blob([r[1]], { type: 'application/wasm' }));
+      return mp.FilesetResolver.forVisionTasks('./mp').then(function (files) { files.wasmBinaryPath = wasmUrl; return { mp: mp, files: files }; });
     });
+    engineP.catch(function () { engineP = null; });
+  }
+  return engineP;
+}
+function loadModel() {
+  if (!modelP) {
+    modelP = grab(MODEL, MODEL_BYTES, function (p, total) { MODEL_BYTES = total; prog.model = p; showProgress(); });
+    modelP.catch(function () { modelP = null; });
+  }
+  return modelP;
+}
+/* crea una tarea de MediaPipe en la placa de video; si no se puede, en el procesador */
+function create(Task, buf, extra) {
+  return loadEngine().then(function (e) {
+    var opts = function (d) { var o = { baseOptions: { modelAssetBuffer: new Uint8Array(buf), delegate: d } }; for (var k in extra) { o[k] = extra[k]; } return o; };
+    return e.mp[Task].createFromOptions(e.files, opts('GPU')).then(function (t) { t.dlg = 'GPU'; return t; })
+      .catch(function () { return e.mp[Task].createFromOptions(e.files, opts('CPU')).then(function (t) { t.dlg = 'CPU'; return t; }); });
   });
+}
+function loadDetector() {
+  return Promise.all([loadEngine(), loadModel()]).then(function (r) {
+    return create('FaceDetector', r[1], { runningMode: 'VIDEO', minDetectionConfidence: 0.5 });
+  }).then(function (d) { delegate = d.dlg; return d; });
 }
 
 function say(t, ms) {
@@ -473,6 +509,7 @@ $('start').addEventListener('click', function () {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('note').textContent = 'Este navegador no deja usar la cámara.'; b.disabled = true; return; }
   b.disabled = true;
   startCamera().then(function () {
+    camOn = true;
     [].forEach.call(box.querySelectorAll('p,.go'), function (el) { el.hidden = true; });
     $('meter').hidden = false; running = true; loop();
     return loadDetector().then(function (d) { detector = d; }).catch(function () {
@@ -488,7 +525,7 @@ $('flip').addEventListener('click', function () {
   startCamera().catch(function () { facing = 'user'; startCamera(); });
 });
 
-$('ttl').addEventListener('click', function () { var el = $('stats'); el.hidden = !el.hidden; showStats(); });
+$('ttl').addEventListener('click', function () { var el = $('stats'); el.hidden = !el.hidden; if (still) { showStill(); } else { showStats(); } });
 
 /* ---------- Selector ---------- */
 $('chips').innerHTML = MASKS.map(function (m) { return '<button class="chip" type="button" data-m="' + m.id + '" aria-pressed="' + (m.id === mask) + '">' + m.name + '</button>'; }).join('');
@@ -496,6 +533,7 @@ $('chips').addEventListener('click', function (e) {
   var b = e.target.closest('[data-m]'); if (!b) { return; }
   mask = b.dataset.m;
   [].forEach.call(this.children, function (c) { c.setAttribute('aria-pressed', String(c === b)); });
+  if (still) { drawStill(); }
 });
 
 /* ---------- Guardar ---------- */
@@ -516,17 +554,26 @@ function save(blob, name) {
 /* ---------- Foto: se vuelve a dibujar el cuadro a la resolución completa de la cámara ---------- */
 function photo() {
   if (!running || !cv.width) { return; }
-  var s = Math.max(1, vid.videoWidth / cv.width), W = Math.round(cv.width * s), H = Math.round(cv.height * s), band = Math.round(W * 0.12);
-  var out = document.createElement('canvas'); out.width = W; out.height = H + band;
+  var s = Math.max(1, vid.videoWidth / cv.width);
+  faces = tracks.filter(function (tr) { return tr.pts; });
+  saveJpg(banded(Math.round(cv.width * s), Math.round(cv.height * s), function () { render(performance.now(), s); }));
+}
+
+/* arma la imagen final: lo que dibuja draw (W×H) y debajo la franja verde con el logo */
+function banded(W, H, draw) {
+  var band = Math.round(W * 0.12), out = document.createElement('canvas'); out.width = W; out.height = H + band;
   var o = out.getContext('2d'), keep = ctx;
   ctx = o;
-  try { faces = tracks.filter(function (tr) { return tr.pts; }); render(performance.now(), s); } finally { ctx = keep; }
+  try { draw(); } finally { ctx = keep; }
   o.setTransform(1, 0, 0, 1, 0, 0);
   o.fillStyle = '#1F3A12'; o.fillRect(0, H, W, band);
   var pad = band * 0.2;
   if (logo.complete && logo.naturalWidth) { var lh = band * 0.56, lw = lh * logo.naturalWidth / logo.naturalHeight; o.drawImage(logo, pad, H + (band - lh) / 2, lw, lh); }
   o.fillStyle = '#F4F7D9'; o.font = '700 ' + Math.round(band * 0.26) + 'px system-ui,sans-serif'; o.textAlign = 'right'; o.textBaseline = 'middle';
   o.fillText('equipo FAA! 2026', W - pad, H + band / 2);
+  return out;
+}
+function saveJpg(out) {
   var fl = $('flash'); fl.classList.add('on'); setTimeout(function () { fl.classList.remove('on'); }, 60);
   out.toBlob(function (blob) { if (blob) { save(blob, 'faa2026-' + stamp() + '.jpg'); } }, 'image/jpeg', 0.95);
 }
@@ -574,11 +621,13 @@ function stopRec() {
 }
 
 $('shot').addEventListener('click', function () {
+  if (still) { saveJpg(banded(still.W, still.H, drawStill)); return; }
   if (mode === 'foto') { photo(); }
   else if (recording) { stopRec(); }
   else if (running) { startRec(); }
 });
 $('mode').addEventListener('click', function () {
+  if (still) { exitStill(); return; }
   if (recording) { return; }
   mode = mode === 'foto' ? 'video' : 'foto';
   this.textContent = mode === 'foto' ? 'Video' : 'Foto';
@@ -587,7 +636,231 @@ $('mode').addEventListener('click', function () {
   $('shot').setAttribute('aria-label', mode === 'foto' ? 'Sacar foto' : 'Grabar video');
 });
 
+/* ---------- Modo foto: una imagen de la galería, analizada con el modelo pesado ----------
+   1) El detector chico recorre la foto entera y después por partes cada vez más chicas (mosaicos que se pisan a la mitad),
+      así encuentra también las caras chiquitas del fondo de una foto grupal.
+   2) Cada cara encontrada se recorta y pasa por el Face Landmarker: 478 puntos de la cara. Si no confirma que es una cara,
+      se descarta (así se filtran los falsos positivos de los mosaicos).
+   3) La pose se ajusta con esos ~400 puntos contra el modelo de cara de MediaPipe (sin labios ni párpados, que se mueven),
+      con el mismo método que en vivo pero con muchos más puntos: mucho más precisa. */
+var still = null, camOn = false, heavyP = null, CANON = null, CANF = null;
+var MAXS = 4096; /* lado mayor con el que se trabaja (y se guarda) la foto */
+/* corrección entre el modelo de cara de MediaPipe y el de la cámara en vivo, para que la tera quede igual en los dos modos */
+var CAL = { pitch: -0.155, d: [0, 0, 0] }; /* medido: el modelo de MediaPipe queda ~9° más inclinado hacia atrás */
+
+function inv3(a) {
+  var det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+  return [
+    [(a[1][1] * a[2][2] - a[1][2] * a[2][1]) / det, (a[0][2] * a[2][1] - a[0][1] * a[2][2]) / det, (a[0][1] * a[1][2] - a[0][2] * a[1][1]) / det],
+    [(a[1][2] * a[2][0] - a[1][0] * a[2][2]) / det, (a[0][0] * a[2][2] - a[0][2] * a[2][0]) / det, (a[0][2] * a[1][0] - a[0][0] * a[1][2]) / det],
+    [(a[1][0] * a[2][1] - a[1][1] * a[2][0]) / det, (a[0][1] * a[2][0] - a[0][0] * a[2][1]) / det, (a[0][0] * a[1][1] - a[0][1] * a[1][0]) / det]
+  ];
+}
+/* prepara un modelo para el ajuste: puntos en cm (mismo sistema que CAN) y pesos */
+function prepModel(pts, w) {
+  var ws = 0, M = [0, 0, 0], g = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  pts.forEach(function (p, n) { ws += w[n]; M = add(M, mul(p, w[n])); });
+  M = mul(M, 1 / ws);
+  var C = pts.map(function (p) { return sub(p, M); });
+  C.forEach(function (p, n) { for (var i = 0; i < 3; i++) { for (var j = 0; j < 3; j++) { g[i][j] += w[n] * p[i] * p[j]; } } });
+  return { C: C, M: M, w: w, ws: ws, G: inv3(g) };
+}
+/* pose por ortografía y escala con N puntos (P: puntos en la imagen, en el mismo orden que el modelo) */
+function posFit(P, md, fl, cal) {
+  var n = P.length, mx = 0, my = 0, i, w = md.w;
+  for (i = 0; i < n; i++) { mx += w[i] * P[i][0]; my += w[i] * P[i][1]; }
+  mx /= md.ws; my /= md.ws;
+  var bx = [0, 0, 0], by = [0, 0, 0];
+  for (i = 0; i < n; i++) { bx = add(bx, mul(md.C[i], w[i] * (P[i][0] - mx))); by = add(by, mul(md.C[i], w[i] * (P[i][1] - my))); }
+  var rx = [dot(md.G[0], bx), dot(md.G[1], bx), dot(md.G[2], bx)], ry = [dot(md.G[0], by), dot(md.G[1], by), dot(md.G[2], by)];
+  var k = (len(rx) + len(ry)) / 2, r0 = norm(rx), r1 = norm(sub(ry, mul(r0, dot(ry, r0)))), r2 = cross(r0, r1);
+  var X = [r0[0], r1[0], r2[0]], Y = [r0[1], r1[1], r2[1]], Z = cross(X, Y);
+  var O = [mx - dot(rx, md.M), my - dot(ry, md.M), 0], s = k * UNIT;
+  if (cal) {
+    var c = Math.cos(cal.pitch), sn = Math.sin(cal.pitch), Y2 = add(mul(Y, c), mul(Z, sn)), Z2 = add(mul(Y, -sn), mul(Z, c));
+    Y = Y2; Z = Z2;
+    O = add(O, mul(add(add(mul(X, cal.d[0]), mul(Y, cal.d[1])), mul(Z, cal.d[2])), s)); O[2] = 0;
+  }
+  return makeFrame(O, s, X, Y, Z, fl);
+}
+var CAN6 = prepModel(CAN, WGT);
+
+function loadHeavy() {
+  if (!heavyP) {
+    prog.heavy = true; prog.base = prog.wasm === 1 && prog.model === 1; showProgress();
+    var lmP = grab(LMODEL, LMODEL_BYTES, function (p, total) { LMODEL_BYTES = total; prog.lm = p; showProgress(); });
+    var cP = fetch('canon.json').then(function (r) { if (!r.ok) { throw new Error('canon'); } return r.json(); });
+    heavyP = Promise.all([loadModel(), lmP, cP]).then(function (r) {
+      CANON = r[2].map(function (q) { return q[0]; });
+      CANF = prepModel(r[2].map(function (q) { return [q[1], q[2], q[3]]; }), r[2].map(function () { return 1; }));
+      return Promise.all([
+        create('FaceDetector', r[0], { runningMode: 'IMAGE', minDetectionConfidence: 0.45 }),
+        create('FaceLandmarker', r[1], { runningMode: 'IMAGE', numFaces: 3, minFaceDetectionConfidence: 0.3, minFacePresenceConfidence: 0.3 })
+      ]);
+    }).then(function (t) { return { fd: t[0], lm: t[1] }; });
+    heavyP.catch(function () { heavyP = null; prog.heavy = false; });
+  }
+  return heavyP;
+}
+
+function readImage(file) {
+  var viaImg = function () {
+    return new Promise(function (ok, bad) {
+      var im = new Image(), u = URL.createObjectURL(file);
+      im.onload = function () { ok(im); setTimeout(function () { URL.revokeObjectURL(u); }, 1000); };
+      im.onerror = bad; im.src = u;
+    });
+  };
+  if (window.createImageBitmap) { return createImageBitmap(file, { imageOrientation: 'from-image' }).catch(viaImg); }
+  return viaImg();
+}
+
+/* posiciones de los mosaicos a lo largo de un lado de N píxeles, con mosaicos de t y pisándose a la mitad */
+function steps(N, t) {
+  if (t >= N - 1) { return [0]; }
+  var n = Math.ceil((N - t) / (t / 2)), out = [];
+  for (var i = 0; i <= n; i++) { out.push(Math.round(i * (N - t) / n)); }
+  return out;
+}
+function overlap(a, b) {
+  var ix = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)), iy = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  var I = ix * iy, sa = a.w * a.h, sb = b.w * b.h;
+  return Math.max(I / (sa + sb - I), I / Math.min(sa, sb) * 0.5);
+}
+function findFaces(src, W, H, fd) {
+  var L = Math.max(W, H), minT = Math.max(256, L / 8), cands = [], tc = document.createElement('canvas'), tx = tc.getContext('2d'), tiles = 0;
+  for (var t = L; t >= minT * 0.99; t /= 2) {
+    var tw = Math.min(W, Math.round(t)), th = Math.min(H, Math.round(t)), k = Math.min(1, 384 / Math.max(tw, th));
+    tc.width = Math.round(tw * k); tc.height = Math.round(th * k);
+    steps(H, th).forEach(function (y) {
+      steps(W, tw).forEach(function (x) {
+        tx.drawImage(src, x, y, tw, th, 0, 0, tc.width, tc.height); tiles++;
+        var res = fd.detect(tc);
+        (res.detections || []).forEach(function (d) {
+          var b = d.boundingBox, sc = d.categories && d.categories[0] ? d.categories[0].score : 0;
+          cands.push({ x: x + b.originX / k, y: y + b.originY / k, w: b.width / k, h: b.height / k, sc: sc,
+            kp: (d.keypoints || []).map(function (q) { return [x + q.x * tw, y + q.y * th, 0]; }) });
+        });
+      });
+    });
+  }
+  cands.sort(function (a, b) { return b.sc - a.sc; });
+  var keep = [];
+  cands.forEach(function (c) { if (!keep.some(function (q) { return overlap(q, c) > 0.3; })) { keep.push(c); } });
+  return { list: keep, tiles: tiles };
+}
+/* recorta alrededor de una cara y la pasa por el modelo pesado; devuelve los 478 puntos en píxeles de la foto */
+function refine(src, W, H, c, lm, cc, cx) {
+  var side = Math.max(c.w, c.h) * 2.6, x0 = c.x + c.w / 2 - side / 2, y0 = c.y + c.h / 2 - side / 2;
+  var S = Math.round(Math.max(256, Math.min(512, side))), k = S / side;
+  cc.width = S; cc.height = S; cx.fillStyle = '#000'; cx.fillRect(0, 0, S, S);
+  var sx = Math.max(0, x0), sy = Math.max(0, y0), ex = Math.min(W, x0 + side), ey = Math.min(H, y0 + side);
+  if (ex <= sx || ey <= sy) { return null; }
+  cx.drawImage(src, sx, sy, ex - sx, ey - sy, (sx - x0) * k, (sy - y0) * k, (ex - sx) * k, (ey - sy) * k);
+  var r = lm.detect(cc), best = null, bd = Infinity;
+  (r.faceLandmarks || []).forEach(function (f) { var d = Math.hypot(f[4].x - 0.5, f[4].y - 0.5); if (d < bd) { bd = d; best = f; } });
+  if (!best || bd > 0.3) { return null; }
+  return best.map(function (q) { return [x0 + q.x * side, y0 + q.y * side, 0]; });
+}
+
+function analyze(src, W, H, m) {
+  var t0 = performance.now(), found = findFaces(src, W, H, m.fd), cc = document.createElement('canvas'), cx = cc.getContext('2d');
+  var heads = [], fl = W * 1.6, nMesh = 0;
+  found.list.forEach(function (c) {
+    var L = refine(src, W, H, c, m.lm, cc, cx), P, eye, mk;
+    if (L) {
+      P = CANON.map(function (i) { return L[i]; });
+      eye = [(L[33][0] + L[133][0] + L[362][0] + L[263][0]) / 4, (L[33][1] + L[133][1] + L[362][1] + L[263][1]) / 4];
+      mk = (function (P) { return function () { return posFit(P, CANF, fl, CAL); }; })(P);
+      nMesh++;
+    } else if (c.sc >= 0.75 && c.kp.length >= 6) {
+      /* el modelo pesado no la confirmó pero el detector está muy seguro: se usa la pose de 6 puntos, como en vivo */
+      P = c.kp.slice(0, 6); eye = [(P[0][0] + P[1][0]) / 2, (P[0][1] + P[1][1]) / 2];
+      mk = (function (P) { return function () { return posFit(P, CAN6, fl); }; })(P);
+    } else { return; }
+    var span = Math.max(c.w, c.h);
+    if (heads.some(function (h) { return Math.hypot(h.eye[0] - eye[0], h.eye[1] - eye[1]) < span * 0.3; })) { return; }
+    heads.push({ eye: eye, mk: mk, mesh: !!L });
+  });
+  return { heads: heads, tiles: found.tiles, cands: found.list.length, mesh: nMesh, ms: performance.now() - t0, dlg: m.lm.dlg };
+}
+
+function drawStill() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  drawScene(still.src, still.W, still.H, still.heads.map(function (h) { return h.mk; }));
+}
+function showStill() {
+  if (cv.width !== still.W || cv.height !== still.H) { cv.width = still.W; cv.height = still.H; }
+  drawStill();
+  var el = $('stats'), r = still.info;
+  if (r) { el.textContent = 'Foto ' + still.W + '×' + still.H + ' · ' + still.heads.length + (still.heads.length === 1 ? ' cara' : ' caras') + ' (' + r.mesh + ' con 478 pts) · ' + r.tiles + ' mosaicos · ' + Math.round(r.ms) + ' ms · ' + r.dlg; }
+}
+
+/* el cartel del principio también sirve para «esperando el modelo» */
+var ovTitle = $('ov').querySelector('h2').textContent;
+function busy(on, title) {
+  var box = $('ov').querySelector('.box');
+  $('ov').hidden = !on;
+  if (!on) { return; }
+  box.querySelector('h2').textContent = title;
+  [].forEach.call(box.querySelectorAll('p,.go'), function (el) { el.hidden = true; });
+  $('meter').hidden = false;
+}
+function resetOverlay() {
+  var box = $('ov').querySelector('.box');
+  box.querySelector('h2').textContent = ovTitle;
+  [].forEach.call(box.querySelectorAll('p,.go'), function (el) { el.hidden = false; });
+  $('start').disabled = false; $('meter').hidden = true; $('ov').hidden = false;
+}
+
+function enterStill(file) {
+  stopRec();
+  running = false;
+  if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+  document.body.classList.add('still');
+  $('mode').textContent = 'Cámara'; $('mode').setAttribute('aria-label', 'Volver a la cámara');
+  $('shot').classList.remove('vid'); $('shot').setAttribute('aria-label', 'Guardar foto');
+  busy(true, 'Buscando caras');
+  var job = Promise.all([readImage(file), loadHeavy()]);
+  job.then(function (r) {
+    var img = r[0], iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height, k = Math.min(1, MAXS / Math.max(iw, ih));
+    var src = document.createElement('canvas'); src.width = Math.round(iw * k); src.height = Math.round(ih * k);
+    src.getContext('2d').drawImage(img, 0, 0, src.width, src.height);
+    if (img.close) { img.close(); }
+    prog.lm = 1; showProgress();
+    /* se deja dibujar el cartel lleno antes del cálculo, que traba la página un momento */
+    return new Promise(function (ok) { setTimeout(ok, 60); }).then(function () {
+      var info = analyze(src, src.width, src.height, r[1]);
+      still = { src: src, W: src.width, H: src.height, heads: info.heads, info: info };
+      if (/debug/.test(location.search)) { window.__still = still; }
+      busy(false); showStill();
+      var n = info.heads.length;
+      say(n ? (n === 1 ? 'Una cara' : n + ' caras') + ' · tocá el botón para guardar' : 'No encontré caras en esta foto', 4000);
+    });
+  }).catch(function (e) {
+    busy(false); exitStill();
+    say(heavyP || navigator.onLine ? 'No se pudo abrir la foto' : 'Sin señal: la primera vez hace falta conexión', 5000);
+  });
+}
+
+function exitStill() {
+  still = null;
+  document.body.classList.remove('still');
+  $('mode').textContent = mode === 'foto' ? 'Video' : 'Foto';
+  $('mode').setAttribute('aria-label', mode === 'foto' ? 'Pasar a video' : 'Pasar a foto');
+  $('shot').classList.toggle('vid', mode === 'video');
+  $('shot').setAttribute('aria-label', mode === 'foto' ? 'Sacar foto' : 'Grabar video');
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+  if (camOn) { tracks = []; faces = []; startCamera().then(function () { running = true; loop(); }).catch(function () { say('No se pudo abrir la cámara', 4000); }); }
+  else { resetOverlay(); }
+}
+
+function pick() { var f = $('file'); f.value = ''; f.click(); }
+$('gal').addEventListener('click', function () { if (!recording) { pick(); } });
+$('pick').addEventListener('click', pick);
+$('file').addEventListener('change', function () { if (this.files && this.files[0]) { enterStill(this.files[0]); } });
+
 document.addEventListener('visibilitychange', function () {
   if (document.hidden && stream) { stopRec(); stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; running = false; }
-  else if (!document.hidden && !running && $('ov').hidden) { startCamera().then(function () { running = true; loop(); }); }
+  else if (!document.hidden && !running && $('ov').hidden && !still && !document.body.classList.contains('still')) { startCamera().then(function () { running = true; loop(); }); }
 });
