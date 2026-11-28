@@ -10,6 +10,11 @@
     "artist": "Toto"
   },
   {
+    "file": "ammonia-avenue.mid",
+    "title": "Ammonia Avenue",
+    "artist": "The Alan Parsons Project"
+  },
+  {
     "file": "another-brick-in-the-wall.mid",
     "title": "Another Brick in the Wall",
     "artist": "Pink Floyd"
@@ -37,6 +42,11 @@
     "melodia": "ALTO SAX"
   },
   {
+    "file": "chiquitita.mid",
+    "title": "Chiquitita",
+    "artist": "ABBA"
+  },
+  {
     "file": "clair-de-lune.mid",
     "title": "Clair de Lune",
     "artist": "Claude Debussy"
@@ -45,6 +55,12 @@
     "file": "dale-alegria-a-mi-corazon.mid",
     "title": "Dale alegría a mi corazón",
     "artist": "Fito Páez"
+  },
+  {
+    "file": "dancing-queen.mid",
+    "title": "Dancing Queen",
+    "artist": "ABBA",
+    "melodia": "Synth pad"
   },
   {
     "file": "dancing-with-the-moonlit-knight.mid",
@@ -57,6 +73,12 @@
     "artist": "King Crimson"
   },
   {
+    "file": "dont-worry-be-happy.mid",
+    "title": "Don't Worry, Be Happy",
+    "artist": "Bobby McFerrin",
+    "melodia": "El Guitar"
+  },
+  {
     "file": "easy-money.mid",
     "title": "Easy Money",
     "artist": "King Crimson"
@@ -65,6 +87,12 @@
     "file": "epitaph.mid",
     "title": "Epitaph",
     "artist": "King Crimson"
+  },
+  {
+    "file": "eye-in-the-sky.mid",
+    "title": "Eye in the Sky",
+    "artist": "The Alan Parsons Project",
+    "melodia": "Guitarra"
   },
   {
     "file": "firth-of-fifth.mid",
@@ -82,6 +110,18 @@
     "artist": "King Crimson"
   },
   {
+    "file": "games-people-play.mid",
+    "title": "Games People Play",
+    "artist": "The Alan Parsons Project",
+    "melodia": "Vientos",
+    "bajo": "Bajo"
+  },
+  {
+    "file": "gimme-gimme-gimme.mid",
+    "title": "Gimme! Gimme! Gimme! (A Man After Midnight)",
+    "artist": "ABBA"
+  },
+  {
     "file": "goodbye-blue-sky.mid",
     "title": "Goodbye Blue Sky",
     "artist": "Pink Floyd"
@@ -95,6 +135,11 @@
     "file": "i-talk-to-the-wind.mid",
     "title": "I Talk to the Wind",
     "artist": "King Crimson"
+  },
+  {
+    "file": "in-your-eyes.mid",
+    "title": "In Your Eyes",
+    "artist": "Peter Gabriel"
   },
   {
     "file": "inconsciente-colectivo.mid",
@@ -128,6 +173,11 @@
     "artist": "Los Abuelos de la Nada"
   },
   {
+    "file": "money-money-money.mid",
+    "title": "Money, Money, Money",
+    "artist": "ABBA"
+  },
+  {
     "file": "money.mid",
     "title": "Money",
     "artist": "Pink Floyd"
@@ -136,6 +186,11 @@
     "file": "my-heart-will-go-on.mid",
     "title": "My Heart Will Go On",
     "artist": "Céline Dion"
+  },
+  {
+    "file": "never-tear-us-apart.mid",
+    "title": "Never Tear Us Apart",
+    "artist": "INXS"
   },
   {
     "file": "no-me-dejan-salir.mid",
@@ -151,6 +206,11 @@
     "file": "ojo-con-los-orozco.mid",
     "title": "Ojo con los Orozco",
     "artist": "León Gieco"
+  },
+  {
+    "file": "piano-man.mid",
+    "title": "Piano Man",
+    "artist": "Billy Joel"
   },
   {
     "file": "rezo-por-vos.mid",
@@ -169,9 +229,31 @@
     "artist": "Pink Floyd"
   },
   {
+    "file": "shock-the-monkey.mid",
+    "title": "Shock the Monkey",
+    "artist": "Peter Gabriel"
+  },
+  {
+    "file": "sledgehammer.mid",
+    "title": "Sledgehammer",
+    "artist": "Peter Gabriel"
+  },
+  {
     "file": "starless.mid",
     "title": "Starless",
     "artist": "King Crimson"
+  },
+  {
+    "file": "stayin-alive.mid",
+    "title": "Stayin' Alive",
+    "artist": "Bee Gees",
+    "melodia": "Ensamble 2"
+  },
+  {
+    "file": "steam.mid",
+    "title": "Steam",
+    "artist": "Peter Gabriel",
+    "melodia": "Bronces"
   },
   {
     "file": "the-battle-of-epping-forest.mid",
@@ -208,9 +290,29 @@
     "melodia": "Peter Gabriel"
   },
   {
+    "file": "the-turn-of-a-friendly-card.mid",
+    "title": "The Turn of a Friendly Card",
+    "artist": "The Alan Parsons Project"
+  },
+  {
+    "file": "the-winner-takes-it-all.mid",
+    "title": "The Winner Takes It All",
+    "artist": "ABBA"
+  },
+  {
+    "file": "time.mid",
+    "title": "Time",
+    "artist": "The Alan Parsons Project"
+  },
+  {
     "file": "watcher-of-the-skies.mid",
     "title": "Watcher of the Skies",
     "artist": "Genesis"
+  },
+  {
+    "file": "welcome-to-the-machine.mid",
+    "title": "Welcome to the Machine",
+    "artist": "Pink Floyd"
   },
   {
     "file": "wish-you-were-here.mid",
