@@ -45,6 +45,10 @@
   .btn.plain { background: transparent; color: var(--ink); border: 0; justify-content: center; text-decoration: underline; font: 700 14px var(--sys); }
   .row { display: flex; gap: 8px; width: 100%; max-width: 380px; }
   .row .btn { justify-content: center; text-align: center; padding: 9px 4px; font-size: 11.5px; }
+  .btn .st { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
+  .btn .st i { font-style: normal; font-weight: 700; color: #7a5a3a; }
+  .btn .sm { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #sortRow .btn { padding: 6px 4px; font-size: 10.5px; }
   .list { display: flex; flex-direction: column; gap: 8px; width: 100%; align-items: center; }
   .panel { background: var(--box); border: 3px solid var(--yel); border-radius: 18px; padding: 16px 14px; width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; gap: 11px; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
   details { width: 100%; max-width: 380px; }
@@ -106,6 +110,9 @@
     <div class="spacer"></div>
     <div class="label">ELEGÍ UN TEMA <span id="songCount"></span></div>
     <input id="search" type="search" placeholder="buscar…" autocomplete="off">
+    <div class="row" id="sortRow">
+      <button class="btn" data-o="tema">CANCIÓN</button><button class="btn" data-o="artista">ARTISTA</button><button class="btn" data-o="dur">DURACIÓN</button>
+    </div>
     <div class="list" id="songList"></div>
     <div class="row">
       <button class="btn" id="loadBtn">+ ARCHIVOS</button>
@@ -243,6 +250,7 @@ const store = {
   set(k, v) { try { localStorage.setItem('teratiles:' + k, JSON.stringify(v)); } catch (e) {} },
 };
 const S = {
+  orden: store.get('orden', 'tema'),
   offset: store.get('offset', 0),     // ms: retraso de tus toques respecto de lo que oís
   speed: store.get('speed', 1.0),
   diff: store.get('diff', 'normal'),
@@ -810,7 +818,7 @@ const DB = {
 };
 
 function cleanTitle(name) {
-  return name.replace(/\.(midi?|kar)$/i, '').replace(/^[0-9a-f]{6,}[-_]/i, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/(^|\s)\p{Ll}/gu, c => c.toUpperCase());
+  return name.replace(/\.(midi?|kar)$/i, '').replace(/^[0-9a-f]{6,}[-_]/i, '').replace(/[_\s]+-[_\s]+/g, ' - ').replace(/(\w)[-_]+(?=\w)/g, '$1 ').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/(^|\s)\p{Ll}/gu, c => c.toUpperCase());
 }
 
 async function addFiles(files) {
@@ -819,9 +827,11 @@ async function addFiles(files) {
   for (const f of midis) {
     try {
       const buf = await f.arrayBuffer();
-      K.parseMidi(buf); // valida
+      const mm = K.parseMidi(buf); // valida
       const id = 'lib:' + (f.webkitRelativePath || f.name);
-      const rec = { id, title: cleanTitle(f.name), artist: (f.webkitRelativePath || '').split('/').slice(-2, -1)[0] || 'Biblioteca', buf, added: Date.now() };
+      // "Artista - Canción.mid" → canción y artista por separado
+      const nm = cleanTitle(f.name), parts = nm.split(/\s+-\s+/);
+      const rec = { id, title: parts.length > 1 ? parts.slice(1).join(' - ') : nm, artist: parts.length > 1 ? parts[0] : ((f.webkitRelativePath || '').split('/').slice(-2, -1)[0] || 'Biblioteca'), dur: Math.round(mm.duration), buf, added: Date.now() };
       try { await DB.put(rec); } catch (e) {}
       SONGS = SONGS.filter(s => s.id !== id);
       SONGS.push({ ...rec, lib: true });
@@ -860,11 +870,15 @@ function renderSongList() {
   const q = $('search').value.trim().toLowerCase();
   $('search').classList.toggle('on', SONGS.length > 6 || !!q);
   $('songCount').textContent = SONGS.length > 6 ? '(' + SONGS.length + ')' : '';
-  SONGS.filter(sg => !q || (sg.title + ' ' + (sg.artist || '')).toLowerCase().includes(q)).forEach(sg => {
+  document.querySelectorAll('#sortRow .btn').forEach(b => b.classList.toggle('sel', b.dataset.o === S.orden));
+  const key = (sg) => (S.orden === 'artista' ? (sg.artist || '~') + ' ' + sg.title : sg.title).replace(/^(the|el|la|los|las)\s+/i, '');
+  const list = SONGS.filter(sg => !q || (sg.title + ' ' + (sg.artist || '')).toLowerCase().includes(q))
+    .sort((a, b) => S.orden === 'dur' ? (a.dur || 1e9) - (b.dur || 1e9) : key(a).localeCompare(key(b), 'es', { sensitivity: 'base', numeric: true }));
+  list.forEach(sg => {
     const b = document.createElement('button');
     b.className = 'btn';
     const best = store.get('best:' + sg.id, null);
-    b.innerHTML = `<span>${esc(sg.title)}<br><small>${esc(sg.artist || '')}</small></span><small>${best ? best.grade : '▶'}${sg.lib ? '<span class="del" title="Quitar">✕</span>' : ''}</small>`;
+    b.innerHTML = `<span class="st">${esc(sg.title)}${sg.artist ? ' <i>- ' + esc(sg.artist) + '</i>' : ''}</span><small class="sm">${sg.dur ? fmtDur(sg.dur) + ' · ' : ''}${best ? best.grade : '▶'}${sg.lib ? '<span class="del" title="Quitar">✕</span>' : ''}</small>`;
     b.onclick = (e) => {
       if (e.target.classList.contains('del')) {
         e.stopPropagation();
@@ -876,6 +890,8 @@ function renderSongList() {
   });
   $('calVal').textContent = (S.offset > 0 ? '+' : '') + S.offset + ' ms';
 }
+const fmtDur = (t) => Math.floor(t / 60) + ':' + String(Math.round(t % 60)).padStart(2, '0');
+$('sortRow').onclick = (e) => { const o = e.target.closest('[data-o]'); if (o) { S.orden = o.dataset.o; store.set('orden', S.orden); renderSongList(); } };
 const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 $('search').oninput = renderSongList;
 
@@ -972,9 +988,9 @@ addEventListener('drop', async e => {
 async function loadLibrary() {
   try {
     const r = await fetch('songs/lista.json', { cache: 'no-cache' });
-    if (r.ok) { const list = await r.json(); if (Array.isArray(list) && list.length) SONGS = list.map(x => ({ id: x.id || x.file, file: 'songs/' + x.file, title: x.title || cleanTitle(x.file), artist: x.artist || '', melodia: x.melodia, bajo: x.bajo })); }
+    if (r.ok) { const list = await r.json(); if (Array.isArray(list) && list.length) SONGS = list.map(x => ({ id: x.id || x.file, file: 'songs/' + x.file, title: x.title || cleanTitle(x.file), artist: x.artist || '', dur: x.dur, melodia: x.melodia, bajo: x.bajo })); }
   } catch (e) {}
-  try { const recs = await DB.all(); (recs || []).forEach(r => SONGS.push({ ...r, lib: true })); } catch (e) {}
+  try { const recs = await DB.all(); (recs || []).forEach(r => { if (!r.dur && r.buf) try { r.dur = Math.round(K.parseMidi(r.buf).duration); } catch (e) {} SONGS.push({ ...r, lib: true }); }); } catch (e) {}
   sortSongs(); renderSongList();
 }
 

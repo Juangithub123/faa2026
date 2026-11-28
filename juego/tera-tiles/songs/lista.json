@@ -2,321 +2,382 @@
   {
     "file": "21st-century-schizoid-man.mid",
     "title": "21st Century Schizoid Man",
-    "artist": "King Crimson"
+    "artist": "King Crimson",
+    "dur": 262
   },
   {
     "file": "africa.mid",
     "title": "Africa",
-    "artist": "Toto"
+    "artist": "Toto",
+    "dur": 253
   },
   {
     "file": "ammonia-avenue.mid",
     "title": "Ammonia Avenue",
-    "artist": "The Alan Parsons Project"
+    "artist": "The Alan Parsons Project",
+    "dur": 97
   },
   {
     "file": "another-brick-in-the-wall.mid",
     "title": "Another Brick in the Wall",
-    "artist": "Pink Floyd"
+    "artist": "Pink Floyd",
+    "dur": 218
   },
   {
     "file": "bohemian-rhapsody.mid",
     "title": "Bohemian Rhapsody",
-    "artist": "Queen"
+    "artist": "Queen",
+    "dur": 442
   },
   {
     "file": "brain-damage.mid",
     "title": "Brain Damage",
     "artist": "Pink Floyd",
-    "melodia": "synth voice"
+    "melodia": "synth voice",
+    "dur": 237
   },
   {
     "file": "cancion-para-mi-muerte.mid",
     "title": "Canción para mi muerte",
-    "artist": "Sui Generis"
+    "artist": "Sui Generis",
+    "dur": 216
   },
   {
     "file": "careless-whisper.mid",
     "title": "Careless Whisper",
     "artist": "George Michael",
-    "melodia": "ALTO SAX"
+    "melodia": "ALTO SAX",
+    "dur": 311
   },
   {
     "file": "chiquitita.mid",
     "title": "Chiquitita",
-    "artist": "ABBA"
+    "artist": "ABBA",
+    "dur": 294
   },
   {
     "file": "clair-de-lune.mid",
     "title": "Clair de Lune",
-    "artist": "Claude Debussy"
+    "artist": "Claude Debussy",
+    "dur": 237
   },
   {
     "file": "dale-alegria-a-mi-corazon.mid",
     "title": "Dale alegría a mi corazón",
-    "artist": "Fito Páez"
+    "artist": "Fito Páez",
+    "dur": 243
   },
   {
     "file": "dancing-queen.mid",
     "title": "Dancing Queen",
     "artist": "ABBA",
-    "melodia": "Synth pad"
+    "melodia": "Synth pad",
+    "dur": 237
   },
   {
     "file": "dancing-with-the-moonlit-knight.mid",
     "title": "Dancing with the Moonlit Knight",
-    "artist": "Genesis"
+    "artist": "Genesis",
+    "dur": 381
   },
   {
     "file": "discipline.mid",
     "title": "Discipline",
-    "artist": "King Crimson"
+    "artist": "King Crimson",
+    "dur": 303
   },
   {
     "file": "dont-worry-be-happy.mid",
     "title": "Don't Worry, Be Happy",
     "artist": "Bobby McFerrin",
-    "melodia": "El Guitar"
+    "melodia": "El Guitar",
+    "dur": 180
   },
   {
     "file": "easy-money.mid",
     "title": "Easy Money",
-    "artist": "King Crimson"
+    "artist": "King Crimson",
+    "dur": 466
   },
   {
     "file": "epitaph.mid",
     "title": "Epitaph",
-    "artist": "King Crimson"
+    "artist": "King Crimson",
+    "dur": 510
   },
   {
     "file": "eye-in-the-sky.mid",
     "title": "Eye in the Sky",
     "artist": "The Alan Parsons Project",
-    "melodia": "Guitarra"
+    "melodia": "Guitarra",
+    "dur": 269
   },
   {
     "file": "firth-of-fifth.mid",
     "title": "Firth of Fifth",
-    "artist": "Genesis"
+    "artist": "Genesis",
+    "dur": 565
   },
   {
     "file": "fracture.mid",
     "title": "Fracture",
-    "artist": "King Crimson"
+    "artist": "King Crimson",
+    "dur": 202
   },
   {
     "file": "frame-by-frame.mid",
     "title": "Frame by Frame",
-    "artist": "King Crimson"
+    "artist": "King Crimson",
+    "dur": 308
   },
   {
     "file": "games-people-play.mid",
     "title": "Games People Play",
     "artist": "The Alan Parsons Project",
     "melodia": "Vientos",
-    "bajo": "Bajo"
+    "bajo": "Bajo",
+    "dur": 260
   },
   {
     "file": "gimme-gimme-gimme.mid",
     "title": "Gimme! Gimme! Gimme! (A Man After Midnight)",
-    "artist": "ABBA"
+    "artist": "ABBA",
+    "dur": 290
   },
   {
     "file": "goodbye-blue-sky.mid",
     "title": "Goodbye Blue Sky",
-    "artist": "Pink Floyd"
+    "artist": "Pink Floyd",
+    "dur": 148
   },
   {
     "file": "hairless-heart.mid",
     "title": "Hairless Heart",
-    "artist": "Genesis"
+    "artist": "Genesis",
+    "dur": 142
   },
   {
     "file": "i-talk-to-the-wind.mid",
     "title": "I Talk to the Wind",
-    "artist": "King Crimson"
+    "artist": "King Crimson",
+    "dur": 369
   },
   {
     "file": "in-your-eyes.mid",
     "title": "In Your Eyes",
-    "artist": "Peter Gabriel"
+    "artist": "Peter Gabriel",
+    "dur": 369
   },
   {
     "file": "inconsciente-colectivo.mid",
     "title": "Inconsciente colectivo",
-    "artist": "Charly García"
+    "artist": "Charly García",
+    "dur": 193
   },
   {
     "file": "irresponsables.mid",
     "title": "Irresponsables",
-    "artist": "Babasónicos"
+    "artist": "Babasónicos",
+    "dur": 156
   },
   {
     "file": "la-ciudad-de-la-furia.mid",
     "title": "La ciudad de la furia",
-    "artist": "Soda Stereo"
+    "artist": "Soda Stereo",
+    "dur": 370
   },
   {
     "file": "lilywhite-lilith.mid",
     "title": "Lilywhite Lilith",
-    "artist": "Genesis"
+    "artist": "Genesis",
+    "dur": 177
   },
   {
     "file": "lunes-por-la-madrugada.mid",
     "title": "Lunes por la madrugada",
     "artist": "Los Fabulosos Cadillacs",
-    "melodia": "harpsichord"
+    "melodia": "harpsichord",
+    "dur": 191
   },
   {
     "file": "mil-horas.mid",
     "title": "Mil horas",
-    "artist": "Los Abuelos de la Nada"
+    "artist": "Los Abuelos de la Nada",
+    "dur": 158
   },
   {
     "file": "money-money-money.mid",
     "title": "Money, Money, Money",
-    "artist": "ABBA"
+    "artist": "ABBA",
+    "dur": 187
   },
   {
     "file": "money.mid",
     "title": "Money",
-    "artist": "Pink Floyd"
+    "artist": "Pink Floyd",
+    "dur": 386
   },
   {
     "file": "my-heart-will-go-on.mid",
     "title": "My Heart Will Go On",
-    "artist": "Céline Dion"
+    "artist": "Céline Dion",
+    "dur": 337
   },
   {
     "file": "never-tear-us-apart.mid",
     "title": "Never Tear Us Apart",
-    "artist": "INXS"
+    "artist": "INXS",
+    "dur": 223
   },
   {
     "file": "no-me-dejan-salir.mid",
     "title": "No me dejan salir",
-    "artist": "Charly García"
+    "artist": "Charly García",
+    "dur": 259
   },
   {
     "file": "no-voy-en-tren.mid",
     "title": "No voy en tren",
-    "artist": "Charly García"
+    "artist": "Charly García",
+    "dur": 207
   },
   {
     "file": "ojo-con-los-orozco.mid",
     "title": "Ojo con los Orozco",
-    "artist": "León Gieco"
+    "artist": "León Gieco",
+    "dur": 276
   },
   {
     "file": "piano-man.mid",
     "title": "Piano Man",
-    "artist": "Billy Joel"
+    "artist": "Billy Joel",
+    "dur": 333
   },
   {
     "file": "rezo-por-vos.mid",
     "title": "Rezo por vos",
     "artist": "Charly García y Luis Alberto Spinetta",
-    "melodia": "SITAR"
+    "melodia": "SITAR",
+    "dur": 265
   },
   {
     "file": "sandstorm.mid",
     "title": "Sandstorm",
-    "artist": "Darude"
+    "artist": "Darude",
+    "dur": 338
   },
   {
     "file": "shine-on-you-crazy-diamond.mid",
     "title": "Shine On You Crazy Diamond",
-    "artist": "Pink Floyd"
+    "artist": "Pink Floyd",
+    "dur": 439
   },
   {
     "file": "shock-the-monkey.mid",
     "title": "Shock the Monkey",
-    "artist": "Peter Gabriel"
+    "artist": "Peter Gabriel",
+    "dur": 237
   },
   {
     "file": "sledgehammer.mid",
     "title": "Sledgehammer",
-    "artist": "Peter Gabriel"
+    "artist": "Peter Gabriel",
+    "dur": 311
   },
   {
     "file": "starless.mid",
     "title": "Starless",
-    "artist": "King Crimson"
+    "artist": "King Crimson",
+    "dur": 272
   },
   {
     "file": "stayin-alive.mid",
     "title": "Stayin' Alive",
     "artist": "Bee Gees",
-    "melodia": "Ensamble 2"
+    "melodia": "Ensamble 2",
+    "dur": 289
   },
   {
     "file": "steam.mid",
     "title": "Steam",
     "artist": "Peter Gabriel",
-    "melodia": "Bronces"
+    "melodia": "Bronces",
+    "dur": 349
   },
   {
     "file": "the-battle-of-epping-forest.mid",
     "title": "The Battle of Epping Forest",
     "artist": "Genesis",
-    "melodia": "Guitarra 3"
+    "melodia": "Guitarra 3",
+    "dur": 700
   },
   {
     "file": "the-carpet-crawlers.mid",
     "title": "The Carpet Crawlers",
     "artist": "Genesis",
-    "melodia": "Synth lead"
+    "melodia": "Synth lead",
+    "dur": 302
   },
   {
     "file": "the-knife.mid",
     "title": "The Knife",
-    "artist": "Genesis"
+    "artist": "Genesis",
+    "dur": 496
   },
   {
     "file": "the-lamb-lies-down-on-broadway.mid",
     "title": "The Lamb Lies Down on Broadway",
     "artist": "Genesis",
-    "melodia": "Synth lead"
+    "melodia": "Synth lead",
+    "dur": 304
   },
   {
     "file": "the-lamia.mid",
     "title": "The Lamia",
-    "artist": "Genesis"
+    "artist": "Genesis",
+    "dur": 409
   },
   {
     "file": "the-musical-box.mid",
     "title": "The Musical Box",
     "artist": "Genesis",
-    "melodia": "Peter Gabriel"
+    "melodia": "Peter Gabriel",
+    "dur": 646
   },
   {
     "file": "the-turn-of-a-friendly-card.mid",
     "title": "The Turn of a Friendly Card",
-    "artist": "The Alan Parsons Project"
+    "artist": "The Alan Parsons Project",
+    "dur": 205
   },
   {
     "file": "the-winner-takes-it-all.mid",
     "title": "The Winner Takes It All",
-    "artist": "ABBA"
+    "artist": "ABBA",
+    "dur": 289
   },
   {
     "file": "time.mid",
     "title": "Time",
-    "artist": "The Alan Parsons Project"
+    "artist": "The Alan Parsons Project",
+    "dur": 314
   },
   {
     "file": "watcher-of-the-skies.mid",
     "title": "Watcher of the Skies",
-    "artist": "Genesis"
+    "artist": "Genesis",
+    "dur": 507
   },
   {
     "file": "welcome-to-the-machine.mid",
     "title": "Welcome to the Machine",
-    "artist": "Pink Floyd"
+    "artist": "Pink Floyd",
+    "dur": 297
   },
   {
     "file": "wish-you-were-here.mid",
     "title": "Wish You Were Here",
-    "artist": "Pink Floyd"
+    "artist": "Pink Floyd",
+    "dur": 243
   }
 ]
