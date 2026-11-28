@@ -688,6 +688,7 @@ var HELP = [
   ['¿Cómo comparto una actividad para que otra persona la agende?', 'compartir whatsapp invitar agendar calendario amigos publico', '<p>En la ventana de <b>Agendar</b> está el botón <b>Compartir</b>: manda por WhatsApp (o donde quieras) el archivo del calendario y los links para agregarlo a Google Calendar. Funciona para una actividad o para un grupo entero.</p>'],
   ['¿Cómo comparto o descargo el cronograma?', 'pdf cronograma compartir descargar whatsapp', '<p>Con el botón <b>Cronograma</b> de arriba: lo podés compartir (por ejemplo por WhatsApp), descargar o ver.</p>'],
   ['¿Cómo me entero si cambia algo?', 'avisos novedades notificaciones cambios campanita', '<p>Cuando se publica un cambio, la guía muestra un mensaje y lo suma a <b>Novedades</b> (la campanita de arriba, con un numerito). En <b>Ajustes</b> podés activar los avisos del teléfono.</p><p>' + go2('novedades', 'Ver Novedades') + '</p>'],
+  ['¿Cómo funcionan las medallas del juego?', 'medallas logros niveles juego carriles codigo coleccionistas escenarios puntos', '<p>En el juego de carriles cada cosa que hacés suma: metros, fichas, saltos, salvadas por un pelo, poderes y más. Hay medallas de bronce a leyenda y algunas secretas.</p><p>Cada medalla da puntos y los puntos te suben de <b>nivel</b>. Subiendo de nivel se desbloquean <b>escenarios</b> nuevos para el cielo, con las tramas del festival.</p><p>Las medallas se guardan en tu teléfono. Si anotás una toma en el ranking con tu apodo, también suman en el <b>ranking de coleccionistas</b> y tu nivel aparece al lado de tu apodo.</p><p>En la pantalla de medallas está tu <b>código</b> de 8 letras: guardalo. Sirve para pasar tus medallas a otro teléfono (en otro teléfono: Medallas → Traer medallas de otro teléfono, con tu apodo y ese código). Nadie puede usar tu apodo para juntar medallas sin ese código.</p>'],
   ['¿Funciona sin señal?', 'sin señal internet offline conexion datos actualizar', '<p>Sí: después de abrirla una vez con internet, queda guardada en el teléfono. El indicador de arriba dice si está <b>Al día</b> o <b>Sin conexión</b>; tocalo para buscar cambios. Cuando vuelve la señal, se actualiza sola.</p>'],
   ['¿Cómo la instalo en el teléfono?', 'instalar app pantalla de inicio acceso directo chrome firefox iphone samsung', '<p>En <b>Ajustes</b> están los pasos según tu navegador (Chrome, Samsung, Firefox, iPhone…). Queda como una app más.</p><p>' + go2('ajustes', 'Ver cómo instalarla') + '</p>'],
   ['¿Qué falta confirmar?', 'pendientes avisos confirmar falta', '<p>En <b>Más → Pendientes y avisos</b>, ordenado por día.</p>'],
@@ -856,6 +857,8 @@ function diff(Aa, B) {
   function push(o) { out.push(o); }
   function evAreasIn(D0, id) { var s = {}; D0.shifts.forEach(function (x) { if ((x.ev || []).indexOf(id) > -1) { s[x.area] = 1; } }); return Object.keys(s); }
   if (B.hint && B.hint.on && !(Aa.hint && Aa.hint.on)) { push({ ref: 'hint', day: 0, view: 'hoy', mine: false, text: B.hint.text }); }
+  /* anuncios sueltos (data.news): cada uno avisa una sola vez, cuando aparece */
+  (B.news || []).forEach(function (n) { if (!(Aa.news || []).some(function (o) { return o.id === n.id; })) { push({ ref: 'news:' + n.id, day: 0, view: n.view || 'mas', mine: true, text: n.text }); } });
   var a = idMap(Aa.events), b = idMap(B.events);
   Object.keys(b).forEach(function (id) {
     var n = b[id], o = a[id], base = { ref: 'ev:' + id, day: n.day, view: 'programa', mine: hit(evAreasIn(B, id).concat(n.leadAreas || [])) };
@@ -931,6 +934,13 @@ function addNews(list) {
   NEWS.items = list.concat(NEWS.items).slice(0, 200);
   lsSet(K.news, NEWS);
   var mine = list.filter(function (n) { return n.mine; }).length;
+  /* un anuncio solo (data.news): se muestra tal cual, sin hablar de cambios en la logística */
+  if (list.length === 1 && /^news:/.test(list[0].ref)) {
+    var an = (D.news || []).filter(function (n) { return 'news:' + n.id === list[0].ref; })[0] || {};
+    toast(list[0].text, 'Ver', list[0].view);
+    sysNotify(an.title || 'FAA! 2026', list[0].text);
+    return;
+  }
   var txt = list.length === 1 ? 'Cambió la logística: ' + list[0].text : 'Se actualizó la logística: ' + list.length + ' cambios' + (mine ? ' (' + mine + (mine === 1 ? ' te toca' : ' te tocan') + ')' : '');
   toast(txt, 'Ver', 'novedades');
   if (mine && navigator.vibrate) { try { navigator.vibrate([60, 40, 60]); } catch (e) {} }

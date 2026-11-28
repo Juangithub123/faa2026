@@ -183,6 +183,7 @@ function css() {
     '#lg-ov .box{max-width:560px;text-align:left;gap:12px;max-height:100%;overflow:auto}#lg-ov h1{text-align:center}' +
     '.lg-lv{display:flex;gap:12px;align-items:center;background:rgba(246,239,196,.08);border-radius:14px;padding:10px}.lg-lv img{width:62px;height:62px}' +
     '.lg-lv b{display:block;font:900 18px system-ui;color:#F4C95C}.lg-bar{height:8px;border-radius:9px;background:rgba(20,8,3,.55);overflow:hidden;margin-top:5px}.lg-bar u{display:block;height:100%;background:#F4C95C;border-radius:9px}' +
+    '.lg-how{background:rgba(246,239,196,.07);border-radius:12px;padding:8px 10px;font:600 13px/1.4 system-ui}.lg-how summary{cursor:pointer;font-weight:800;color:#F4C95C}.lg-how p{margin:6px 0 0}' +
     '.lg-g h2{font:900 13px system-ui;letter-spacing:.06em;text-transform:uppercase;color:#F4C95C;margin:4px 0 6px}' +
     '.lg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}' +
     '.lg-m{display:flex;gap:10px;align-items:flex-start;background:rgba(246,239,196,.07);border-radius:12px;padding:8px 9px 10px}.lg-m div{min-width:0;flex:1}' +
@@ -254,6 +255,10 @@ function openList() {
     fmt(P) + ' puntos · ' + c.have + ' de ' + c.total + ' medallas' + (L.to ? '<div class="lg-bar"><u style="width:' + pc + '%"></u></div><small style="opacity:.8">Faltan ' + fmt(L.to - P) + ' puntos para el nivel ' + (L.n + 1) + '</small>' : '') + '</div></div>';
   var nextEsc = ESC.filter(function (e) { return !escUnlocked(e); })[0];
   if (nextEsc) { h += '<p style="font-size:12.5px;opacity:.85;margin:0">En el nivel ' + nextEsc.lv + ' se desbloquea el escenario <b>' + esc(nextEsc.n) + '</b>.</p>'; }
+  h += '<details class="lg-how"><summary>¿Cómo funciona?</summary><p>Todo lo que hacés en el juego suma: metros, fichas, saltos, rodadas, salvadas por un pelo, poderes. ' +
+    'Muchas medallas tienen cinco niveles (bronce, plata, oro, platino y leyenda) y algunas son secretas.</p><p>Cada medalla da puntos; con los puntos subís de nivel y se desbloquean escenarios nuevos para el cielo (los elegís en el menú del juego). ' +
+    'Las medallas se guardan en este teléfono' + (API.server ? '; si anotás una toma en el ranking con tu apodo, también suman en el ranking de coleccionistas. ' +
+    'Guardá tu código de 8 letras: con tu apodo y ese código pasás las medallas a otro teléfono, y nadie más puede juntar medallas con tu apodo.' : '.') + '</p></details>';
   h += syncHtml();
   (G[game] || { groups: [] }).groups.forEach(function (gr) {
     h += '<div class="lg-g"><h2>' + esc(gr.g) + '</h2><div class="lg-grid">';
