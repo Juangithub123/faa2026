@@ -8,6 +8,7 @@ Web liviana e instalable (PWA) con los turnos, el programa, los traslados y los 
 - `config.js`: cada cuántos minutos la app busca una versión nueva de los datos.
 - `sw.js` + `manifest.webmanifest` + `icons/`: instalación en el teléfono y funcionamiento sin señal.
 - `mascaras/`: máscaras sobre las caras con la cámara (MediaPipe Face Landmarker, 478 puntos, máscaras 3D dibujadas en canvas; motor en `mascaras/mp/`, licencia Apache 2.0). Se carga solo al abrirla y no se baja al instalar la app.
+- `luces/`: receptor (y emisor) del show de luces en los teléfonos, copia del repo ShowTelefonico. Se actualiza con `python3 tools/sync_luces.py`; no editar a mano. El emisor solo aparece en Más › Extras con el perfil de Juan Schor.
 - `map.webp`, `logo.webp`: imágenes (el mapa se carga solo cuando se abre).
 
 ## Publicar en GitHub Pages

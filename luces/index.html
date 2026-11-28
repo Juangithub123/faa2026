@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Luces · FAA! 2026</title>
+<meta name="theme-color" content="#000000">
+<meta name="description" content="Tu teléfono es parte del show: se ilumina con la música.">
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:#000;color:#F4F7D9;font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none;overflow:hidden}
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
+.ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:#10130D;text-align:center}
+.ov[hidden]{display:none}
+.box{max-width:380px;display:grid;gap:16px;justify-items:center}
+.box h1{font:900 34px/1.05 system-ui;letter-spacing:-.01em}
+.box h1 em{font-style:normal;color:#FF2E6A}
+.box p{color:#A6AD9B;font-size:15.5px}
+.box ol{color:#ECEEE5;text-align:left;font-size:15.5px;padding-left:22px;display:grid;gap:6px}
+.go{border:0;border-radius:999px;padding:15px 30px;font:800 18px system-ui;background:#FF2E6A;color:#fff}
+.go[disabled]{opacity:.6}
+.back{position:fixed;left:12px;top:calc(10px + env(safe-area-inset-top));color:#A6AD9B;font:700 14px system-ui;text-decoration:none;border:1px solid #2F3529;border-radius:999px;padding:6px 12px}
+.warn{font-size:12.5px;color:#6B7266}
+.status{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:rgba(16,19,13,.6);color:#A6AD9B;font:600 12.5px system-ui;transition:opacity 1s}
+.status.dim{opacity:0}
+.dot{width:9px;height:9px;border-radius:50%;background:#93CC6E;transform:scale(var(--lv,1))}
+.n26{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font:900 min(62vw,50vh)/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;opacity:0;pointer-events:none;will-change:transform,opacity}
+.diag{position:fixed;left:8px;right:8px;top:calc(8px + env(safe-area-inset-top));padding:6px 10px;border-radius:10px;background:rgba(0,0,0,.7);color:#F4F7D9;font:600 12px ui-monospace,Menlo,Consolas,monospace;z-index:5}
+.diag[hidden]{display:none}
+.picker{position:fixed;inset:auto 0 0 0;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 12px calc(12px + env(safe-area-inset-bottom));background:rgba(16,19,13,.92)}
+.picker[hidden]{display:none}
+.picker button{border:1px solid #2F3529;background:#191D15;color:#ECEEE5;border-radius:12px;padding:10px 4px;font:700 13px system-ui}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div class="n26" id="n26" aria-hidden="true">26</div>
+<div class="status" id="status"><span class="dot" id="dot"></span><span id="stxt">Escuchando…</span></div>
+<div class="picker" id="picker" hidden></div>
+<div class="diag" id="diag" hidden>…</div>
+<div class="ov" id="ov">
+  <a class="back" href="../">← Guía</a>
+  <div class="box">
+    <h1>Luces <em>FAA!</em></h1>
+    <p>Tu teléfono es parte del show: se va a iluminar con la música.</p>
+    <ol>
+      <li>Subí el brillo al máximo.</li>
+      <li>Tocá <b>Entrar</b> y aceptá el micrófono (solo escucha las señales del show, no graba nada).</li>
+      <li>Dejá esta pantalla abierta y levantá el teléfono.</li>
+    </ol>
+    <button class="go" id="go" type="button">Entrar</button>
+    <p class="warn" id="warn">Incluye luces intermitentes.</p>
+  </div>
+</div>
+<script src="vendor/ggwave.js"></script>
+<script src="app.js?v=7"></script>
+</body>
+</html>

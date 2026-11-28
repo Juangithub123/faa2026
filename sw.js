@@ -2,12 +2,14 @@
    App: se guarda al instalar y se sirve desde el teléfono (funciona sin señal).
    data.json: siempre se pide a la red; si no hay señal, se usa la última copia guardada.
    Al publicar cambios en app.js, app.css o index.html, subí el número de VERSION. */
-var VERSION = 'faa26-v24';
+var VERSION = 'faa26-v25';
 /* El juego secreto se guarda aparte, para que funcione sin señal; se pide primero a la red para tomar cambios. */
 var GAME = 'faa26-juego', GAME_FILES = ['juego/', 'juego/juego.js', 'juego/ranking.js', 'juego/side.png', 'juego/back.png', 'juego/atlas.png', 'juego/n26.png', 'juego/arte.js', 'juego/carriles/', 'juego/carriles/carriles.js', 'juego/logros.js', 'juego/escenarios/sello-faa.webp',
   'juego/tera-tiles/', 'juego/tera-tiles/midi.js', 'juego/tera-tiles/sync.js', 'juego/tera-tiles/rank.js', 'juego/tera-tiles/songs/lista.json'];
 /* Las máscaras (mascaras/) no se bajan al instalar: se guardan aparte recién cuando alguien las usa (pesan ~4 MB). */
 var MASK = 'faa26-mascaras';
+/* El show de luces (luces/, copia de ShowTelefonico) también se guarda recién cuando alguien lo abre. */
+var LUCES = 'faa26-luces';
 var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'config.js', 'manifest.webmanifest', 'logo.webp', 'map.webp', 'icons/icon-192.png', 'data.json', 'cronograma-faa-2026.pdf', 'vendor/leaflet.js', 'vendor/leaflet.css'];
 
 self.addEventListener('install', function (e) {
@@ -17,7 +19,7 @@ self.addEventListener('install', function (e) {
   }));
 });
 self.addEventListener('activate', function (e) {
-  e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== VERSION && k !== 'faa26-tiles' && k !== GAME && k !== MASK; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));
+  e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== VERSION && k !== 'faa26-tiles' && k !== GAME && k !== MASK && k !== LUCES; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));
 });
 self.addEventListener('fetch', function (e) {
   var req = e.request, url = new URL(req.url);
@@ -47,6 +49,13 @@ self.addEventListener('fetch', function (e) {
       if (res.ok) { var copy = res.clone(); caches.open(MASK).then(function (c) { c.put(req.url.split('?')[0], copy); }); }
       return res;
     }).catch(function () { return caches.open(MASK).then(function (c) { return c.match(req, { ignoreSearch: true }); }).then(function (r) { return r || Response.error(); }); }));
+    return;
+  }
+  if (url.pathname.indexOf('/luces/') > -1) {
+    e.respondWith(fetch(new Request(req.url, { cache: 'no-cache' })).then(function (res) {
+      if (res.ok) { var copy = res.clone(); caches.open(LUCES).then(function (c) { c.put(req.url.split('?')[0], copy); }); }
+      return res;
+    }).catch(function () { return caches.open(LUCES).then(function (c) { return c.match(req, { ignoreSearch: true }); }).then(function (r) { return r || Response.error(); }); }));
     return;
   }
   if (url.pathname.indexOf('/cal/') > -1) {

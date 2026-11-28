@@ -1,0 +1,16 @@
+{
+  "formato": "5 caracteres ETCPI: E escena 1-9 · T velocidad en base 36 (BPM = 60 + 4·T) · C color 0-9 · P patrón 0-9 · I intensidad 0-9",
+  "defecto": { "bpm": 120, "color": 0, "patron": 0, "intensidad": 9 },
+  "colores": ["Paleta FAA!", "Rosa", "Violeta", "Verde", "Dorado", "Turquesa", "Blanco", "Rojo", "Azul", "Al azar por teléfono"],
+  "escenas": [
+    { "n": 1, "id": "apagado", "nombre": "Apagado", "patrones": [] },
+    { "n": 2, "id": "color", "nombre": "Color", "patrones": ["Fijo", "Respira cada compás", "Parpadeo suave"] },
+    { "n": 3, "id": "pulso", "nombre": "Pulso", "patrones": ["Suave", "Seco", "Cada 2 tiempos", "A contratiempo"] },
+    { "n": 4, "id": "colores", "nombre": "Colores", "patrones": ["Cambia por tiempo", "Cambia por compás", "Fundido continuo", "Al azar por teléfono"] },
+    { "n": 5, "id": "destellos", "nombre": "Destellos", "patrones": ["Uno por tiempo", "Cada 2 tiempos", "Doble"] },
+    { "n": 6, "id": "chispas", "nombre": "Chispas", "patrones": ["Muy pocas", "1", "2", "3", "4", "5", "6", "7", "8", "Muchísimas"] },
+    { "n": 7, "id": "veintiseis", "nombre": "26", "patrones": ["Fijo", "Cambia de color", "Parpadea"] },
+    { "n": 8, "id": "vela", "nombre": "Vela", "patrones": ["Quieta", "1", "2", "3", "4", "5", "6", "7", "8", "Viento fuerte"] },
+    { "n": 9, "id": "arcoiris", "nombre": "Arcoíris", "patrones": ["Todos juntos", "Corrido 1", "Corrido 2", "Corrido 3", "Corrido 4", "Corrido 5", "Corrido 6", "Corrido 7", "Corrido 8", "Todos distintos"] }
+  ]
+}

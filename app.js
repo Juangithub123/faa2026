@@ -546,6 +546,9 @@ function vMas() {
   it = it.concat([['mapa', 'Mapa y sedes', 'Dónde queda cada lugar y el recorrido del día'], ['arte', 'Ambientación', 'Qué ambienta Arte en cada sede'], ['equipo', 'Equipo', 'Quién está en cada área'], ['pendientes', 'Pendientes y avisos', 'Lo que falta confirmar, por día'], ['antes', 'Antes del festival', 'Fechas de la previa'], ['novedades', 'Novedades', 'Historial de cambios'], ['ajustes', 'Ajustes', 'Tu nombre, tema, avisos e instalación']]);
   /* Extras: cosas para el staff fuera de la logística (la cámara y los juegos, que ya están a la vista de todos) */
   var ex = [['camara', 'Cámara FAA', 'Fotos y videos con máscaras de la tera'], ['juego', 'Juegos', '¡Corre, sonidista! y Tera Tiles']];
+  ex.push(['luces', 'Luces FAA!', 'Tu teléfono se ilumina con el show']);
+  /* el emisor (el que manda las escenas) solo aparece con el perfil de Juan Schor */
+  if (me() && me().n === 'Juan Schor') { ex.push(['emisor', 'Emisor de luces', 'Mandar escenas a los teléfonos']); }
   var row = function (x) { return '<li><button type="button" ' + (x[0] === '?' ? 'data-act="help"' : 'data-go="' + x[0] + '"') + '><b>' + x[1] + '</b><span>' + x[2] + '</span></button></li>'; };
   var rowEx = function (x) { return '<li><button type="button" data-act="' + x[0] + '"><b>' + x[1] + '</b><span>' + x[2] + '</span></button></li>'; };
   return head('Más', '') + '<ul class="menu">' + it.map(row).join('') + '</ul>' +
@@ -659,6 +662,8 @@ document.addEventListener('click', function (e) {
   else if (act === 'help-go') { $('helpsheet').close(); go(t.getAttribute('data-to')); }
   else if (act === 'juego') { openGame(); }
   else if (act === 'camara') { location.href = 'mascaras/'; }
+  else if (act === 'luces') { location.href = 'luces/'; }
+  else if (act === 'emisor') { location.href = 'luces/emisor.html'; }
   else if (act === 'juego-close') { $('juegosheet').close(); }
   else if (act === 'pdf-share') { sharePdf(); }
   else if (act === 'map-mine') { S.map.mine = true; S.map.focus = ''; go('mapa'); }
