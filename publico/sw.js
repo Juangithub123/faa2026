@@ -4,7 +4,7 @@
 var VERSION = 'faap-__BUILD__';
 var GAME = 'faap-juegos', MASK = 'faap-mascaras', TILES = 'faap-mapa';
 var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest', 'logo.webp', 'map.webp', 'icons/icon-192.png', 'datos.json', 'cronograma-faa-2026.pdf', 'vendor/leaflet.js', 'vendor/leaflet.css'];
-var GAME_FILES = ['juego/', 'juego/juego.js', 'juego/arte.js', 'juego/side.png', 'juego/back.png', 'juego/atlas.png', 'juego/n26.png', 'juego/carriles/', 'juego/carriles/carriles.js',
+var GAME_FILES = ['juego/', 'juego/juego.js', 'juego/arte.js', 'juego/side.png', 'juego/back.png', 'juego/atlas.png', 'juego/n26.png', 'juego/carriles/', 'juego/carriles/carriles.js', 'juego/logros.js', 'juego/escenarios/sello-faa.webp',
   'juego/tera-tiles/', 'juego/tera-tiles/midi.js', 'juego/tera-tiles/sync.js', 'juego/tera-tiles/songs/lista.json'];
 
 self.addEventListener('install', function (e) {

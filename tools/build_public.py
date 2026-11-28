@@ -91,7 +91,7 @@ open(op('README.md'), 'w', encoding='utf-8').write(
     'Sitio estático. No tiene cuentas ni guarda datos de quien la usa fuera de su propio teléfono.\n')
 
 # ---------- juegos (sin ranking ni pozo) y cámara ----------
-for f in ('arte.js', 'juego.js', 'side.png', 'back.png', 'atlas.png', 'n26.png', 'index.html', 'carriles/index.html', 'carriles/carriles.js',
+for f in ('arte.js', 'juego.js', 'logros.js', 'escenarios', 'side.png', 'back.png', 'atlas.png', 'n26.png', 'index.html', 'carriles/index.html', 'carriles/carriles.js',
           'tera-tiles/index.html', 'tera-tiles/midi.js', 'tera-tiles/sync.js', 'tera-tiles/songs'):
     copy('juego/' + f)
 for f in ('index.html', 'mascaras.js', 'mp'):

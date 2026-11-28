@@ -20,6 +20,7 @@ function show(id) { $(id).hidden = false; }
 function hide(id) { $(id).hidden = true; }
 
 var best = lsGet(K.best, 0), pal = lsGet(K.pal, 0), muted = lsGet(K.mute, false), takes = 0;
+var LG = window.FAALogros || null, R = null, chkT = 0, pauseAt = 0;
 var playT = 0, st = 'menu', p, obs, coins, decos, pups, dist, speed, seed, rowZ, frameT = 0, deadT = 0, shake = 0, camX = 0, nCoins = 0, decoZ = 0, mountains = [];
 
 /* ---------- Tamaño: la resolución interna sigue la forma de la pantalla ---------- */
@@ -55,8 +56,12 @@ function beep(f1, f2, dur, type, vol) {
 /* ---------- Partida ---------- */
 function reset() {
   p = { lane: 0, x: 0, nudge: 0, y: 0, vy: 0, air: false, roll: 0, stumble: -9, land: 0, buf: 0, grace: 0, mag: 0, sj: 0, fly: 0, inv: 0 };
-  obs = []; coins = []; pups = []; decos = []; dist = 0; speed = 430; nCoins = 0; deadT = 0; shake = 0; camX = 0;
+  obs = []; coins = []; pups = []; decos = []; dist = 0; speed = VMIN; nCoins = 0; deadT = 0; shake = 0; camX = 0;
   seed = (Date.now() & 0xffff) || 1; rowZ = 900; decoZ = 0;
+  /* contadores para las medallas (los demás se llenan con LG.run) */
+  R = LG ? LG.run() : {};
+  R.jumpAt = 0; R.laneAt = 0; R.roofRun = 0; R.lastTruck = null; R.chain = 0; R.magCur = 0; R.flyN = 0; R.flyGot = 0; R.flyId = 0;
+  R.kinds = {}; R.zigT = []; R.stAt = -1;
   fillWorld();
   $('coins').textContent = '0'; $('score').textContent = '0';
 }
@@ -65,10 +70,11 @@ function over() {
   st = 'over'; deadT = 0; shake = 0.35; beep(220, 55, 0.45, 'sawtooth', 0.07);
   if (navigator.vibrate) { try { navigator.vibrate(90); } catch (e) {} }
   var m = Math.floor(dist / PXM), rec = m > best;
+  if (LG) { R.dist = m; R.coins = nCoins; R.secs = playT; R.recs = rec ? 1 : 0; LG.end(R, { pal: pal }); }
   if (rec) { best = m; lsSet(K.best, best); }
   $('final').textContent = m; $('fcoins').textContent = nCoins; $('take').textContent = takes; $('best').textContent = best;
   $('rec').textContent = rec ? '¡nuevo récord en este teléfono!' : 'récord ' + best + ' m';
-  if (window.FAARank) { FAARank.over({ score: m, coins: nCoins, secs: playT }); }
+  if (window.FAARank) { FAARank.over({ score: m, coins: nCoins, secs: playT, jumps: R.jumps, rolls: R.rolls, lanes: R.lanes, passed: R.passed }); }
   setTimeout(function () { show('over'); }, 600);
 }
 
@@ -95,10 +101,14 @@ function fair(z, row) {
   });
 }
 function wpick(list) { var tot = 0, i; for (i = 0; i < list.length; i++) { tot += list[i][1]; } var r = rnd() * tot; for (i = 0; i < list.length; i++) { r -= list[i][1]; if (r <= 0) { return list[i][0]; } } return list[0][0]; }
+/* Dificultad: arranca más suave y sube de a poco hasta los 5000 m (velocidad, densidad y filas de tres). */
+var VMIN = 400, VMAX = 960, DIFM = 5000;
+function dif(m) { return Math.pow(Math.max(0, Math.min(1, m / DIFM)), 0.75); }
+function speedAt(m) { return VMIN + (VMAX - VMIN) * dif(m); }
 function makeRow(z) {
-  var m = (z + dist) / PXM, n = 1;
-  if (m > 40 && rnd() < 0.55) { n = 2; }
-  if (m > 220 && rnd() < 0.3) { n = 3; }
+  var m = (z + dist) / PXM, n = 1, f = dif(m);
+  if (m > 40 && rnd() < 0.35 + 0.3 * f) { n = 2; }
+  if (m > 220 && rnd() < 0.08 + 0.37 * f) { n = 3; }
   /* no poner nada en un carril que todavía está ocupado por un camión */
   var lanes = [-1, 0, 1].filter(function (l) { return !hardAt(l, z - 40, z + 66); }).sort(function () { return rnd() - 0.5; }).slice(0, n), row = [];
   if (!lanes.length) { return; }
@@ -124,7 +134,7 @@ function makeRow(z) {
     var c, mid = o.z + o.len / 2, after = o.z + o.len + 26;
     if (o.t === 'low') {
       /* el arco sigue la curva real del salto a la velocidad que habrá al llegar: más rápido = fichas más separadas */
-      var v = Math.min(880, speed + z * 0.0052), ta = JV / G;
+      var v = speedAt((z + dist) / PXM), ta = JV / G;
       for (c = -2; c <= 2; c++) { var t = ta + c * 0.112; coins.push({ lane: o.lane, z: mid + v * (t - ta), y: 16 + JV * t - G * t * t / 2, ph: c * 0.6 }); }
       after = mid + v * (2 * ta - ta) + 30;
     } else if (o.t === 'duck') {
@@ -161,7 +171,7 @@ function fillWorld() {
   while (rowZ < DMAX) {
     var m = (rowZ + dist) / PXM;
     makeRow(rowZ);
-    var gapT = Math.max(0.62, 1.15 - m / 900) + rnd() * 0.45;
+    var gapT = 1.2 - 0.62 * dif(m) + rnd() * 0.45;
     var last = obs[obs.length - 1], extra = last && last.t === 'truck' ? last.len * 0.35 : 0;
     rowZ += Math.max(240, speed * gapT) + extra;
   }
@@ -253,7 +263,7 @@ var DUCKS = ['EDUCACIÓN|PÚBLICA', 'LA UNI|SE DEFIENDE', 'NI UN PASO|ATRÁS'].m
 var N26 = new Image(); N26.src = '../n26.png';
 
 /* ---------- Física (paso fijo) ---------- */
-var G = 1700, JV = 455, JV2 = 760, STEP = 1 / 120, ROLL = 0.8, GRACE = 12, ACC = 0.0052, FLYY = 150;
+var G = 1700, JV = 455, JV2 = 760, STEP = 1 / 120, ROLL = 0.8, GRACE = 12, FLYY = 150;
 var TOP = { truck: 86, stack: 96 };
 function update(dt) {
   frameT += dt;
@@ -261,10 +271,10 @@ function update(dt) {
   if (st === 'over') { deadT += dt; return; }
   if (st !== 'play') { return; }
   playT += dt;
-  speed = Math.min(880, 430 + dist * ACC);
+  speed = speedAt(dist / PXM);
   var dz = speed * dt; dist += dz;
   rowZ -= dz; decoZ -= dz;
-  for (var i = obs.length - 1; i >= 0; i--) { obs[i].z -= dz; if (obs[i].z + obs[i].len < -D + 20) { obs.splice(i, 1); } }
+  for (var i = obs.length - 1; i >= 0; i--) { obs[i].z -= dz; if (obs[i].z + obs[i].len < -D + 20) { obs.splice(i, 1); R.passed++; } }
   for (i = coins.length - 1; i >= 0; i--) { coins[i].z -= dz; if (coins[i].z < -60) { coins.splice(i, 1); } }
   for (i = decos.length - 1; i >= 0; i--) { decos[i].z -= dz; if (decos[i].z < -D + 30) { decos.splice(i, 1); } }
   fillWorld();
@@ -277,7 +287,7 @@ function update(dt) {
     /* volando: sube al cielo y no choca; al terminar, cae con unos segundos de protección */
     p.fly = Math.max(0, p.fly - dt);
     p.y += (FLYY - p.y) * Math.min(1, dt * 3); p.vy = 0; p.roll = 0;
-    if (p.fly === 0) { p.air = true; p.inv = 2; }
+    if (p.fly === 0) { p.air = true; p.inv = 2; if (R.flyN && R.flyGot >= R.flyN) { R.flyAll++; } R.flyN = 0; }
   } else {
     /* techo de camiones y pilas: se puede caer encima y correr arriba */
     var floor = 0;
@@ -291,8 +301,12 @@ function update(dt) {
       p.vy -= G * dt; p.y += p.vy * dt;
       if (p.y <= floor && p.vy <= 0) {
         p.y = floor; p.vy = 0; p.air = false; p.land = 0.07;
+        if (floor === TOP.truck) {
+          var tr = obs.filter(function (q2) { return q2.t === 'truck' && q2.z <= 10 && q2.z + q2.len >= -10 && Math.abs(p.x - q2.lane * LW) <= 30; })[0];
+          if (tr && tr !== R.lastTruck) { R.lastTruck = tr; R.chain++; R.chainMax = Math.max(R.chainMax, R.chain); }
+        } else if (floor === 0) { R.chain = 0; R.lastTruck = null; }
         /* salto anticipado: si tocó ↑ justo antes de caer, salta apenas toca el piso */
-        if (p.buf > 0) { p.buf = 0; jump(); }
+        if (p.buf > 0) { p.buf = 0; R.buf++; jump(); }
       }
     }
   }
@@ -315,7 +329,7 @@ function update(dt) {
   }
   /* la gracia se mide en distancia recorrida (no en tiempo): a cualquier velocidad alcanza para salvarse justo,
      pero nunca para atravesar un obstáculo entero */
-  if (hitNow) { p.grace += speed * dt; if (p.grace > GRACE) { over(); return; } } else { p.grace = 0; }
+  if (hitNow) { p.grace += speed * dt; if (p.grace > GRACE) { over(); return; } } else { if (p.grace > 0) { R.saves++; } p.grace = 0; }
   /* imán (megáfono): las fichas cercanas vienen solas */
   for (i = coins.length - 1; i >= 0; i--) {
     var c = coins[i];
@@ -326,6 +340,8 @@ function update(dt) {
     }
     if (Math.abs(c.z) < 24 && Math.abs(p.x - c.x) < 28 && Math.abs(c.y - 16 - p.y) < 40) {
       coins.splice(i, 1); nCoins++; $('coins').textContent = nCoins;
+      if (p.mag > 0) { R.magCur++; R.magMax = Math.max(R.magMax, R.magCur); }
+      if (c.fl && c.fl === R.flyId) { R.flyGot++; }
       beep(880 + (nCoins % 5) * 60, 1320, 0.07, 'square', 0.03);
     }
   }
@@ -334,18 +350,32 @@ function update(dt) {
     if (Math.abs(u.z) < 24 && Math.abs(p.x - u.lane * LW) < 30 && Math.abs(u.y - 16 - p.y) < 40) { pups.splice(i, 1); power(u.k); }
   }
   $('score').textContent = Math.floor(dist / PXM);
+  /* medallas: metros por arriba, rachas sin saltar / sin cambiar de carril, tropezón superado */
+  var dm = dz / PXM;
+  if (p.y >= 80 && !p.fly) { R.roof += dm; R.roofRun += dm; R.roofMax = Math.max(R.roofMax, R.roofRun); }
+  else if (!p.air && p.y === 0) { R.roofRun = 0; }
+  R.holdMax = Math.max(R.holdMax, (dist - R.laneAt) / PXM);
+  R.noJumpMax = Math.max(R.noJumpMax, (dist - R.jumpAt) / PXM);
+  if (R.stAt >= 0 && (dist - R.stAt) / PXM >= 500) { R.stOk = 1; }
+  chkT += dt;
+  if (LG && chkT > 0.5) { chkT = 0; R.dist = Math.floor(dist / PXM); R.coins = nCoins; R.secs = playT; LG.check(R); }
 }
 function power(k) {
   beep(520, 1560, 0.25, 'triangle', 0.06); setTimeout(function () { beep(780, 2080, 0.2, 'triangle', 0.05); }, 90);
-  if (k === 'mag') { p.mag = 10; }
+  R.pups++; R.kinds[k] = dist;
+  if (R.kinds.mag != null && R.kinds.jump != null && R.kinds.fly != null) {
+    var ds = [R.kinds.mag, R.kinds.jump, R.kinds.fly]; if (Math.max.apply(null, ds) - Math.min.apply(null, ds) <= 500 * PXM) { R.tri = 1; }
+  }
+  if (k === 'mag') { p.mag = 10; R.magCur = 0; }
   else if (k === 'jump') { p.sj = 15; }
   else {
     p.fly = 10; p.air = false; p.roll = 0;
     /* fichas en el cielo durante todo el vuelo, en zigzag entre carriles */
     var lane = p.lane, n = Math.floor(speed * 9.2 / 46);
+    R.flyId++; R.flyN = n; R.flyGot = 0;
     for (var i = 0; i < n; i++) {
       if (i > 6 && i % 9 === 0) { lane = Math.max(-1, Math.min(1, lane + (rnd() < 0.5 ? -1 : 1))); }
-      coins.push({ lane: lane, z: 160 + i * 46, y: FLYY + 16, ph: i * 0.5 });
+      coins.push({ lane: lane, z: 160 + i * 46, y: FLYY + 16, ph: i * 0.5, fl: R.flyId });
     }
   }
 }
@@ -356,19 +386,23 @@ function move(dir) {
   if (!p.fly && !p.inv && obs.some(function (o) { return HARD[o.t] && o.lane === nl && o.z < 14 && o.z + o.len > -4 && p.y < TOP[o.t] - 12; })) {
     /* tropezón contra el costado: dos seguidos y se corta la toma */
     p.nudge = dir * 14; shake = 0.2; beep(180, 90, 0.15, 'sawtooth', 0.05);
+    R.stumbles++; R.stAt = dist;
     if (frameT - p.stumble < 4) { over(); } else { p.stumble = frameT; }
     return;
   }
   p.lane = nl; beep(520, 610, 0.04, 'triangle', 0.025);
+  R.lanes++; R.laneAt = dist; R.zigT.push(frameT); if (R.zigT.length > 30) { R.zigT.shift(); }
+  if (R.zigT.length === 30 && frameT - R.zigT[0] <= 10) { R.zig = 1; }
 }
 function jump() {
   if (st !== 'play' || p.fly) { return; }
   if (p.air) { if (p.vy < 0) { p.buf = 0.16; } return; }
   p.air = true; p.vy = p.sj > 0 ? JV2 : JV; p.roll = 0; beep(420, 820, 0.09, 'square', 0.035);
+  R.jumps++; R.jumpAt = dist;
 }
 function roll() {
   if (st !== 'play' || p.fly) { return; }
-  p.roll = ROLL;
+  p.roll = ROLL; R.rolls++;
   if (p.air) { p.vy = Math.min(p.vy, -900); } /* en el aire: baja de golpe y rueda al tocar el piso */
   beep(300, 160, 0.07, 'square', 0.03);
 }
@@ -378,7 +412,8 @@ function sx(x, d) { return W / 2 + (x - camX) * F / d; }
 function sy(y, d) { return HOR + (CY - y) * F / d; }
 
 /* ---------- Dibujo ---------- */
-/* Paleta del escenario: cambia cada 1000 m (Campanilla → Arrayán → Chilco) y queda en Chilco. Es solo estética. */
+/* Paleta del escenario: cambia cada 1000 m. Campanilla → Arrayán → Chilco, después las tres invertidas
+   (3000, 4000 y 5000 m) y desde los 6000 m vuelven a rotar las seis. */
 var THEMES = [
   { sky: [[242, 240, 205], [216, 222, 150], [158, 168, 92]], mt: [92, 98, 48], sideA: [82, 86, 32], sideB: [92, 96, 38], edge: [214, 202, 112], trA: [50, 52, 22], trB: [44, 46, 18], dash: [196, 190, 136] },
   { sky: [[246, 239, 196], [244, 201, 120], [226, 150, 90]], mt: [150, 74, 40], sideA: [113, 53, 25], sideB: [122, 58, 28], edge: [185, 138, 62], trA: [71, 32, 13], trB: [64, 26, 10], dash: [167, 143, 106] },
@@ -387,10 +422,17 @@ var THEMES = [
 function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
 function mix(a, b, t) { return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]; }
 function rgb(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
+/* invertida: el color opuesto (negativo) pero conservando cuánta luz tiene, para que se siga leyendo igual */
+function inv(c) {
+  var n = [255 - c[0], 255 - c[1], 255 - c[2]], l0 = 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2], l1 = 0.3 * n[0] + 0.59 * n[1] + 0.11 * n[2], d = l0 - l1;
+  return n.map(function (v) { return Math.max(0, Math.min(255, Math.round(v + d))); });
+}
+THEMES.slice().forEach(function (T) { var o = {}; Object.keys(T).forEach(function (k) { o[k] = k === 'sky' ? T.sky.map(inv) : inv(T[k]); }); THEMES.push(o); });
+var THEME_NAMES = ['Campanilla', 'Arrayán', 'Chilco', 'Campanilla invertida', 'Arrayán invertido', 'Chilco invertido'];
 function themeAt(m) {
   /* el cambio se hace de a poco en los últimos 80 m antes de cada mil */
-  var k = Math.min(THEMES.length - 1, m / 1000), i = Math.floor(k), f = k - i, t = Math.max(0, Math.min(1, (f - 0.92) / 0.08));
-  var A = THEMES[i], B = THEMES[Math.min(THEMES.length - 1, i + 1)], o = {};
+  var k = m / 1000, i = Math.floor(k), f = k - i, t = Math.max(0, Math.min(1, (f - 0.92) / 0.08));
+  var A = THEMES[i % THEMES.length], B = THEMES[(i + 1) % THEMES.length], o = {};
   Object.keys(A).forEach(function (key) { o[key] = key === 'sky' ? A.sky.map(function (c, j) { return mix(c, B.sky[j], t); }) : mix(A[key], B[key], t); });
   return o;
 }
@@ -576,6 +618,16 @@ function draw() {
   var sg = ctx.createLinearGradient(0, 0, 0, HOR);
   sg.addColorStop(0, rgb(sky[0])); sg.addColorStop(0.55, rgb(sky[1])); sg.addColorStop(1, rgb(sky[2]));
   ctx.fillStyle = sg; ctx.fillRect(-6, -6, W + 12, HOR + 7);
+  var SK = LG && LG.sky();
+  if (SK) {
+    /* trama del escenario: mosaico que se desliza de a poco, y se funde con el cielo del paisaje cerca del horizonte */
+    var fw = SK.img.naturalWidth / SK.f, fh = SK.img.naturalHeight, th = HOR * 0.62 * SK.k, tw = th * fw / fh, fi = SK.f > 1 ? Math.floor(frameT * 10) % SK.f : 0;
+    var x0 = -(((frameT * 7 + camX * 0.35) % tw) + tw) % tw - 6;
+    for (var ty = -th * 0.25; ty < HOR + 1; ty += th) { for (var tx = x0; tx < W + 6; tx += tw) { ctx.drawImage(SK.img, fi * fw, 0, fw, fh, tx, ty, tw + 0.5, th + 0.5); } }
+    var sf = ctx.createLinearGradient(0, HOR * 0.35, 0, HOR);
+    sf.addColorStop(0, 'rgba(' + sky[2].join(',') + ',0)'); sf.addColorStop(1, rgb(sky[2]));
+    ctx.fillStyle = sf; ctx.fillRect(-6, HOR * 0.35, W + 12, HOR * 0.65 + 1);
+  }
   /* cordillera (se corre apenas con la cámara) */
   var off = camX * 0.15;
   ctx.fillStyle = rgb(TH.mt); ctx.beginPath(); ctx.moveTo(-6, HOR + 1);
@@ -641,8 +693,13 @@ function loop(ts) {
 }
 
 /* ---------- Controles: flechas / WASD y deslizar el dedo ---------- */
-function pause() { if (st === 'play') { st = 'pause'; show('pause'); } }
-function resume() { if (st === 'pause') { st = 'play'; hide('pause'); last = performance.now(); acc = 0; } }
+function pause() { if (st === 'play') { st = 'pause'; show('pause'); pauseAt = performance.now(); } }
+function resume() {
+  if (st === 'pause') {
+    st = 'play'; hide('pause'); last = performance.now(); acc = 0;
+    if (R) { R.pauseMax = Math.max(R.pauseMax || 0, (last - pauseAt) / 1000); }
+  }
+}
 document.addEventListener('keydown', function (e) {
   if (e.target && e.target.tagName === 'INPUT') { return; }
   var k = e.key;
@@ -698,6 +755,11 @@ $('resume').addEventListener('click', resume);
 $('change').addEventListener('click', function () { st = 'menu'; hide('over'); show('start'); });
 function setMute(v) { muted = v; lsSet(K.mute, v); $('mute').textContent = v ? '♪̸' : '♪'; $('mute').setAttribute('aria-pressed', String(!v)); }
 $('mute').addEventListener('click', function () { setMute(!muted); });
+if (LG) {
+  LG.mount('carriles', { base: '../escenarios/', stage: $('stage'), startBox: document.querySelector('#start .box'), overBox: document.querySelector('#over .box'), best: best,
+    retro: ['dist', 'dist2', 'd20', 'pa1', 'pa2', 'pa3', 'pa4', 'pa5', 'pa6'],
+    onUnlock: function () { beep(660, 1320, 0.12, 'triangle', 0.05); setTimeout(function () { beep(990, 1980, 0.16, 'triangle', 0.05); }, 110); } });
+}
 if (window.FAARank) { FAARank.mount('carriles'); }
 setMute(muted); setPal(pal); $('best').textContent = best;
 reset();

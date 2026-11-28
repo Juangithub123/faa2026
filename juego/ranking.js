@@ -4,7 +4,7 @@
 'use strict';
 var URL = 'https://script.google.com/macros/s/AKfycbwxL9zxyDG1T9gg9pPqzpRNzI5wFGNc9XR6aMMdax-PdUywFKKR-ace5_Biw4nfhT_MkA/exec';
 
-var VER = '17/11 h', NICK = 'faa26-nick', POZO = 'faa26-pozo-pend', game = '', last = null, sent = false;
+var VER = '28/11 a', NICK = 'faa26-nick', POZO = 'faa26-pozo-pend', game = '', last = null, sent = false;
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 function clean(n) { return String(n || '').replace(/[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ _.]/g, '').replace(/^[^A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]+/, '').slice(0, 12); }
@@ -31,9 +31,21 @@ function list(el, rows, me, myScore) {
   if (!rows || !rows.length) { el.innerHTML = '<li class="rk-empty">Todavía no hay tomas. ¡Sé la primera!</li>'; return; }
   el.innerHTML = rows.map(function (r, i) {
     var mine = me && r.n.toLowerCase() === me.toLowerCase();
-    return '<li' + (mine ? ' class="me"' : '') + '><b>' + (i + 1) + '</b><span>' + esc(r.n) + '</span><em>' + r.s + ' m</em></li>';
+    return '<li' + (mine ? ' class="me"' : '') + '><b>' + (i + 1) + '</b><span>' + esc(r.n) + '</span>' + (r.l ? '<i class="rk-lv" title="Nivel de medallas">Nv ' + r.l + '</i>' : '') + '<em>' + r.s + ' m</em></li>';
   }).join('');
 }
+/* ranking de coleccionistas: puntos de medallas de todos los juegos */
+function colList(box, rows) {
+  var el = box.querySelector('.rk-col'), h = box.querySelector('.rk-colh');
+  if (!el) { return; }
+  el.hidden = h.hidden = !(rows && rows.length);
+  if (!rows || !rows.length) { return; }
+  var me = getNick().toLowerCase();
+  el.innerHTML = rows.map(function (r, i) {
+    return '<li' + (me && r.n.toLowerCase() === me ? ' class="me"' : '') + '><b>' + (i + 1) + '</b><span>' + esc(r.n) + '</span><i class="rk-lv">Nv ' + r.l + '</i><em>' + fmt(r.p) + ' pts</em></li>';
+  }).join('');
+}
+function remote(j) { if (window.FAALogros && j && j.rar) { FAALogros.setRemote(j.rar, j.jug); } }
 function css() {
   var s = document.createElement('style');
   s.textContent = '.rk{display:grid;gap:8px;text-align:left}.rk[hidden]{display:none}' +
@@ -42,7 +54,7 @@ function css() {
     '.rk ol{list-style:none;padding:0;margin:0;display:grid;gap:2px;font:600 14px system-ui}' +
     '.rk li{display:flex;gap:8px;align-items:baseline;padding:4px 8px;border-radius:8px;background:rgba(246,239,196,.07)}' +
     '.rk li b{width:20px;color:#F4C95C;font-variant-numeric:tabular-nums}.rk li span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-    '.rk li em{font-style:normal;font-variant-numeric:tabular-nums;opacity:.9}.rk li.me{background:#F4C95C;color:#3a1606}.rk li.me b{color:#3a1606}' +
+    '.rk li em{font-style:normal;font-variant-numeric:tabular-nums;opacity:.9}.rk li i.rk-lv{font:800 10.5px system-ui;font-style:normal;background:#8FBABA;color:#3a1606;border-radius:999px;padding:1px 6px;align-self:center}.rk li.me i.rk-lv{background:#3a1606;color:#F4C95C}.rk ol[hidden],.rk h2[hidden]{display:none}.rk li.me{background:#F4C95C;color:#3a1606}.rk li.me b{color:#3a1606}' +
     '.rk-msg{font-size:12.5px;opacity:.8;min-height:1em;text-align:center}.rk-empty{opacity:.7}.rk h2{font:900 15px system-ui;text-align:center;color:#F4C95C;letter-spacing:.04em;text-transform:uppercase;border-top:1px solid rgba(246,239,196,.25);padding-top:10px}' +
     '.rk-pozo{margin:0;padding:8px 12px;border-radius:12px;background:rgba(116,198,232,.14);border:1px solid rgba(116,198,232,.55);color:#F6EFC4;font:600 13.5px/1.3 system-ui;text-align:center}.rk-pozo b{color:#74C6E8;font:900 17px ui-monospace,Menlo,monospace}.rk-pozo small{display:block;opacity:.8;font-size:12px;margin-top:2px}';
   document.head.appendChild(s);
@@ -51,7 +63,7 @@ function block(id) {
   var d = document.createElement('div'); d.className = 'rk'; d.id = id;
   d.innerHTML = '<h2>Ranking del staff</h2>' +
     (id === 'rk-over' ? '<div class="rk-row"><input id="rk-nick" maxlength="12" placeholder="Tu apodo" autocomplete="nickname" enterkeyhint="send"><button type="button" id="rk-send">Subir</button></div>' : '') +
-    '<ol></ol><p class="rk-msg"></p>';
+    '<ol></ol><p class="rk-msg"></p><h2 class="rk-colh" hidden>Coleccionistas de medallas</h2><ol class="rk-col" hidden></ol>';
   return d;
 }
 /* ---------- Pozo común: todas las fichas de todas las partidas van a la universidad pública ----------
@@ -84,7 +96,7 @@ function pozoLine(id) {
 function load(box, hint) {
   var msg = box.querySelector('.rk-msg'), ol = box.querySelector('ol');
   msg.textContent = 'Cargando…';
-  call({ op: 'top', juego: game }).then(function (j) { showPozo(j.pozo); if (box.id === 'rk-over' && sent) { return; } list(ol, j.top, getNick()); msg.textContent = hint || ''; })
+  call({ op: 'top', juego: game }).then(function (j) { showPozo(j.pozo); remote(j); colList(box, j.col); if (box.id === 'rk-over' && sent) { return; } list(ol, j.top, getNick()); msg.textContent = hint || ''; })
     .catch(function () { msg.textContent = navigator.onLine === false ? 'Sin conexión: el ranking se ve con internet.' : 'No se pudo cargar el ranking.'; });
 }
 function send() {
@@ -93,16 +105,35 @@ function send() {
   if (!n) { msg.textContent = 'Poné un apodo (hasta 12 letras).'; inp.focus(); return; }
   if (sent || !last) { return; }
   setNick(n); sent = true; $('rk-send').disabled = true; msg.textContent = 'Subiendo…';
-  call({ op: 'anotar', juego: game, apodo: n, metros: last.score, fichas: last.coins || 0, seg: Math.round(last.secs) })
-    .then(function (j) { showPozo(j.pozo); list(box.querySelector('ol'), j.top, n); msg.textContent = 'Quedaste en el puesto ' + j.pos + '.'; })
+  var q = { op: 'anotar', juego: game, apodo: n, metros: last.score, fichas: last.coins || 0, seg: Math.round(last.secs * 10) / 10 };
+  /* cuántas acciones tuvo la toma: la planilla marca para revisar las que no cierran */
+  ['jumps', 'rolls', 'lanes', 'passed'].forEach(function (k, i) { if (last[k] != null) { q[['saltos', 'rodadas', 'carriles', 'obstaculos'][i]] = last[k]; } });
+  call(q)
+    .then(function (j) {
+      showPozo(j.pozo); list(box.querySelector('ol'), j.top, n); remote(j); colList(box, j.col); msg.textContent = 'Quedaste en el puesto ' + j.pos + '.';
+      if (window.FAALogros) { FAALogros.sync(); }
+    })
     .catch(function (e) {
       sent = false; $('rk-send').disabled = false;
-      msg.textContent = e.message === 'puntaje' ? 'Ese puntaje no se pudo validar.' :
+      msg.textContent = e.message === 'puntaje' || e.message === 'tiempo' ? 'Ese puntaje no se pudo validar.' :
         navigator.onLine === false ? 'Sin señal: probá de nuevo cuando vuelva.' :
         e.name === 'Timeout' ? 'El ranking tardó demasiado en responder. Probá de nuevo.' :
         /^script: /.test(e.message) ? 'Error del ranking: ' + e.message.slice(8) :
         'No se pudo conectar con el ranking (' + (e.name || 'error') + ').';
     });
+}
+
+/* medallas: la planilla guarda las de cada apodo (con un código por teléfono) y arma el ranking de coleccionistas */
+if (window.FAALogros && URL) {
+  FAALogros.server = {
+    sync: function (d) {
+      return call({ op: 'logros', juego: game || 'carriles', apodo: d.apodo, clave: d.clave, med: d.med, pts: d.pts, nivel: d.nivel, datos: d.datos })
+        .then(function (j) { if (!j.sync) { throw new Error('viejo'); } remote(j); return j; });
+    },
+    recover: function (apodo, clave) {
+      return call({ op: 'recuperar', juego: game || 'carriles', apodo: apodo, clave: clave }).then(function (j) { if (!j.sync) { throw new Error('viejo'); } return j; });
+    }
+  };
 }
 
 window.FAARank = {
